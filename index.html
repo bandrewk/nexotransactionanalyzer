@@ -1,0 +1,232 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css" />
+
+    <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div class="header-container">
+      <h1>Nexo transacitons viewer</h1>
+      <div class="header-menu hidden">
+        <a id="btn-overview" href="#">Overview</a>
+        <a id="btn-coinlist" href="#">Coinlist</a>
+        <a id="btn-transactions" href="#">Transactions</a>
+        <a href="./index.html">EXIT</a>
+      </div>
+    </div>
+    <div class="body-container">
+      <!-- Start begin -->
+      <div class="start-container">
+        <br /><br />
+        <h3>
+          To get started, place the nexo transactions .csv in the box below:
+        </h3>
+        <div class="start-drop-zone">Drop .csv file here</div>
+      </div>
+      <!-- Start end -->
+
+      <!-- Overview begin -->
+      <div class="overview-container hidden">
+        <h1>Overview</h1>
+        <hr />
+        <div class="overview-element-container">
+          <div id="tester2" style="width: 900px; height: 350px">
+            <canvas id="myChart2"></canvas>
+          </div>
+          <div id="tester" style="width: 380px"></div>
+          <div class="flexbreakline"></div>
+          <div id="tester3" style="width: 900px; height: 350px">
+            <canvas id="myChart"></canvas>
+          </div>
+          <div id="tester4" style="width: 380px"></div>
+          <div class="flexbreakline"></div>
+          <div id="tester5" style="width: 900px; height: 350px">
+            <canvas id="myChart"></canvas>
+          </div>
+          <div id="tester6" style="width: 380px"></div>
+          <div class="flexbreakline"></div>
+          <!-- <div class="overview-element">
+            <h2>100000$</h2>
+            Depot value
+          </div>
+          <div class="overview-element">
+            <h2>304</h2>
+            Transactions
+          </div>
+          <div class="overview-element">
+            <h2>100$</h2>
+            Interest earned
+          </div>
+          <div class="overview-element">
+            <h2>100$</h2>
+            Outstanding loans
+          </div>
+          <div class="overview-element">
+            <h2>GOLD</h2>
+            Membership level
+          </div> -->
+        </div>
+      </div>
+      <!-- TODO -->
+      <!-- Overview end -->
+
+      <!-- Coinlist begin -->
+      <div class="coinlist-container hidden">
+        <h1>Coinlist</h1>
+        <hr />
+        <div class="coinlist-element-container">
+          <!-- <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div>
+          <div class="coinlist-element">
+            <img
+              class="coinlist-icon"
+              src="https://cryptoicon-api.vercel.app/api/icon/btc"
+            />
+            <h3>BTC</h3>
+            <h4>500.123123</h4>
+            <p>($1000)</p>
+          </div> -->
+        </div>
+        <h1>Coins earned as interest</h1>
+        <hr />
+        <div class="coinlist-element-container-interest"></div>
+      </div>
+      <!-- Coinlist end -->
+
+      <!-- Transactions begin -->
+      <div class="transactions-container hidden">
+        <h1>Transactions</h1>
+        <hr />
+        <table class="transactions-table">
+          <tr>
+            <th>Transaction</th>
+            <th>Type</th>
+            <th>Currency</th>
+            <th>Amount</th>
+            <th>USD Equivalent</th>
+            <th>Details</th>
+            <th>Outstanding Loan</th>
+            <th>Date</th>
+          </tr>
+        </table>
+      </div>
+      <!-- Transactions end -->
+    </div>
+
+    <div class="footer-container">
+      <hr />
+      <p>
+        © Copyright 2021 bandrewk. Sourcecode available on
+        <a href="https://www.github.com">Github</a>. This is a non-commercial,
+        not monetized website.
+      </p>
+      <h5>Notice of Non-Affiliation and Disclaimer</h5>
+      <p>
+        We are not affiliated, associated, authorized, endorsed by, or in any
+        way officially connected with Nexo Financial LLC, or any of its
+        subsidiaries or its affiliates. The official Nexo Financial LLC website
+        can be found at https://www.nexo.io.<br />
+        The name NEXO as well as related names, marks, emblems and images are
+        registered trademarks of their respective owners.
+      </p>
+    </div>
+  </body>
+</html>

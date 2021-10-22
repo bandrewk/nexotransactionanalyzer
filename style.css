@@ -1,0 +1,235 @@
+body {
+  font-family: "Roboto", sans-serif;
+  color: #252a2f;
+  margin: 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px dashed #252a2f69;
+  color: #fff;
+  background-color: #fff;
+  height: 2px;
+  width: 100%;
+}
+
+.hidden {
+  display: none;
+}
+
+.flexbreakline {
+  flex-basis: 100%;
+  height: 0;
+}
+
+.header-container {
+  max-width: 100%;
+  background: #2077e9;
+  display: flex;
+
+  /* Center vertically */
+  align-items: center;
+
+  /* Align items at opposite positiion */
+  justify-content: space-between;
+}
+
+/* Logo text */
+.header-container h1 {
+  color: white;
+  font-size: 2.5rem;
+  margin: 0.7em;
+}
+
+/* Menu container */
+.header-menu {
+  align-items: right;
+  margin-right: 4rem;
+}
+
+/* Menu element */
+.header-menu a {
+  text-decoration: none;
+  font-size: 1.4rem;
+  color: white;
+  margin: 1em;
+}
+
+/* Body */
+.body-container {
+  min-width: 1280px;
+  max-width: 1750px;
+  margin: 0 auto;
+}
+
+/* Footer */
+.footer-container {
+  min-width: 1280px;
+  max-width: 1750px;
+  margin: 0 auto;
+}
+
+.footer-container p {
+  font-size: 0.8rem;
+}
+
+.footer-container h5 {
+  margin: 0;
+}
+
+/* Start */
+.start-container h1 {
+  letter-spacing: 0.1em;
+  margin-top: 1em;
+}
+
+.start-drop-zone {
+  border: 5px solid #2077e9;
+  width: 80%;
+  height: 100px;
+  line-height: 100px;
+  border-style: dashed;
+  text-align: center;
+  position: relative;
+  color: #252a2f;
+  margin: 4rem auto;
+
+  transition: border 0.25s;
+}
+
+/* Overview */
+
+.overview-container h1 {
+  letter-spacing: 0.1em;
+  margin-top: 1em;
+}
+
+.overview-element-container {
+  display: flex;
+  justify-content: space-evenly;
+  flex-wrap: wrap;
+}
+
+.overview-element {
+  display: block;
+  min-width: 200px;
+  text-align: center;
+  margin: 1rem;
+
+  box-shadow: rgba(0, 0, 0, 0.09) 0px 3px 12px;
+  border-radius: 8px;
+  margin: 2em;
+  transition: border-radius 0.25s;
+  padding-bottom: 1em;
+}
+
+.overview-element-disabled {
+  display: block;
+  min-width: 200px;
+  text-align: center;
+  margin: 1rem;
+
+  box-shadow: rgba(0, 0, 0, 0.09) 0px 3px 12px;
+  border-radius: 8px;
+  margin: 2em;
+  transition: border-radius 0.25s;
+  padding-bottom: 1em;
+
+  color: #52525269;
+}
+
+.overview-element h2 {
+  margin-bottom: 0.5em;
+  letter-spacing: 0.05em;
+}
+
+/* Coinlist */
+.coinlist-container {
+  justify-content: space-evenly;
+  flex-wrap: wrap;
+}
+.coinlist-container h1 {
+  letter-spacing: 0.1em;
+  margin-top: 1em;
+}
+
+/* Coinlist elements */
+.coinlist-element-container {
+  display: flex;
+  justify-content: space-evenly;
+  flex-wrap: wrap;
+}
+
+.coinlist-element-container-interest {
+  display: flex;
+  justify-content: space-evenly;
+  flex-wrap: wrap;
+}
+
+.coinlist-element {
+  display: block;
+  min-width: 164px;
+  text-align: center;
+  margin: 2rem;
+
+  box-shadow: rgba(0, 0, 0, 0.09) 0px 3px 12px;
+  border-radius: 8px;
+  margin: 2em;
+  transition: border-radius 0.25s;
+}
+
+.coinlist-element:hover {
+  border-radius: 40px;
+}
+
+.coinlist-element:hover .coinlist-icon {
+  width: 64px;
+}
+
+.coinlist-element p {
+  font-size: 0.8rem;
+  font-style: italic;
+}
+.coinlist-element h3 {
+  letter-spacing: 0.2em;
+}
+
+.coinlist-icon {
+  width: 54px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1rem;
+  transition: width 0.25s;
+}
+
+.coinlist-icon:hover {
+  width: 64px;
+}
+
+/* Transactions */
+/* .transactions-container {
+} */
+
+.transactions-container h1 {
+  letter-spacing: 0.1em;
+  margin-top: 1em;
+}
+
+.transactions-table {
+  width: 100%;
+}
+
+.transactions-table th {
+  text-align: left;
+  background-color: #2077e9;
+  color: white;
+}
+
+.transactions-table tr:hover {
+  background-color: gainsboro;
+}
+.transactions-table td,
+.transactions-table th {
+  padding: 0.5em;
+}
