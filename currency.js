@@ -33,7 +33,7 @@ Object.freeze(CurrencyType);
 /////////////////////////////////////////////////////
 export class Currency {
   #m_type;
-  #m_amount;
+  #m_amount; // TODO rename var to match others
   #m_fFiatEquivalent;
   #m_fInterestEarned; // in coin value, NOT USD
 
@@ -49,11 +49,11 @@ export class Currency {
     this.#m_fAmountAdded = [];
   }
 
-  AddDate(value) {
+  AddTXDate(value) {
     this.#m_sDateAdded.push(value);
   }
 
-  AddAmount(value) {
+  AddTXAmount(value) {
     this.#m_fAmountAdded.push(value);
   }
 

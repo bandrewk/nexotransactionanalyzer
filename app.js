@@ -35,12 +35,12 @@ class App {
   #m_pUpload;
 
   // File and data array
-  #m_File;
+  #m_File; // TODO check & remove
   #m_transactions;
 
   // Settings
   #m_Settings;
-  #m_appState;
+  #m_appState; // TODO is this really needed doe?
 
   // Statistics
   #m_Stats;
@@ -206,6 +206,7 @@ class App {
 
     console.log(`Loading complete`);
 
+    // TODO Move Graph generation to extra method
     let depositDates = [];
     let depositAmounts = [];
     let withdrawDates = [];
@@ -317,6 +318,7 @@ class App {
     };
     Plotly.newPlot("tester3", data, layout);
 
+    // FIXME This is sometimes too early. Find a better method of doing this! Maybe use a callback.
     setTimeout(() => {
       this.#m_eCoinListContainer.insertAdjacentHTML(
         `beforeend`,
@@ -339,8 +341,12 @@ class App {
     // Show menu
     this.#m_eHeaderMenu.classList.remove("hidden");
 
-    dates = [];
+    //////////////////////////////////////////////////////////////////
+    /// Portfolio value tries
+    //////////////////////////////////////////////////////////////////
 
+    // DAILY
+    dates = [];
     this.#m_transactions.forEach((e) => {
       if (
         e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
@@ -349,7 +355,7 @@ class App {
         e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
       )
         return;
-      dates.push(e.GetDateTime().substr(0, 7));
+      dates.push(e.GetDateTime().substr(0, 10));
     });
 
     //console.log(dates);
