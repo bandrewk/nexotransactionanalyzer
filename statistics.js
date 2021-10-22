@@ -46,12 +46,13 @@ export class Statistics {
     ) {
       this.AddCurrency(t.GetCurrency(), t.GetAmount());
 
+      // TODO: Move this to AddCurrency and pass t object to function instead of two parameters
       // console.log(this.#m_currency);
       // console.log(t);
       // this.#m_currency
       //   .get(t.GetCurrency())
-      //   .AddDate(t.GetDateTime().substr(0, 7));
-      // this.#m_currency.get(t.GetCurrency()).AddAmount(t.GetAmount());
+      //   .AddTXDate(t.GetDateTime().substr(0, 10));
+      // this.#m_currency.get(t.GetCurrency()).AddTXAmount(t.GetAmount());
     }
 
     if (t.GetType() === TransactionType.INTEREST) {
