@@ -21,6 +21,7 @@ class App {
   #m_eOverviewContainer;
   #m_eCoinListContainer;
   #m_eCoinListEarnedContainer;
+  #m_eLoadingbar;
 
   // Header
   #m_eHeaderMenu;
@@ -62,6 +63,8 @@ class App {
     this.#m_eDropZone = document.querySelector(".start-drop-zone");
     this.#m_eDropZone.addEventListener("drop", this.DropHandler.bind(this));
     this.#m_eDropZone.addEventListener("dragover", this.DragOver);
+
+    this.#m_eLoadingbar = document.querySelector(".lds-container");
 
     // Header
     this.#m_eHeaderMenu = document.querySelector(".header-menu");
@@ -151,13 +154,13 @@ class App {
     // We only accept one dropped item of type FILE
     if (e.dataTransfer.items) {
       if (e.dataTransfer.items[0].kind === "file") {
-        this.m_File = e.dataTransfer.items[0].getAsFile();
+        this.#m_File = e.dataTransfer.items[0].getAsFile();
 
-        console.log(`Reading file ${this.m_File.name}..`);
+        console.log(`Reading file ${this.#m_File.name}..`);
 
         // Process content
         // prettier-ignore
-        this.m_File.text().then((content) => this.FileReady(content));
+        this.#m_File.text().then((content) => this.FileReady(content));
       }
     }
   }
@@ -194,7 +197,7 @@ class App {
           obj[`USD Equivalent`],
           obj.Details,
           obj[`Outstanding Loan`],
-          obj[`Date / Time`].substr(0, 10)
+          obj[`Date / Time`].substr(0, 10) // Only grab the date
         )
       );
     }
@@ -289,6 +292,7 @@ class App {
   GotExchangeRates() {
     // TODO Could display a loading icon till we reach this method
     console.log(`Got exchange rates~`);
+    this.#m_eLoadingbar.remove();
 
     this.RenderCoinList();
     this.RenderOverview();
@@ -587,6 +591,7 @@ class App {
 
   /////////////////////////////////////////////////////
   /// Hyperlinks a blockchain tx to it's explorer website and readds the original detail phrase
+  /// TODO add all currencies
   /////////////////////////////////////////////////////
   LinkTXsToExplorer(t, details) {
     let detailshtml = details;
