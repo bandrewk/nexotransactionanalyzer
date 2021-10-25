@@ -161,6 +161,7 @@ export class Currency {
     }
   }
 
+  // TODO: This is a mess!
   GetExchangeRate(history = false) {
     if (history) {
       this.GetPortfolioValue().forEach((v, k, m) => {

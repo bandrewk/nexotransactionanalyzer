@@ -56,31 +56,65 @@ export class Statistics {
     }
   }
 
-  GetExchangeRates() {
+  GetExchangeRates(finishedCallback = null) {
     let urls = [];
 
     this.#m_currency.forEach((e) => {
       urls.push(e.GetExchangeRateAsAPIString());
     });
 
-    let apiRequests = urls.map((url) => fetch(url));
+    // Make promises resolve to their final value
+    let apiRequests = urls.map((url) => fetch(url).then((res) => res.json()));
 
-    Promise.all(apiRequests).then((responses) => {
-      responses.forEach((response) =>
-        response.json().then((data) => {
-          if (this.#m_currency.has(data.data.currency)) {
+    // Wait for all promises to settle
+    Promise.allSettled(apiRequests).then((responses) => {
+      responses.forEach((response, index) => {
+        // Loop through all responses
+        if (response.status === "fulfilled") {
+          // Success
+          if (this.#m_currency.has(response.value.data.currency)) {
+            // Look up currency and set the fiat value
             this.#m_currency
-              .get(data.data.currency)
+              .get(response.value.data.currency)
               .SetFiatEquivalent(
-                parseFloat(data.data.rates.USD) *
+                parseFloat(response.value.data.rates.USD) *
                   parseFloat(
-                    this.#m_currency.get(data.data.currency).GetAmount()
+                    this.#m_currency
+                      .get(response.value.data.currency)
+                      .GetAmount()
                   )
               );
           }
-        })
-      );
+        } else if (response.status === "rejected") {
+          // Failed
+          console.log(
+            `GetExchangeRate failed for: ${urls[index]} - ${response.reason}`
+          );
+        }
+      });
+
+      // Let's go
+      if (finishedCallback) finishedCallback();
     });
+
+    // Promise.allSettled(apiRequests).then((responses) => {
+    //   responses.forEach((response) => {
+    //     console.log(response.value.body);
+    //     response.value.json().then((data) => {
+    //       if (this.#m_currency.has(data.data.currency)) {
+    //         this.#m_currency
+    //           .get(data.data.currency)
+    //           .SetFiatEquivalent(
+    //             parseFloat(data.data.rates.USD) *
+    //               parseFloat(
+    //                 this.#m_currency.get(data.data.currency).GetAmount()
+    //               )
+    //           );
+    //       }
+    //     });
+    //   });
+    //   if (finishedCallback) finishedCallback();
+    // });
   }
 
   // This is used in Coinlist page !
@@ -90,6 +124,7 @@ export class Statistics {
 
     // Go through all stored currencies
     this.#m_currency.forEach((e) => {
+      console.log(e);
       html += `
       <div class="coinlist-element">
       <img

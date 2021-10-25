@@ -202,9 +202,104 @@ class App {
     this.#m_transactions.map((t) => this.UpdateStatistics(t));
     this.#m_transactions.map((t) => this.RenderTransaction(t));
 
-    this.#m_Stats.GetExchangeRates();
+    this.#m_Stats.GetExchangeRates(this.GotExchangeRates.bind(this));
 
     console.log(`Loading complete`);
+
+    // Hide start and show data
+    this.#ShowPage(this.#m_btnOverview, this.#m_pOverview);
+
+    // Show menu
+    this.#m_eHeaderMenu.classList.remove("hidden");
+
+    //////////////////////////////////////////////////////////////////
+    /// Portfolio value tries
+    //////////////////////////////////////////////////////////////////
+
+    // // DAILY
+    // dates = [];
+    // this.#m_transactions.forEach((e) => {
+    //   if (
+    //     e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
+    //     e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
+    //   )
+    //     return;
+    //   dates.push(e.GetDateTime().substr(0, 10));
+    // });
+
+    // //console.log(dates);
+
+    // amounts = [];
+    // this.#m_transactions.forEach((e) => {
+    //   if (
+    //     e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
+    //     e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
+    //   )
+    //     return;
+    //   if (
+    //     e.GetType() === TransactionType.WITHDRAWAL ||
+    //     e.GetType() === TransactionType.WITHDRAWEXCHANGED
+    //   )
+    //     amounts.push(-e.GetUSDEquivalent());
+    //   else amounts.push(e.GetUSDEquivalent());
+    // });
+
+    // let portfolioValue = this.GroupTransactionsPerMonth(dates, amounts);
+
+    // let lastValue = 0;
+    // portfolioValue.forEach((v, k, m) => {
+    //   m.set(k, m.get(k) + lastValue);
+
+    //   lastValue = v;
+    // });
+
+    // console.log(portfolioValue);
+
+    // fetch(`https://api.coinbase.com/v2/prices/BTC-USD/spot?date=2021-10-10`)
+    //   .then((response) => response.json())
+    //   .then((data) => console.log(data));
+    // fetch(`https://api.coinbase.com/v2/prices/BTC-USD/spot`)
+    //   .then((response) => response.json())
+    //   .then((data) => console.log(data));
+
+    // trace1 = {
+    //   x: [...interestPerDay.keys()],
+    //   y: [...interestPerDay.values()],
+    //   type: `scatter`,
+
+    //   line: {
+    //     dash: "solid",
+    //     width: 2,
+    //   },
+    // };
+
+    // data = [trace1];
+    // layout = {
+    //   title: "Interest earned (USD)",
+    // };
+    // Plotly.newPlot("tester3", data, layout);
+
+    //console.log(this.GroupTransactionsPerMonth(dates, amounts));
+  }
+
+  GotExchangeRates() {
+    console.log(`Got exchange rates~`);
+
+    this.#m_eCoinListContainer.insertAdjacentHTML(
+      `beforeend`,
+      this.#m_Stats.GetCoinListAsHTML()
+    );
+
+    this.#m_eCoinListEarnedContainer.insertAdjacentHTML(
+      `beforeend`,
+      this.#m_Stats.GetCoinsEarnedAsInterestAsHTML()
+    );
+
+    this.RenderStatistics();
 
     // TODO Move Graph generation to extra method
     let depositDates = [];
@@ -317,104 +412,6 @@ class App {
       title: "Interest earned (USD)",
     };
     Plotly.newPlot("tester3", data, layout);
-
-    // FIXME This is sometimes too early. Find a better method of doing this! Maybe use a callback.
-    setTimeout(() => {
-      this.#m_eCoinListContainer.insertAdjacentHTML(
-        `beforeend`,
-        this.#m_Stats.GetCoinListAsHTML()
-      );
-
-      this.#m_eCoinListEarnedContainer.insertAdjacentHTML(
-        `beforeend`,
-        this.#m_Stats.GetCoinsEarnedAsInterestAsHTML()
-      );
-
-      //this.#m_Stats.GeneratePortfolioGraph();
-    }, 1000);
-
-    setTimeout(() => {
-      this.RenderStatistics();
-    }, 1000);
-
-    // Hide start and show data
-    this.#ShowPage(this.#m_btnOverview, this.#m_pOverview);
-
-    // Show menu
-    this.#m_eHeaderMenu.classList.remove("hidden");
-
-    //////////////////////////////////////////////////////////////////
-    /// Portfolio value tries
-    //////////////////////////////////////////////////////////////////
-
-    // // DAILY
-    // dates = [];
-    // this.#m_transactions.forEach((e) => {
-    //   if (
-    //     e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
-    //     e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
-    //     e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
-    //     e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
-    //   )
-    //     return;
-    //   dates.push(e.GetDateTime().substr(0, 10));
-    // });
-
-    // //console.log(dates);
-
-    // amounts = [];
-    // this.#m_transactions.forEach((e) => {
-    //   if (
-    //     e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
-    //     e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
-    //     e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
-    //     e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
-    //   )
-    //     return;
-    //   if (
-    //     e.GetType() === TransactionType.WITHDRAWAL ||
-    //     e.GetType() === TransactionType.WITHDRAWEXCHANGED
-    //   )
-    //     amounts.push(-e.GetUSDEquivalent());
-    //   else amounts.push(e.GetUSDEquivalent());
-    // });
-
-    // let portfolioValue = this.GroupTransactionsPerMonth(dates, amounts);
-
-    // let lastValue = 0;
-    // portfolioValue.forEach((v, k, m) => {
-    //   m.set(k, m.get(k) + lastValue);
-
-    //   lastValue = v;
-    // });
-
-    // console.log(portfolioValue);
-
-    // fetch(`https://api.coinbase.com/v2/prices/BTC-USD/spot?date=2021-10-10`)
-    //   .then((response) => response.json())
-    //   .then((data) => console.log(data));
-    // fetch(`https://api.coinbase.com/v2/prices/BTC-USD/spot`)
-    //   .then((response) => response.json())
-    //   .then((data) => console.log(data));
-
-    // trace1 = {
-    //   x: [...interestPerDay.keys()],
-    //   y: [...interestPerDay.values()],
-    //   type: `scatter`,
-
-    //   line: {
-    //     dash: "solid",
-    //     width: 2,
-    //   },
-    // };
-
-    // data = [trace1];
-    // layout = {
-    //   title: "Interest earned (USD)",
-    // };
-    // Plotly.newPlot("tester3", data, layout);
-
-    //console.log(this.GroupTransactionsPerMonth(dates, amounts));
   }
 
   GroupTransactionsPerDay(dates, amounts) {
