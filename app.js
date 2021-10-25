@@ -287,8 +287,15 @@ class App {
   }
 
   GotExchangeRates() {
+    // TODO Could display a loading icon till we reach this method
     console.log(`Got exchange rates~`);
 
+    this.RenderCoinList();
+    this.RenderOverview();
+    this.RenderOverviewGraphs();
+  }
+
+  RenderCoinList() {
     this.#m_eCoinListContainer.insertAdjacentHTML(
       `beforeend`,
       this.#m_Stats.GetCoinListAsHTML()
@@ -298,10 +305,10 @@ class App {
       `beforeend`,
       this.#m_Stats.GetCoinsEarnedAsInterestAsHTML()
     );
+  }
 
-    this.RenderStatistics();
-
-    // TODO Move Graph generation to extra method
+  RenderOverviewGraphs() {
+    // TODO restructure graph generation, this is not pretty
     let depositDates = [];
     let depositAmounts = [];
     let withdrawDates = [];
@@ -456,7 +463,7 @@ class App {
   /////////////////////////////////////////////////////
   /// Render statistics
   /////////////////////////////////////////////////////
-  RenderStatistics() {
+  RenderOverview() {
     this.#m_Stats.DrawPieCharts();
 
     let html = ``;
