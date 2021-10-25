@@ -93,28 +93,9 @@ export class Statistics {
         }
       });
 
-      // Let's go
+      // We're ready !
       if (finishedCallback) finishedCallback();
     });
-
-    // Promise.allSettled(apiRequests).then((responses) => {
-    //   responses.forEach((response) => {
-    //     console.log(response.value.body);
-    //     response.value.json().then((data) => {
-    //       if (this.#m_currency.has(data.data.currency)) {
-    //         this.#m_currency
-    //           .get(data.data.currency)
-    //           .SetFiatEquivalent(
-    //             parseFloat(data.data.rates.USD) *
-    //               parseFloat(
-    //                 this.#m_currency.get(data.data.currency).GetAmount()
-    //               )
-    //           );
-    //       }
-    //     });
-    //   });
-    //   if (finishedCallback) finishedCallback();
-    // });
   }
 
   // This is used in Coinlist page !
@@ -152,6 +133,7 @@ export class Statistics {
     let html = ``;
 
     // Go through all stored currencies
+    // TODO show fiat equivalent here as well
     this.#m_currency.forEach((e) => {
       if (e.GetInterestEarned() === 0) return;
 
