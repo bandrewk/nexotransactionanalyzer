@@ -36,12 +36,12 @@ class App {
   #m_pUpload;
 
   // File and data array
-  #m_File; // TODO check & remove
+  #m_File;
   #m_transactions;
 
   // Settings
   #m_Settings;
-  #m_appState; // TODO is this really needed doe?
+  #m_appState;
 
   // Statistics
   #m_Stats;
@@ -169,8 +169,6 @@ class App {
   /// CSV file is ready to read
   /////////////////////////////////////////////////////
   FileReady(content) {
-    console.log(`file is ready!`);
-
     // init array
     this.#m_transactions = [];
 
@@ -207,7 +205,7 @@ class App {
 
     this.#m_Stats.GetExchangeRates(this.GotExchangeRates.bind(this));
 
-    console.log(`Loading complete`);
+    console.log(`File loading complete~`);
 
     // Hide start and show data
     this.#ShowPage(this.#m_btnOverview, this.#m_pOverview);
