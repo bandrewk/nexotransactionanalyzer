@@ -1,7 +1,7 @@
 <html>
   <head>
     <link rel="stylesheet" href="style.css" />
-
+    <link rel="stylesheet" href="loader.css" />
     <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
     <script type="module" src="app.js"></script>
   </head>
@@ -30,6 +30,14 @@
       <div class="overview-container hidden">
         <h1>Overview</h1>
         <hr />
+        <div class="lds-container">
+          <div class="lds-ellipsis">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+        </div>
         <div class="overview-element-container">
           <div id="tester2" style="width: 900px; height: 350px">
             <canvas id="myChart2"></canvas>

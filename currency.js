@@ -4,10 +4,23 @@
 /// Transaction type definitions
 /////////////////////////////////////////////////////
 export const CurrencyType = {
-  //
   BTC: "BTC",
+  BCH: "BCH",
+  LTC: "LTC",
+
+  EOS: "EOS",
+  BNB: "BNB",
+  XLM: "XLM",
+
   ETH: "ETH",
   XRP: "XRP",
+
+  PAXG: "PAXG",
+  TRX: "TRX",
+  ADA: "ADA",
+  DOT: "DOT",
+  DOGE: "DOGE",
+  SOL: "SOL",
 
   // ERC-20
   NEXO: "NEXO",
@@ -52,7 +65,9 @@ export class Currency {
     this.#m_sDateAdded = [];
     this.#m_fAmountAdded = [];
   }
-
+  /////////////////////////////////////////////////////////////////////////////
+  // Trying to get the portfolio value to work here..
+  /////////////////////////////////////////////////////////////////////////////
   GetPortfolioValue() {
     return this.#m_portfolioValue;
   }
@@ -78,7 +93,9 @@ export class Currency {
   GetTXAmounts() {
     return this.#m_fAmountAdded;
   }
-
+  /////////////////////////////////////////////////////////////////////////////
+  //
+  /////////////////////////////////////////////////////////////////////////////
   GetInterestEarned() {
     return this.#m_fInterestEarned;
   }
@@ -115,6 +132,7 @@ export class Currency {
     this.#m_fFiatEquivalent = amount;
   }
 
+  /// TODO Add all currencies
   GetFullName() {
     switch (this.#m_type) {
       // Currencies
@@ -161,7 +179,8 @@ export class Currency {
     }
   }
 
-  // TODO: This is a mess!
+  // TODO: This is a mess! And currently only used to figure out portfoliio value
+  // FIXME
   GetExchangeRate(history = false) {
     if (history) {
       this.GetPortfolioValue().forEach((v, k, m) => {
