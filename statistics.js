@@ -222,7 +222,7 @@ export class Statistics {
     const cur1 = cur.substr(0, cur.search(`/`));
     const cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
 
-    console.log(`Found ${cur1} and ${cur2} (${cur})`);
+    //console.log(`Found ${cur1} and ${cur2} (${cur})`);
 
     // Get the individual amounts
     const amount1 = amount.substr(0, amount.search(`/`));

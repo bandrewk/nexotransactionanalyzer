@@ -2,6 +2,7 @@
 
 .lds-container {
   display: flex;
+  margin-top: 100px;
 }
 
 .lds-ellipsis {
