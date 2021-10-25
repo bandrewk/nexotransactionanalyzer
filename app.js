@@ -246,7 +246,7 @@ class App {
       }
     });
 
-    console.log(amounts);
+    // console.log(amounts);
     let depositsPerDay = this.GroupTransactionsPerDay(
       depositDates,
       depositAmounts
@@ -329,6 +329,8 @@ class App {
         `beforeend`,
         this.#m_Stats.GetCoinsEarnedAsInterestAsHTML()
       );
+
+      //this.#m_Stats.GeneratePortfolioGraph();
     }, 1000);
 
     setTimeout(() => {
@@ -345,39 +347,39 @@ class App {
     /// Portfolio value tries
     //////////////////////////////////////////////////////////////////
 
-    // DAILY
-    dates = [];
-    this.#m_transactions.forEach((e) => {
-      if (
-        e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
-        e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
-        e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
-        e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
-      )
-        return;
-      dates.push(e.GetDateTime().substr(0, 10));
-    });
+    // // DAILY
+    // dates = [];
+    // this.#m_transactions.forEach((e) => {
+    //   if (
+    //     e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
+    //     e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
+    //   )
+    //     return;
+    //   dates.push(e.GetDateTime().substr(0, 10));
+    // });
 
-    //console.log(dates);
+    // //console.log(dates);
 
-    amounts = [];
-    this.#m_transactions.forEach((e) => {
-      if (
-        e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
-        e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
-        e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
-        e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
-      )
-        return;
-      if (
-        e.GetType() === TransactionType.WITHDRAWAL ||
-        e.GetType() === TransactionType.WITHDRAWEXCHANGED
-      )
-        amounts.push(-e.GetUSDEquivalent());
-      else amounts.push(e.GetUSDEquivalent());
-    });
+    // amounts = [];
+    // this.#m_transactions.forEach((e) => {
+    //   if (
+    //     e.GetType() === TransactionType.LOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.UNLOCKINGTERMDEPOSIT || // Internal transaction
+    //     e.GetType() === TransactionType.EXCHANGETOWITHDRAW || //FiatX to Fiat
+    //     e.GetType() === TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
+    //   )
+    //     return;
+    //   if (
+    //     e.GetType() === TransactionType.WITHDRAWAL ||
+    //     e.GetType() === TransactionType.WITHDRAWEXCHANGED
+    //   )
+    //     amounts.push(-e.GetUSDEquivalent());
+    //   else amounts.push(e.GetUSDEquivalent());
+    // });
 
-    let portfolioValue = this.GroupTransactionsPerMonth(dates, amounts);
+    // let portfolioValue = this.GroupTransactionsPerMonth(dates, amounts);
 
     // let lastValue = 0;
     // portfolioValue.forEach((v, k, m) => {
@@ -386,7 +388,7 @@ class App {
     //   lastValue = v;
     // });
 
-    console.log(portfolioValue);
+    // console.log(portfolioValue);
 
     // fetch(`https://api.coinbase.com/v2/prices/BTC-USD/spot?date=2021-10-10`)
     //   .then((response) => response.json())

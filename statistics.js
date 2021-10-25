@@ -44,15 +44,8 @@ export class Statistics {
       t.GetType() != TransactionType.EXCHANGETOWITHDRAW && //FiatX to Fiat
       t.GetType() != TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
     ) {
-      this.AddCurrency(t.GetCurrency(), t.GetAmount());
-
-      // TODO: Move this to AddCurrency and pass t object to function instead of two parameters
-      // console.log(this.#m_currency);
-      // console.log(t);
-      // this.#m_currency
-      //   .get(t.GetCurrency())
-      //   .AddTXDate(t.GetDateTime().substr(0, 10));
-      // this.#m_currency.get(t.GetCurrency()).AddTXAmount(t.GetAmount());
+      // this.AddCurrency(t.GetCurrency(), t.GetAmount());
+      this.AddCurrency(t);
     }
 
     if (t.GetType() === TransactionType.INTEREST) {
@@ -64,8 +57,29 @@ export class Statistics {
   }
 
   GetExchangeRates() {
+    let urls = [];
+
     this.#m_currency.forEach((e) => {
-      e.GetExchangeRate();
+      urls.push(e.GetExchangeRateAsAPIString());
+    });
+
+    let apiRequests = urls.map((url) => fetch(url));
+
+    Promise.all(apiRequests).then((responses) => {
+      responses.forEach((response) =>
+        response.json().then((data) => {
+          if (this.#m_currency.has(data.data.currency)) {
+            this.#m_currency
+              .get(data.data.currency)
+              .SetFiatEquivalent(
+                parseFloat(data.data.rates.USD) *
+                  parseFloat(
+                    this.#m_currency.get(data.data.currency).GetAmount()
+                  )
+              );
+          }
+        })
+      );
     });
   }
 
@@ -127,10 +141,18 @@ export class Statistics {
     return html;
   }
 
-  AddCurrency(cur, amount) {
+  AddCurrency(t = null, cur = null, amount = null) {
+    // if no specific currency is supplied take the data from the transaction
+    if (cur === null && amount === null) {
+      if (t === null) throw new Error(`AddCurrency all parameters are null!`);
+
+      cur = t.GetCurrency();
+      amount = t.GetAmount();
+    }
+
     // Process pairs (Coins exchanged on nexo exchange)
     if (amount.search(`/`) >= 0) {
-      this.#AddCurrencyPair(cur, amount);
+      this.#AddCurrencyPair(t, cur, amount);
       return;
     }
 
@@ -141,22 +163,57 @@ export class Statistics {
       this.#m_currency.set(cur, new Currency(cur));
     }
     this.#m_currency.get(cur).AddAmount(amount);
+
+    //
+    this.#m_currency.get(cur).AddTXDate(t.GetDateTime().substr(0, 10));
+    this.#m_currency.get(cur).AddTXAmount(amount);
   }
 
-  #AddCurrencyPair(cur, amount) {
+  GeneratePortfolioGraph() {
+    this.#m_currency.forEach((v, k, m) => {
+      this.#m_currency
+        .get(k)
+        .SetPortfolioValue(
+          this.GroupTransactionsPerMonth(
+            this.#m_currency.get(k).GetTXDates(),
+            this.#m_currency.get(k).GetTXAmounts()
+          )
+        );
+
+      m.get(k).GetExchangeRate(true);
+    });
+  }
+
+  GroupTransactionsPerMonth(dates, amounts) {
+    let groupedbyday = new Map();
+
+    dates.forEach((e, i) => {
+      if (!groupedbyday.has(e)) {
+        groupedbyday.set(e, 0);
+      }
+      groupedbyday.set(
+        e,
+        parseFloat(groupedbyday.get(e)) + parseFloat(amounts[i])
+      );
+    });
+
+    return groupedbyday;
+  }
+
+  #AddCurrencyPair(t, cur, amount) {
     // Get exchange pair
-    let cur1 = cur.substr(0, cur.search(`/`));
-    let cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
+    const cur1 = cur.substr(0, cur.search(`/`));
+    const cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
 
     console.log(`Found ${cur1} and ${cur2} (${cur})`);
 
     // Get the individual amounts
-    let amount1 = amount.substr(0, amount.search(`/`));
-    let amount2 = amount.substr(amount.search(`/`) + 1, cur.length);
+    const amount1 = amount.substr(0, amount.search(`/`));
+    const amount2 = amount.substr(amount.search(`/`) + 1, cur.length);
 
     // Add them
-    this.AddCurrency(cur1, amount1);
-    this.AddCurrency(cur2, amount2);
+    this.AddCurrency(t, cur1, amount1);
+    this.AddCurrency(t, cur2, amount2);
   }
 
   DrawPieCharts() {
@@ -213,8 +270,6 @@ export class Statistics {
       title: "Asset division",
     };
     Plotly.newPlot("tester4", data, layout);
-
-    console.log(this.#m_currency);
   }
 
   GetCurrentDepotValueInFiat() {

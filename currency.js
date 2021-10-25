@@ -33,12 +33,16 @@ Object.freeze(CurrencyType);
 /////////////////////////////////////////////////////
 export class Currency {
   #m_type;
-  #m_amount; // TODO rename var to match others
+  #m_fAmount;
   #m_fFiatEquivalent;
   #m_fInterestEarned; // in coin value, NOT USD
 
+  // TX
   #m_sDateAdded;
   #m_fAmountAdded;
+
+  // MAP
+  #m_portfolioValue;
 
   constructor(type, amount = 0) {
     this.#m_type = type;
@@ -49,12 +53,30 @@ export class Currency {
     this.#m_fAmountAdded = [];
   }
 
+  GetPortfolioValue() {
+    return this.#m_portfolioValue;
+  }
+
+  SetPortfolioValue(value) {
+    this.#m_portfolioValue = value;
+  }
+
   AddTXDate(value) {
     this.#m_sDateAdded.push(value);
   }
 
+  // Returns array
+  GetTXDates() {
+    return this.#m_sDateAdded;
+  }
+
   AddTXAmount(value) {
     this.#m_fAmountAdded.push(value);
+  }
+
+  // Returns array
+  GetTXAmounts() {
+    return this.#m_fAmountAdded;
   }
 
   GetInterestEarned() {
@@ -74,19 +96,23 @@ export class Currency {
   }
 
   GetAmount() {
-    return this.#m_amount;
+    return this.#m_fAmount;
   }
 
   SetAmount(amount) {
-    this.#m_amount = amount;
+    this.#m_fAmount = amount;
   }
 
   AddAmount(amount) {
-    this.#m_amount += amount;
+    this.#m_fAmount += amount;
   }
 
   GetFiatEquivalent() {
     return this.#m_fFiatEquivalent;
+  }
+
+  SetFiatEquivalent(amount) {
+    this.#m_fFiatEquivalent = amount;
   }
 
   GetFullName() {
@@ -135,14 +161,57 @@ export class Currency {
     }
   }
 
-  GetExchangeRate() {
-    fetch(`https://api.coinbase.com/v2/exchange-rates?currency=${this.#m_type}`)
-      .then((response) => response.json())
-      .then(
-        (data) =>
-          (this.#m_fFiatEquivalent =
-            parseFloat(data.data.rates.USD) * parseFloat(this.GetAmount()))
-      );
+  GetExchangeRate(history = false) {
+    if (history) {
+      this.GetPortfolioValue().forEach((v, k, m) => {
+        //console.log(k);
+
+        if (
+          this.GetType() == CurrencyType.NEXO ||
+          this.GetType() == CurrencyType.XRP
+        ) {
+          // fetch(
+          //   `https://api.coingecko.com/api/v3/coins/${this.#m_type.toLowerCase()}/history?date=${
+          //     k.substring(8, 10) +
+          //     `-` +
+          //     k.substring(5, 7) +
+          //     `-` +
+          //     k.substring(0, 4)
+          //   }`
+          // )
+          //   .then((response) => response.json())
+          //   .then((data) => console.log(data));
+          // console.log(
+          //   `https://api.coingecko.com/api/v3/coins/${
+          //     this.#m_type
+          //   }/history?date=${
+          //     k.substring(8, 10) +
+          //     `-` +
+          //     k.substring(5, 7) +
+          //     `-` +
+          //     k.substring(0, 4)
+          //   }`
+          // );
+
+          //dd-mm-year
+          // year-mm-dd
+          return;
+        }
+        fetch(
+          `https://api.coinbase.com/v2/prices/${
+            this.#m_type
+          }-USD/spot?date=${k}`
+        )
+          .then((response) => response.json())
+          .then((data) => console.log(data));
+      });
+    }
+  }
+
+  GetExchangeRateAsAPIString() {
+    return `https://api.coinbase.com/v2/exchange-rates?currency=${
+      this.#m_type
+    }`;
   }
 
   IsCrypto() {
