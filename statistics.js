@@ -143,7 +143,7 @@ export class Statistics {
           ? e.GetAmount().toFixed(2)
           : e.GetAmount().toFixed(8)
       }</h4>
-      <p>($${e.GetFiatEquivalent().toFixed(2)})</p>
+      <p>~$${e.GetFiatEquivalent().toFixed(2)}</p>
     </div>`;
     });
 
@@ -174,7 +174,7 @@ export class Statistics {
               ? e.GetInterestEarnedInCoin().toFixed(2)
               : e.GetInterestEarnedInCoin().toFixed(8)
           }</h4>
-          
+          <p>~$${e.GetInterestEarnedInFiat().toFixed(2)}</p>
         </div>`;
     });
 
