@@ -8,9 +8,9 @@ import { TransactionType } from "./Transaction.js";
 /////////////////////////////////////////////////////
 export const LoyalityLevel = {
   BASE: `BASE`, // <1% nexo tokens
-  SILVER: `<span style="color: #c0c0c0">SILVER</span>`, // >1-5%
-  GOLD: `<span style="color: #ffd700">GOLD</span>`, // >5-10%
-  PLATINUM: `<span style="color: #e5e4e2">PLATINUM</span>`, // >10%
+  SILVER: `<span style="color: #c0c0c0">🥈 SILVER</span>`, // >1-5%
+  GOLD: `<span style="color: #ffd700">🥇 GOLD</span>`, // >5-10%
+  PLATINUM: `<span style="color: #e5e4e2">🔥 PLATINUM</span>`, // >10%
 };
 
 export class Statistics {

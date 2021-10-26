@@ -339,14 +339,14 @@ class App {
         e.GetType() === TransactionType.DEPOSIT ||
         e.GetType() === TransactionType.DEPOSITTOEXCHANGE
       ) {
-        depositAmounts.push(e.GetUSDEquivalent());
+        depositAmounts.push(parseFloat(e.GetUSDEquivalent()).toFixed(2));
       }
 
       if (
         e.GetType() === TransactionType.WITHDRAWAL ||
         e.GetType() === TransactionType.WITHDRAWEXCHANGED
       ) {
-        withdrawAmounts.push(-e.GetUSDEquivalent());
+        withdrawAmounts.push(parseFloat(-e.GetUSDEquivalent()).toFixed(2));
       }
     });
 
@@ -364,11 +364,14 @@ class App {
     let trace1 = {
       x: [...depositsPerDay.keys()],
       y: [...depositsPerDay.values()],
-      mode: "lines+markers",
+
       name: `Deposits`,
+      mode: "lines+markers",
+      marker: {
+        size: 8,
+      },
       line: {
-        dash: "solid",
-        width: 2,
+        width: 1,
       },
     };
     let trace2 = {
@@ -376,9 +379,11 @@ class App {
       y: [...withdrawalsPerDay.values()],
       mode: "lines+markers",
       name: `Withdrawals`,
+      marker: {
+        size: 8,
+      },
       line: {
-        dash: "solid",
-        width: 2,
+        width: 1,
       },
     };
 
@@ -400,7 +405,7 @@ class App {
     amounts = [];
     this.#m_transactions.forEach((e) => {
       if (e.GetType() === TransactionType.INTEREST)
-        amounts.push(e.GetUSDEquivalent());
+        amounts.push(parseFloat(e.GetUSDEquivalent()).toFixed(2));
     });
 
     let interestPerDay = this.GroupTransactionsPerDay(dates, amounts);
@@ -409,7 +414,7 @@ class App {
       x: [...interestPerDay.keys()],
       y: [...interestPerDay.values()],
       type: `scatter`,
-
+      name: `Interest earned`,
       line: {
         dash: "solid",
         width: 2,
@@ -472,23 +477,23 @@ class App {
 
     html += `
     <div class="overview-element">
-    <h2>${this.#m_Stats.GetCurrentDepotValueInFiat().toFixed(2)}$</h2>
-    Depot value
+    <h2> ${this.#m_Stats.GetCurrentDepotValueInFiat().toFixed(2)}$</h2>
+    💰 Depot value
     </div>`;
     html += `
     <div class="overview-element">
-    <h2>${this.#m_transactions.length + 1}</h2>
-    Transactions
+    <h2> ${this.#m_transactions.length + 1}</h2>
+    🔂 Transactions
     </div>`;
     html += `
     <div class="overview-element">
-    <h2>${this.#m_Stats.GetEarnedInterestSumAsFiat().toFixed(2)}$</h2>
-    Interest earned
+    <h2> ${this.#m_Stats.GetEarnedInterestSumAsFiat().toFixed(2)}$</h2>
+    💸 Interest earned
     </div>`;
     html += `
     <div class="overview-element-disabled">
-    <h2>0$</h2>
-    Outstanding loans
+    <h2> 0$</h2>
+    🙇‍♂️ Outstanding loans
     </div>`;
     html += `
     <div class="overview-element">
@@ -496,7 +501,7 @@ class App {
     Membership level
     </div>`;
 
-    this.#m_eOverviewContainer.insertAdjacentHTML(`beforeend`, html);
+    this.#m_eOverviewContainer.insertAdjacentHTML(`afterbegin`, html);
   }
 
   /////////////////////////////////////////////////////
