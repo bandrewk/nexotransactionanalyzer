@@ -202,50 +202,81 @@ export class Currency {
   // TODO: This is a mess! And currently only used to figure out portfoliio value
   // FIXME
   GetExchangeRate(history = false) {
-    if (history) {
-      this.GetPortfolioValue().forEach((v, k, m) => {
-        //console.log(k);
+    let urls = [];
+    this.GetPortfolioValue().forEach((v, k, m) => {
+      //console.log(k);
 
-        if (
-          this.GetType() == CurrencyType.NEXO ||
-          this.GetType() == CurrencyType.XRP
-        ) {
-          // fetch(
-          //   `https://api.coingecko.com/api/v3/coins/${this.#m_type.toLowerCase()}/history?date=${
-          //     k.substring(8, 10) +
-          //     `-` +
-          //     k.substring(5, 7) +
-          //     `-` +
-          //     k.substring(0, 4)
-          //   }`
-          // )
-          //   .then((response) => response.json())
-          //   .then((data) => console.log(data));
-          // console.log(
-          //   `https://api.coingecko.com/api/v3/coins/${
-          //     this.#m_type
-          //   }/history?date=${
-          //     k.substring(8, 10) +
-          //     `-` +
-          //     k.substring(5, 7) +
-          //     `-` +
-          //     k.substring(0, 4)
-          //   }`
-          // );
+      if (
+        this.GetType() == CurrencyType.NEXO || // TODO Coinbase also has no historic data for EUR
+        this.GetType() == CurrencyType.XRP
+      ) {
+        let type = this.GetType().toLowerCase();
 
-          //dd-mm-year
-          // year-mm-dd
-          return;
+        if (this.GetType() === CurrencyType.XRP) type = `ripple`; // coingecko api id for xrp is `ripple`..
+
+        urls.push(
+          `https://api.coingecko.com/api/v3/coins/${type}/history?date=${
+            k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
+          }`
+        );
+        // fetch(
+        //   `https://api.coingecko.com/api/v3/coins/${type}/history?date=${
+        //     k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
+        //   }`
+        // )
+        //   .then((response) => response.json())
+        //   .then((data) => console.log(data));
+
+        // console.log(
+        //   `https://api.coingecko.com/api/v3/coins/${this.#m_type.toLowerCase()}/history?date=${
+        //     k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
+        //   }`
+        // );
+
+        //dd-mm-year
+        // year-mm-dd
+        return;
+      } else {
+        // TODO move to top so other api calls can access this too...
+        // Set new date to 1st of next month
+        let desiredDate = new Date(
+          parseInt(k.substring(0, 4)),
+          parseInt(k.substring(5, 7)) + 1,
+          1
+        );
+
+        // -1 = Last day of last month
+        desiredDate.setDate(desiredDate.getDate() - 1);
+
+        // If we reached the current month take todays date as we can't predict the future
+        if (desiredDate > Date.now()) {
+          desiredDate = new Date(Date.now());
         }
-        fetch(
+
+        // Format date for coinbase api (YYYY-MM-DD)
+        const dateformated =
+          desiredDate.getFullYear() +
+          `-` +
+          (`0` + `${desiredDate.getMonth() + 1}`).substr(-2) +
+          `-` +
+          desiredDate.getDate();
+
+        urls.push(
           `https://api.coinbase.com/v2/prices/${
             this.#m_type
-          }-USD/spot?date=${k}`
-        )
-          .then((response) => response.json())
-          .then((data) => console.log(data));
-      });
-    }
+          }-USD/spot?date=${dateformated}`
+        );
+
+        // fetch(
+        //   `https://api.coinbase.com/v2/prices/${
+        //     this.#m_type
+        //   }-USD/spot?date=${dateformated}`
+        // )
+        //   .then((response) => response.json())
+        //   .then((data) => console.log(data));
+      }
+    });
+    return urls;
   }
 
   // TODO Rename
