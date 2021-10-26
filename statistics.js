@@ -16,16 +16,20 @@ export const LoyalityLevel = {
 export class Statistics {
   m_fCryptoDepositSum;
   m_fWireDepositSum;
-  m_fEarnedInterestSum;
+  #m_fEarnedInterestAsFiat;
 
   #m_currency;
 
   constructor() {
     this.m_fCryptoDepositSum = 0;
     this.m_fWireDepositSum = 0;
-    this.m_fEarnedInterestSum = 0;
+    this.#m_fEarnedInterestAsFiat = 0;
 
     this.#m_currency = new Map();
+  }
+
+  GetEarnedInterestSumAsFiat() {
+    return this.#m_fEarnedInterestAsFiat;
   }
 
   AddTransaction(t) {
@@ -49,10 +53,10 @@ export class Statistics {
     }
 
     if (t.GetType() === TransactionType.INTEREST) {
-      this.m_fEarnedInterestSum += parseFloat(t.GetUSDEquivalent(false));
-
       // Keep track of interest earned per coin
-      this.#m_currency.get(t.GetCurrency()).AddInterestEarned(t.GetAmount());
+      this.#m_currency
+        .get(t.GetCurrency())
+        .AddInterestEarnedInCoin(t.GetAmount());
     }
   }
 
@@ -73,16 +77,29 @@ export class Statistics {
         if (response.status === "fulfilled") {
           // Success
           if (this.#m_currency.has(response.value.data.currency)) {
+            // USD value
+            const value = parseFloat(response.value.data.rates.USD);
+
             // Look up currency and set the fiat value
             this.#m_currency
               .get(response.value.data.currency)
               .SetFiatEquivalent(
-                parseFloat(response.value.data.rates.USD) *
+                value *
                   parseFloat(
                     this.#m_currency
                       .get(response.value.data.currency)
                       .GetAmount()
                   )
+              );
+
+            // Set interest earned in-coin value
+            this.#m_currency
+              .get(response.value.data.currency)
+              .SetInterestEarnedInFiat(
+                value *
+                  this.#m_currency
+                    .get(response.value.data.currency)
+                    .GetInterestEarnedInCoin()
               );
           }
         } else if (response.status === "rejected") {
@@ -91,6 +108,12 @@ export class Statistics {
             `GetExchangeRate failed for: ${urls[index]} - ${response.reason}`
           );
         }
+      });
+
+      this.#m_fEarnedInterestAsFiat = 0;
+
+      this.#m_currency.forEach((v, k, m) => {
+        this.#m_fEarnedInterestAsFiat += v.GetInterestEarnedInFiat();
       });
 
       // We're ready !
@@ -135,7 +158,7 @@ export class Statistics {
     // Go through all stored currencies
     // TODO show fiat equivalent here as well
     this.#m_currency.forEach((e) => {
-      if (e.GetInterestEarned() === 0) return;
+      if (e.GetInterestEarnedInCoin() === 0) return;
 
       html += `
           <div class="coinlist-element">
@@ -147,9 +170,9 @@ export class Statistics {
           />
           <h3>${e.GetType()}</h3>
           <h4>${
-            e.GetInterestEarned() % 1 === 0
-              ? e.GetInterestEarned().toFixed(2)
-              : e.GetInterestEarned().toFixed(8)
+            e.GetInterestEarnedInCoin() % 1 === 0
+              ? e.GetInterestEarnedInCoin().toFixed(2)
+              : e.GetInterestEarnedInCoin().toFixed(8)
           }</h4>
           
         </div>`;

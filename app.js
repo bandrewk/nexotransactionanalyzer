@@ -482,7 +482,7 @@ class App {
     </div>`;
     html += `
     <div class="overview-element">
-    <h2>${this.#m_Stats.m_fEarnedInterestSum.toFixed(2)}$</h2>
+    <h2>${this.#m_Stats.GetEarnedInterestSumAsFiat().toFixed(2)}$</h2>
     Interest earned
     </div>`;
     html += `

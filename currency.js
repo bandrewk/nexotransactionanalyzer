@@ -48,7 +48,8 @@ export class Currency {
   #m_type;
   #m_fAmount;
   #m_fFiatEquivalent;
-  #m_fInterestEarned; // in coin value, NOT USD
+  #m_fInterestEarnedInCoin; // in coin value, NOT USD
+  #m_fInterestEarnedInFiat;
 
   // TX
   #m_sDateAdded;
@@ -60,7 +61,8 @@ export class Currency {
   constructor(type, amount = 0) {
     this.#m_type = type;
     this.SetAmount(amount);
-    this.SetInterestEarned(0);
+    this.SetInterestEarnedInCoin(0);
+    this.SetInterestEarnedInFiat(0);
 
     this.#m_sDateAdded = [];
     this.#m_fAmountAdded = [];
@@ -93,21 +95,36 @@ export class Currency {
   GetTXAmounts() {
     return this.#m_fAmountAdded;
   }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // In-coin interest earned
+  /////////////////////////////////////////////////////////////////////////////
+  GetInterestEarnedInCoin() {
+    return this.#m_fInterestEarnedInCoin;
+  }
+
+  SetInterestEarnedInCoin(amount) {
+    this.#m_fInterestEarnedInCoin = parseFloat(amount);
+  }
+
+  AddInterestEarnedInCoin(amount) {
+    this.#m_fInterestEarnedInCoin += parseFloat(amount);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // In-coin interest earned as FIAT
+  /////////////////////////////////////////////////////////////////////////////
+  GetInterestEarnedInFiat() {
+    return this.#m_fInterestEarnedInFiat;
+  }
+
+  SetInterestEarnedInFiat(amount) {
+    this.#m_fInterestEarnedInFiat = parseFloat(amount);
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   //
   /////////////////////////////////////////////////////////////////////////////
-  GetInterestEarned() {
-    return this.#m_fInterestEarned;
-  }
-
-  SetInterestEarned(amount) {
-    this.#m_fInterestEarned = parseFloat(amount);
-  }
-
-  AddInterestEarned(amount) {
-    this.#m_fInterestEarned += parseFloat(amount);
-  }
-
   GetType() {
     return this.#m_type;
   }
@@ -124,6 +141,9 @@ export class Currency {
     this.#m_fAmount += amount;
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  // Current fiat value of amount
+  /////////////////////////////////////////////////////////////////////////////
   GetFiatEquivalent() {
     return this.#m_fFiatEquivalent;
   }
@@ -228,12 +248,16 @@ export class Currency {
     }
   }
 
+  // TODO Rename
   GetExchangeRateAsAPIString() {
     return `https://api.coinbase.com/v2/exchange-rates?currency=${
       this.#m_type
     }`;
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  // Helper methods to identify currency type
+  /////////////////////////////////////////////////////////////////////////////
   IsCrypto() {
     if (!this.IsFiat() && !this.IsStableCoin()) return true;
     else return false;
