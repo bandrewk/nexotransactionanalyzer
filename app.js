@@ -295,6 +295,7 @@ class App {
     this.RenderCoinList();
     this.RenderOverview();
     this.RenderOverviewGraphs();
+    this.#m_Stats.GeneratePortfolioGraph();
   }
 
   RenderCoinList() {
@@ -392,7 +393,7 @@ class App {
       title: "Deposits and Withdrawls (USD)",
     };
 
-    Plotly.newPlot("tester2", data, layout);
+    Plotly.newPlot("tester3", data, layout);
 
     dates = [];
 
@@ -425,7 +426,7 @@ class App {
     layout = {
       title: "Interest earned (USD)",
     };
-    Plotly.newPlot("tester3", data, layout);
+    Plotly.newPlot("tester2", data, layout);
   }
 
   GroupTransactionsPerDay(dates, amounts) {
