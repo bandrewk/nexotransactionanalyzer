@@ -386,7 +386,12 @@ export class Statistics {
     data = [
       {
         type: "pie",
-        values: [fiat, scoin, crypto],
+        values: [
+          // Only show data if value > 0 (hide zero entries)
+          fiat > 0 ? fiat : null,
+          scoin > 0 ? scoin : null,
+          crypto > 0 ? crypto : null,
+        ],
         labels: [`Fiat`, `Stablecoins`, `Crypto`],
         textinfo: "label+percent",
         textposition: "outside",
