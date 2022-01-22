@@ -196,6 +196,15 @@ export class Statistics {
 
     amount = parseFloat(amount);
 
+    // Check for valid value, if this fails the csv is messed up
+    if(isNaN(amount)){
+      const errormsg = "Transaction file is invalid! Stopping all functions. Could not receive exchange values (Look at exchange transactions there probably a value missing).";
+      alert(errormsg);
+
+      // It makes no sense to continue execution after we failed here
+      throw new Error(errormsg);
+    } 
+
     // Add curreny and amount
     if (!this.#m_currency.has(cur)) {
       this.#m_currency.set(cur, new Currency(cur));
@@ -340,6 +349,9 @@ export class Statistics {
     // Get the individual amounts
     const amount1 = amount.substr(0, amount.search(`/`));
     const amount2 = amount.substr(amount.search(`/`) + 1, cur.length);
+
+
+    if(isNaN(amount1) || isNaN(amount2)) alert("Transaction file is invalid! Could not find exchange values.");
 
     // Add them
     this.AddCurrency(t, cur1, amount1);
