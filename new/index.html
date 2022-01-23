@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A layout example that shows off a responsive product landing page.">
+    <title>Landing Page &ndash; Layout Examples &ndash; Pure</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/pure-min.css" integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/grids-responsive-min.css">
+
+    <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css" integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p" crossorigin="anonymous"/>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://unpkg.com/tsparticles@1.39.0/tsparticles.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body>
+
+<div class="header">
+    <div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+        <a class="pure-menu-heading" href="">Nexo Transaction Analyzer</a>
+
+        <ul class="pure-menu-list">
+            <li class="pure-menu-item pure-menu-selected"><a href="#" class="pure-menu-link">Home</a></li>
+            <li class="pure-menu-item"><a href="#" class="pure-menu-link">Tour</a></li>
+            <li class="pure-menu-item"><a href="#" class="pure-menu-link">Sign Up</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="splash-container" >
+    <div id="tsparticles"></div>
+    <div class="splash">
+        <h1 class="splash-head">Drop .csv here</h1>
+        <p class="splash-subhead">
+            Your privacy matters. Files are not uploaded anywhere. Code is processed locally on your PC.
+        </p>
+        <p>
+            <a href="http://purecss.io" class="pure-button pure-button-primary"><i class="fab fa-github"></i>  Browse Source Code</a>
+        </p>
+    </div>
+</div>
+
+<div class="content-wrapper">
+    <div class="content">
+        <h2 class="content-head is-center">Get an insight into your nexo.io account</h2>
+
+        <div class="pure-g">
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+
+                <h3 class="content-subhead">
+                    <i class="fa fa-rocket"></i>
+                    Transactions
+                </h3>
+                <p>
+                    View and rewind all past transactions.
+                </p>
+            </div>
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+                <h3 class="content-subhead">
+                    <i class="fa fa-mobile"></i>
+                    Coinlist
+                </h3>
+                <p>
+                    Easily see and track your coins.
+                </p>
+            </div>
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+                <h3 class="content-subhead">
+                    <i class="fa fa-th-large"></i>
+                    Graphs
+                </h3>
+                <p>
+                    Visualize your portfolio.
+                </p>
+            </div>
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+                <h3 class="content-subhead">
+                    <i class="fa fa-check-square-o"></i>
+                    Stay safe
+                </h3>
+                <p>
+                    Keep your number of logins to nexo low.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="ribbon l-box-lrg pure-g">
+        <div class="l-box-lrg is-center pure-u-1 pure-u-md-1-2 pure-u-lg-2-5">
+            <i class="fa fa-regular fa-code fa-5x" style="color: var(--primary-color);"></i>
+            <i class="fa fa-regular fa-code fa-5x" style="color: var(--secondary-color);"></i>
+            <i class="fa fa-regular fa-code fa-5x" style="color: var(--third-color);"></i>
+        </div>
+        <div class="pure-u-1 pure-u-md-1-2 pure-u-lg-3-5">
+
+            <h2 class="content-head content-head-ribbon">❗Still in development❗</h2>
+
+            <p>
+                Some features may not work yet. Such as:
+                <ul>
+                    <li>Loan tracking</li>
+                    <li>Transaction linkage to blockchain explorer (TX linkage)</li>
+                    <li>Failed transactions</li>
+                </ul>
+
+                It probably just errors out and does nothing. If you're brave enough send me a failed .csv to cheesecake@mom.com.
+                <br>
+                Also, nexo tends to break their .csv export function rather often. as of today it's broken.
+            </p>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="pure-u-1">
+            <div class="l-box-lrg">
+              <h2>Notice of Non-Affiliation and Disclaimer</h2>
+              
+              
+              <p>
+                We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo Financial LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can be found at https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are registered trademarks of their respective owners.
+              </p>
+            </div>
+          </div>
+          <img src="https://api.moedog.org/count/@:testingyourmom" alt=":testingyourmom" />
+    </div>
+
+
+    <div class="footer l-box is-center">
+        © Copyright 2021-2022 bandrewk. This is a non-commercial, not monetized website.
+    </div>
+
+</div>
+
+</body>
+</html>
