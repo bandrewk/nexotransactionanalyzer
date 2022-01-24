@@ -1,3 +1,23 @@
+/**
+ *  NEXO Transaction Analyzer, a .csv transactions insight tool
+    Copyright (C) 2022  bandrewk (Bryan Andrew King)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+/**
+ * Possible application states
+ */
 const State = {
   HOME: 0,
   OVERVIEW: 1,
@@ -8,10 +28,18 @@ const State = {
 
 /**
  * Page navigator module
+ *
+ * This class is in control of the page navigation and menu
  */
 class Navigator {
   #m_state;
+  /**
+   * Contains menu buttons as DOM elements
+   */
   #m_mButton;
+  /**
+   * Contains page sections as DOM elements
+   */
   #m_mPage;
 
   constructor() {
@@ -21,6 +49,9 @@ class Navigator {
     this.ShowPage(State.HOME);
   }
 
+  /**
+   * Parse document for needed handles
+   */
   #ParseDocument() {
     let bFailed = false;
 
@@ -31,10 +62,7 @@ class Navigator {
     this.#m_mPage.set(State.HOME, document.querySelector("#PageHome"));
     this.#m_mPage.set(State.COINLIST, document.querySelector("#PageCoinlist"));
     this.#m_mPage.set(State.OVERVIEW, document.querySelector("#PageOverview"));
-    this.#m_mPage.set(
-      State.TRANSACTIONS,
-      document.querySelector("#PageTransactions")
-    );
+    this.#m_mPage.set(State.TRANSACTIONS, document.querySelector("#PageTransactions"));
 
     this.#m_mPage.forEach((element) => {
       if (!element) bFailed = true;
@@ -42,18 +70,9 @@ class Navigator {
 
     // Load buttons
     this.#m_mButton.set(State.HOME, document.querySelector("#btn-home"));
-    this.#m_mButton.set(
-      State.COINLIST,
-      document.querySelector("#btn-coinlist")
-    );
-    this.#m_mButton.set(
-      State.OVERVIEW,
-      document.querySelector("#btn-overview")
-    );
-    this.#m_mButton.set(
-      State.TRANSACTIONS,
-      document.querySelector("#btn-transactions")
-    );
+    this.#m_mButton.set(State.COINLIST, document.querySelector("#btn-coinlist"));
+    this.#m_mButton.set(State.OVERVIEW, document.querySelector("#btn-overview"));
+    this.#m_mButton.set(State.TRANSACTIONS, document.querySelector("#btn-transactions"));
 
     this.#m_mButton.forEach((element) => {
       if (!element) bFailed = true;
@@ -70,6 +89,10 @@ class Navigator {
     }
   }
 
+  /**
+   * Clicked callback for menu buttons
+   * @param {event} e
+   */
   Clicked(e) {
     console.log(`Pressed ${e.target.id}`);
 
@@ -101,6 +124,10 @@ class Navigator {
     }
   }
 
+  /**
+   * Changes the view to another page
+   * @param {Page to switch to} state
+   */
   ShowPage(state) {
     this.#m_mButton.forEach((element) => {
       element.parentNode.classList.remove(`pure-menu-selected`);

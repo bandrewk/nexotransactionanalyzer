@@ -8,10 +8,13 @@ class App {
   #m_cNavigator;
 
   constructor() {
-    this.Initiaize();
+    this.#Initiaize();
   }
 
-  Initiaize() {
+  /**
+   * Initialization code
+   */
+  #Initiaize() {
     // Start particle system in header
     this.#StartParticleSystem();
     this.#ParseDocument();
@@ -19,9 +22,9 @@ class App {
     this.#m_cNavigator = new Navigator();
   }
 
-  /////////////////////////////////////////////////////
-  /// Parse document for all handles
-  /////////////////////////////////////////////////////
+  /**
+   * Parse document for needed handles
+   */
   #ParseDocument() {
     let bFailed = false;
 
@@ -42,12 +45,20 @@ class App {
   /////////////////////////////////////////////////////
   /// File Handling
   /////////////////////////////////////////////////////
-  // This is needed otherwise the `drop` event won't fire
+
+  /**
+   * This is needed otherwise the `drop` event won't fire
+   * @param {event} e
+   */
   DragOver(e) {
     // Prevent default behavior
     e.preventDefault();
   }
 
+  /**
+   * Handle the drop event
+   * @param {event} e
+   */
   DropHandler(e) {
     // Prevent default behavior and bubbling
     e.preventDefault();
@@ -66,9 +77,13 @@ class App {
       }
     }
   }
+
   /////////////////////////////////////////////////////
-  /// Starts the particle system in the header
+  /// ETC
   /////////////////////////////////////////////////////
+  /**
+   * Starts the header background animation particle system
+   */
   #StartParticleSystem() {
     tsParticles
       .loadJSON("tsparticles", "/js/header.json")
