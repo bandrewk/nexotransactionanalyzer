@@ -29,12 +29,9 @@
     <!-- TsParticles CDN -->
     <script src="https://unpkg.com/tsparticles@1.39.0/tsparticles.min.js"></script>
 
-    <!-- HandsonTable CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css"
-    />
+    <!-- GridJS CDN -->
+    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" />
 
     <!-- Local -->
     <link rel="stylesheet" href="/css/styles.css" />
@@ -47,7 +44,7 @@
 
         <ul class="pure-menu-list">
           <li class="pure-menu-item pure-menu-selected">
-            <a href="#" class="pure-menu-link" id="btn-home">Home</a>
+            <a href="" class="pure-menu-link" id="btn-home">Home</a>
           </li>
           <li class="pure-menu-item">
             <a href="#" class="pure-menu-link" id="btn-overview">Overview</a>
@@ -166,55 +163,57 @@
     </div>
     <!-- home end -->
 
-    <!-- Overview begin -->
-    <div id="PageOverview" class="hidden">
-      <div class="content-wrapper-def">
-        <div class="content">
+    <!-- Coinlist end -->
+    <div class="content-wrapper-def hidden" id="PageWrap">
+      <div class="content">
+        <!-- Overview begin -->
+        <div id="PageOverview" class="hidden">
           <h2 class="content-head is-center">PageOverview</h2>
         </div>
-      </div>
-    </div>
-    <!-- Overview end -->
+        <!-- Overview end -->
 
-    <!-- Coinlist begin -->
-    <div id="PageCoinlist" class="hidden">
-      <div class="content-wrapper-def">
-        <div class="content">
+        <!-- Coinlist begin -->
+        <div id="PageCoinlist" class="hidden">
           <h2 class="content-head is-center">PageCoinlist</h2>
         </div>
-      </div>
-    </div>
-    <!-- Coinlist end -->
 
-    <!-- transactions begin -->
-    <div id="PageTransactions" class="hidden">
-      <div class="content-wrapper-def">
-        <div class="content">
+        <!-- transactions begin -->
+        <div id="PageTransactions" class="hidden">
           <h2 class="content-head is-center">Transactions</h2>
+
+          <div class="pure-u-1-24"></div>
+          <div class="pure-u-11-12">
+            <div class="is-center" id="transactionTable"></div>
+          </div>
+          <div class="pure-u-1-24"></div>
+
+          <a class="pure-button pure-button-primary" href="#" id="btnRawData">raw data</a>
+        </div>
+
+        <!-- transactions end -->
+
+        <div class="pure-u-1">
+          <div class="l-box-lrg">
+            <h2>Notice of Non-Affiliation and Disclaimer</h2>
+
+            <p>
+              We are not affiliated, associated, authorized, endorsed by, or in any way officially
+              connected with Nexo Financial LLC, or any of its subsidiaries or its affiliates. The
+              official Nexo Financial LLC website can be found at https://www.nexo.io. The name NEXO
+              as well as related names, marks, emblems and images are registered trademarks of their
+              respective owners.
+            </p>
+          </div>
+          <img
+            src="https://api.moedog.org/count/@:testingyourmom"
+            alt=":testingyourmom"
+            style="padding-bottom: 2px"
+          />
         </div>
       </div>
-    </div>
-    <!-- transactions end -->
-
-    <div class="footer-notice content light-area">
-      <div class="pure-u-1">
-        <div class="l-box-lrg">
-          <h2>Notice of Non-Affiliation and Disclaimer</h2>
-
-          <p>
-            We are not affiliated, associated, authorized, endorsed by, or in any way officially
-            connected with Nexo Financial LLC, or any of its subsidiaries or its affiliates. The
-            official Nexo Financial LLC website can be found at https://www.nexo.io. The name NEXO
-            as well as related names, marks, emblems and images are registered trademarks of their
-            respective owners.
-          </p>
-        </div>
+      <div class="footer l-box is-center">
+        © Copyright 2021-2022 bandrewk. This is a non-commercial, not monetized website.
       </div>
-      <img src="https://api.moedog.org/count/@:testingyourmom" alt=":testingyourmom" />
-    </div>
-
-    <div class="footer l-box is-center">
-      © Copyright 2021-2022 bandrewk. This is a non-commercial, not monetized website.
     </div>
   </body>
 </html>
