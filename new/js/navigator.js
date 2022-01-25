@@ -1,6 +1,6 @@
 /**
  *  NEXO Transaction Analyzer, a .csv transactions insight tool
-    Copyright (C) 2022  bandrewk (Bryan Andrew King)
+    Copyright (C) 2022 Bryan Andrew King
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,10 +15,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+`use strict`;
+
 /**
  * Possible application states
  */
-const State = {
+export const State = {
   HOME: 0,
   OVERVIEW: 1,
   COINLIST: 2,
@@ -31,7 +33,7 @@ const State = {
  *
  * This class is in control of the page navigation and menu
  */
-class Navigator {
+export class CNavigator {
   #m_state;
   /**
    * Contains menu buttons as DOM elements
@@ -41,6 +43,8 @@ class Navigator {
    * Contains page sections as DOM elements
    */
   #m_mPage;
+
+  #m_ePageWrap;
 
   constructor() {
     this.#ParseDocument();
@@ -78,6 +82,11 @@ class Navigator {
       if (!element) bFailed = true;
     });
 
+    // Page wrap
+    this.#m_ePageWrap = document.querySelector("#PageWrap");
+
+    if (!this.#m_ePageWrap) bFailed = true;
+
     if (!bFailed) {
       this.#m_mButton.forEach((element) => {
         element.addEventListener("click", this.Clicked.bind(this));
@@ -91,10 +100,10 @@ class Navigator {
 
   /**
    * Clicked callback for menu buttons
-   * @param {event} e
+   * @param {} e event
    */
   Clicked(e) {
-    console.log(`Pressed ${e.target.id}`);
+    //console.log(`Pressed ${e.target.id}`);
 
     switch (e.target.id) {
       case this.#m_mButton.get(State.HOME).id:
@@ -126,7 +135,7 @@ class Navigator {
 
   /**
    * Changes the view to another page
-   * @param {Page to switch to} state
+   * @param {} state Page to switch to
    */
   ShowPage(state) {
     this.#m_mButton.forEach((element) => {
@@ -139,7 +148,9 @@ class Navigator {
 
     this.#m_mButton.get(state).parentNode.classList.add(`pure-menu-selected`);
     this.#m_mPage.get(state).classList.remove(`hidden`);
+
+    if (state === State.HOME) {
+      this.#m_ePageWrap.classList.add("hidden");
+    } else this.#m_ePageWrap.classList.remove("hidden");
   }
 }
-
-export { Navigator, State as AppState };
