@@ -18,20 +18,33 @@
 `use strict`;
 import { CNavigator, State as Page } from "/js/navigator.js";
 import { CTransaction, TransactionType } from "/js/transaction.js";
+import { CStatistics } from "/js/statistics.js";
 
 class CApp {
   // Page elements
   #m_eDropZone;
+  #m_btnRawData;
+
+  // File handle
   #m_file;
 
+  // Navigator class
   #m_cNavigator;
+
+  // Statistics class
+  #m_cStatistics;
+
+  // Transaction storage
   #m_arrTransaction;
   #m_arrRawTransactionData;
 
+  // Transaction table
   #m_cGrid;
-
-  #m_btnRawData;
   #m_bRawTableActive;
+
+  // Coinlist
+  #m_eCoinlistEarnedInCoin;
+  #m_eCoinlistPortfolio;
 
   constructor() {
     this.#Initiaize();
@@ -45,6 +58,7 @@ class CApp {
     this.#ParseDocument();
 
     this.#m_cNavigator = new CNavigator();
+    this.#m_cStatistics = new CStatistics();
   }
 
   /**
@@ -63,6 +77,10 @@ class CApp {
     this.#m_btnRawData = document.querySelector("#btnRawData");
     this.#m_btnRawData.addEventListener("click", this.OnBtnRawDataClicked.bind(this));
     if (!this.#m_btnRawData) bFailed = true;
+
+    this.#m_eCoinlistEarnedInCoin = document.querySelector("#coinlist-earnedInCoin");
+    this.#m_eCoinlistPortfolio = document.querySelector("#coinlist-portfolio");
+    if (!(this.#m_eCoinlistEarnedInCoin && this.#m_eCoinlistPortfolio)) bFailed = true;
 
     if (bFailed) {
       console.log(
@@ -86,7 +104,7 @@ class CApp {
 
   /**
    * Handle the drop event
-   * @param {event} e
+   * @param {*} e
    */
   DropHandler(e) {
     // Prevent default behavior and bubbling
@@ -104,14 +122,6 @@ class CApp {
         this.#m_file.text().then((content) => this.ProcessFile(content));
       }
     }
-  }
-
-  /**
-   * Browser window has been resized
-   * Transaction table needs to be redrawn.
-   */
-  OnWindowResize() {
-    this.#m_cGrid.updateConfig({ sort: true }).forceRender();
   }
 
   /**
@@ -176,6 +186,7 @@ class CApp {
     } //for
 
     // Setup table with raw data
+    // See https://gridjs.io/docs/index
     this.#m_cGrid = new gridjs.Grid({
       columns: headers,
       data: this.#m_arrRawTransactionData,
@@ -209,7 +220,10 @@ class CApp {
 
     this.#m_bRawTableActive = false;
 
-    //this.#m_transactions.map((t) => this.UpdateStatistics(t));
+    // Count statistics
+    this.#m_arrTransaction.map((t) => arr.push(this.#m_cStatistics.AddTransaction(t)));
+
+    this.#m_cStatistics.GetExchangeRates(this.ReceiveExchangeRates.bind(this));
 
     //this.#m_Stats.GetExchangeRates(this.GotExchangeRates.bind(this));
 
@@ -218,6 +232,25 @@ class CApp {
 
     // Show menu
     //this.#m_eHeaderMenu.classList.remove("hidden");
+  }
+
+  ReceiveExchangeRates() {
+    this.#m_eCoinlistPortfolio.insertAdjacentHTML(
+      `beforeend`,
+      this.#m_cStatistics.GetCoinlistAsHTML()
+    );
+    this.#m_eCoinlistEarnedInCoin.insertAdjacentHTML(
+      `beforeend`,
+      this.#m_cStatistics.GetCoinlistEarnedInKindAsHTML()
+    );
+  }
+
+  /**
+   * Browser window has been resized
+   * Transaction table needs to be redrawn.
+   */
+  OnWindowResize() {
+    this.#m_cGrid.updateConfig({ sort: true }).forceRender();
   }
 
   /**

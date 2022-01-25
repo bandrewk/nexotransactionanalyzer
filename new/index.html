@@ -18,13 +18,9 @@
     />
     <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/grids-responsive-min.css" />
 
-    <!-- Font Awesome CDN -->
-    <link
-      rel="stylesheet"
-      href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
-      integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p"
-      crossorigin="anonymous"
-    />
+    <!-- Font Awesome -->
+    <!-- https://fontawesome.com/v4.7/icons/ -->
+    <script src="https://use.fontawesome.com/fd360d7507.js"></script>
 
     <!-- TsParticles CDN -->
     <script src="https://unpkg.com/tsparticles@1.39.0/tsparticles.min.js"></script>
@@ -66,12 +62,14 @@
         <div class="splash">
           <h1 class="splash-head home-dropzone">Drop .csv here</h1>
           <p class="splash-subhead">
-            Your privacy matters. As this project is exposed to sensitive data, we're 100% open
-            source.
+            Your privacy matters. As this project is exposed to sensitive data, it's 100% open
+            source. <br />Do not share your nexo.io login with anyone.
           </p>
           <p>
             <a href="http://purecss.io" class="pure-button pure-button-primary"
-              ><i class="fab fa-github"></i> Browse Source Code</a
+              ><i class="fa fa-github" aria-hidden="true"></i> Browse Source Code</a
+            ><br /><br /><a href="http://purecss.io" class="pure-button pure-button-primary"
+              ><i class="fa fa-play-circle-o" aria-hidden="true"></i> Demo</a
             >
           </p>
         </div>
@@ -87,7 +85,7 @@
                 <i class="fa fa-rocket"></i>
                 Transactions
               </h3>
-              <p>View and rewind all past transactions.</p>
+              <p>View, rewind and search in past transactions.</p>
             </div>
             <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
               <h3 class="content-subhead">
@@ -105,10 +103,13 @@
             </div>
             <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
               <h3 class="content-subhead">
-                <i class="fa fa-th-large"></i>
+                <i class="fa fa-shield fa-6" aria-hidden="true"></i>
                 Stay safe
               </h3>
-              <p>Keep your number of logins to nexo low.</p>
+              <p>
+                Do not share your nexo.io login. This app only uses the exported transactions .csv
+                file. It has no persistend storage, data is immediatley deleted upon refresh.
+              </p>
             </div>
           </div>
         </div>
@@ -127,14 +128,13 @@
             Some features may not work yet. Such as:
             <ul>
               <li>Loan tracking</li>
-              <li>Transaction linkage to blockchain explorer (TX linkage)</li>
-              <li>Failed transactions</li>
+              <li>Transaction linkage to blockchain explorer (TX linkage) for all currencies</li>
+              <li>Rejected transactions</li>
             </ul>
 
-            It probably just errors out and does nothing. If you're brave enough send me a failed
-            .csv to cheesecake@mom.com.
+            If you're brave enough send me a failed .csv to cheesecake@mom.com.
             <br />
-            Also, nexo tends to break their .csv export function rather often. as of today it's
+            Also, nexo tends to break their .csv export function rather often. As of today, it's
             broken.
           </div>
         </div>
@@ -174,7 +174,14 @@
 
         <!-- Coinlist begin -->
         <div id="PageCoinlist" class="hidden">
-          <h2 class="content-head is-center">PageCoinlist</h2>
+          <h2 class="content-head is-center">Coinlist</h2>
+          <div class="pure-u-1-24"></div>
+          <div class="pure-u-11-12 is-center">
+            <div id="coinlist-portfolio"></div>
+            <h2 class="content-head is-center">Coins earned as interest (All-Time)</h2>
+            <div id="coinlist-earnedInCoin"></div>
+          </div>
+          <br /><br /><br />
         </div>
 
         <!-- transactions begin -->
@@ -189,7 +196,6 @@
 
           <a class="pure-button pure-button-primary" href="#" id="btnRawData">raw data</a>
         </div>
-
         <!-- transactions end -->
 
         <div class="pure-u-1">
