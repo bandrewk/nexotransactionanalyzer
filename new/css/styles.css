@@ -3,8 +3,9 @@
   -moz-box-sizing: border-box;
   box-sizing: border-box;
 }
+
 /*
-    THIS IS OUR COLOR PALETTE:
+    COLOR PALETTE:
     #3772FF Blue Crayola
     #060606 Rich Black FOGRA 39
     #DF2935 Rose Madder
@@ -24,6 +25,22 @@
   --header-label-dark: #34495e;
 }
 
+.coinlist-container {
+  margin: 2rem;
+  box-shadow: rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px;
+  border-radius: 8px;
+  margin: 2em;
+  transition: border-radius 0.25s;
+}
+
+.coinlist-icon {
+  width: 54px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1rem;
+  transition: width 0.25s;
+}
 /*
  * -- BASE STYLES --
  * Most of these are inherited from Base, but I want to change a few.
