@@ -218,14 +218,13 @@ class CApp {
     // Render table pretty
     this.RenderTransaction();
 
+    // By default, the pretty table is rendered
     this.#m_bRawTableActive = false;
 
     // Count statistics
     this.#m_arrTransaction.map((t) => arr.push(this.#m_cStatistics.AddTransaction(t)));
 
-    this.#m_cStatistics.GetExchangeRates(this.ReceiveExchangeRates.bind(this));
-
-    //this.#m_Stats.GetExchangeRates(this.GotExchangeRates.bind(this));
+    this.#m_cStatistics.GetCurrentExchangeRates(this.ReceiveCurrentExchangeRates.bind(this));
 
     // Navigate
     this.#m_cNavigator.ShowPage(Page.TRANSACTIONS);
@@ -234,7 +233,10 @@ class CApp {
     //this.#m_eHeaderMenu.classList.remove("hidden");
   }
 
-  ReceiveExchangeRates() {
+  /**
+   * Exchanges rates have arrived, display them.
+   */
+  ReceiveCurrentExchangeRates() {
     this.#m_eCoinlistPortfolio.insertAdjacentHTML(
       `beforeend`,
       this.#m_cStatistics.GetCoinlistAsHTML()

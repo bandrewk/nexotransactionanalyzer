@@ -58,9 +58,10 @@ export const CurrencyType = {
 
 Object.freeze(CurrencyType);
 
-/////////////////////////////////////////////////////
-/// Transaction
-/////////////////////////////////////////////////////
+/**
+ * Curreny module
+ * This represents a single currency like ETH or BTC.
+ */
 export class CCurrency {
   /**
    * Currency type
@@ -73,9 +74,9 @@ export class CCurrency {
   #m_fAmount;
 
   /**
-   * FIAT equivalent
+   * USD equivalent
    */
-  #m_fFiatEquivalent;
+  #m_fUSDEquivalent;
 
   /**
    * Interest earned in coin value, NOT USD!!
@@ -85,7 +86,7 @@ export class CCurrency {
   /**
    * Interest earned in USD
    */
-  #m_fInterestEarnedInFiat;
+  #m_fInterestEarnedInUSD;
 
   // TX
   #m_arrDateAdded; // Array of strings
@@ -98,7 +99,8 @@ export class CCurrency {
     this.#m_type = type;
     this.SetAmount(amount);
     this.SetInterestEarnedInKind(0);
-    this.SetInterestEarnedInFiat(0);
+    this.SetInterestEarnedInUSD(0);
+    this.SetUSDEquivalent(0);
 
     this.#m_arrDateAdded = [];
     this.#m_arrAmountAdded = [];
@@ -149,14 +151,14 @@ export class CCurrency {
   }
 
   /////////////////////////////////////////////////////////////////////////////
-  // In-coin interest earned as FIAT
+  // In-coin interest earned as USD
   /////////////////////////////////////////////////////////////////////////////
-  GetInterestEarnedInFiat() {
-    return this.#m_fInterestEarnedInFiat;
+  GetInterestEarnedInUSD() {
+    return this.#m_fInterestEarnedInUSD;
   }
 
-  SetInterestEarnedInFiat(amount) {
-    this.#m_fInterestEarnedInFiat = parseFloat(amount);
+  SetInterestEarnedInUSD(amount) {
+    this.#m_fInterestEarnedInUSD = parseFloat(amount);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -179,14 +181,14 @@ export class CCurrency {
   }
 
   /////////////////////////////////////////////////////////////////////////////
-  // Current fiat value of amount
+  // Current USD value of amount
   /////////////////////////////////////////////////////////////////////////////
-  GetFiatEquivalent() {
-    return this.#m_fFiatEquivalent;
+  GetUSDEquivalent() {
+    return this.#m_fUSDEquivalent;
   }
 
-  SetFiatEquivalent(amount) {
-    this.#m_fFiatEquivalent = amount;
+  SetUSDEquivalent(amount) {
+    this.#m_fUSDEquivalent = amount;
   }
 
   /// TODO Add all currencies
@@ -310,8 +312,11 @@ export class CCurrency {
     return urls;
   }
 
-  // TODO Rename
-  GetExchangeRateAsAPIString() {
+  /**
+   * Gets the api string to request current exchange rate
+   * @returns API string to request exchange rate
+   */
+  GetExchangeAPIString() {
     return `https://api.coinbase.com/v2/exchange-rates?currency=${this.#m_type}`;
   }
 
