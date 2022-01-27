@@ -92,42 +92,49 @@ export class CStatistics {
     }
   }
 
-  GetExchangeRates(finishedCallback = null) {
+  /**
+   * Get exchange rates for all currencys stored in `m_arrCurrency` as of TODAY
+   * @param {*} finishedCallback Callback function that gets called when exchange rates are ready
+   */
+  GetCurrentExchangeRates(finishedCallback = null) {
     let urls = [];
 
+    // Collect API requests
     this.#m_arrCurrency.forEach((e) => {
-      urls.push(e.GetExchangeRateAsAPIString());
+      urls.push(e.GetExchangeAPIString());
     });
 
     // Make promises resolve to their final value
     // let apiRequests = urls.map((url) => fetch(url).then((res) => res.json()));
-    // go easy with the APIs and delay the calls a little (5 calls per sec max)
+
+    // Go easy with the APIs and delay the calls a little (5 calls per sec max)
     let i = 0;
     let apiRequests = urls.map((url) =>
       this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json()))
     );
-    console.log(`~Load time ~${i}ms`);
+    console.log(`Loading exchange rates.. ~${i}ms`);
 
-    // Wait for all promises to settle
+    // Wait for  all promises to settle
     Promise.allSettled(apiRequests).then((responses) => {
       responses.forEach((response, index) => {
         // Loop through all responses
         if (response.status === "fulfilled") {
+          // This is tailored to the coinbase API
           const currency = response.value.data.currency;
           // Success
           if (this.#m_arrCurrency.has(currency)) {
             // USD value
             const value = parseFloat(response.value.data.rates.USD);
 
-            // Look up currency and set the fiat value
+            // Look up currency and set the usd value
             this.#m_arrCurrency
               .get(currency)
-              .SetFiatEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
+              .SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
 
             // Set interest earned in-coin value
             this.#m_arrCurrency
               .get(currency)
-              .SetInterestEarnedInFiat(
+              .SetInterestEarnedInUSD(
                 value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind()
               );
           }
@@ -137,12 +144,14 @@ export class CStatistics {
         }
       });
 
+      // Calculate total interest earned in usd
       this.#m_fTotalInterestEarnedAsUSD = 0;
 
       this.#m_arrCurrency.forEach((v, k, m) => {
-        this.#m_fTotalInterestEarnedAsUSD += v.GetInterestEarnedInFiat();
+        this.#m_fTotalInterestEarnedAsUSD += v.GetInterestEarnedInUSD();
       });
 
+      console.log(`Loading exchange rates finished.`);
       // We're ready !
       if (finishedCallback) finishedCallback();
     });
@@ -164,7 +173,7 @@ export class CStatistics {
         .toLowerCase()}" />
 <h3>${e.GetType()}</h3>
 <h4>${e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : e.GetAmount().toFixed(8)}</h4>
-<p>~$${e.GetFiatEquivalent().toFixed(2)}</p>
+<p>~$${e.GetUSDEquivalent().toFixed(2)}</p>
 </div>`;
     }); //
 
@@ -193,14 +202,24 @@ export class CStatistics {
           ? e.GetInterestEarnedInKind().toFixed(2)
           : e.GetInterestEarnedInKind().toFixed(8)
       }</h4>
-<p>~$${e.GetInterestEarnedInFiat().toFixed(2)}</p>
+<p>~$${e.GetInterestEarnedInUSD().toFixed(2)}</p>
 </div>`;
     });
 
     return html;
   }
 
-  AddCurrency(t = null, cur = null, amount = null) {
+  /**
+   * Adds currency to `#m_arrCurrency` array.
+   * If not existent yet, will create a new entry.
+   * The two params `cur` and `amount` are optional and only needed when adding a currency coming from a PAIR
+   * See `AddCurrencyPair()` method.
+   * @param {*} t Transaction
+   * @param {*} cur Curreny object (string)
+   * @param {*} amount Amount to add (string)
+   * @returns nothing
+   */
+  AddCurrency(t, cur = null, amount = null) {
     // if no specific currency is supplied take the data from the transaction
     if (cur === null && amount === null) {
       if (t === null) throw new Error(`AddCurrency all parameters are null!`);
@@ -234,18 +253,35 @@ export class CStatistics {
     }
     this.#m_arrCurrency.get(cur).AddAmount(amount);
 
-    //
-
+    // Add historical data to the currency
     this.#m_arrCurrency.get(cur).AddTXDate(t.GetDateTime().substr(0, 7));
     this.#m_arrCurrency.get(cur).AddTXAmount(amount);
   }
 
-  DelayFetch(x, ms) {
-    return new Promise((resolve) =>
-      setTimeout(function () {
-        resolve(x);
-      }, ms)
-    );
+  /**
+   * Adds a currency pair
+   * Called by `AddCurrency()` method
+   * @param {*} t Transaction
+   * @param {*} cur Curreny object (string)
+   * @param {*} amount Amount to add (string)
+   */
+  #AddCurrencyPair(t, cur, amount) {
+    // Get exchange pair
+    const cur1 = cur.substr(0, cur.search(`/`));
+    const cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
+
+    //console.log(`Found ${cur1} and ${cur2} (${cur})`);
+
+    // Get the individual amounts
+    const amount1 = amount.substr(0, amount.search(`/`));
+    const amount2 = amount.substr(amount.search(`/`) + 1, cur.length);
+
+    if (isNaN(amount1) || isNaN(amount2))
+      alert("Transaction file is invalid! Could not find exchange values.");
+
+    // Add them individually
+    this.AddCurrency(t, cur1, amount1);
+    this.AddCurrency(t, cur2, amount2);
   }
 
   /**
@@ -356,25 +392,6 @@ export class CStatistics {
     return groupedbyday;
   }
 
-  #AddCurrencyPair(t, cur, amount) {
-    // Get exchange pair
-    const cur1 = cur.substr(0, cur.search(`/`));
-    const cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
-
-    //console.log(`Found ${cur1} and ${cur2} (${cur})`);
-
-    // Get the individual amounts
-    const amount1 = amount.substr(0, amount.search(`/`));
-    const amount2 = amount.substr(amount.search(`/`) + 1, cur.length);
-
-    if (isNaN(amount1) || isNaN(amount2))
-      alert("Transaction file is invalid! Could not find exchange values.");
-
-    // Add them
-    this.AddCurrency(t, cur1, amount1);
-    this.AddCurrency(t, cur2, amount2);
-  }
-
   /**
    * TODO, CHECK, REVISE
    */
@@ -385,7 +402,7 @@ export class CStatistics {
     });
     let amounts = [];
     this.#m_arrCurrency.forEach((e) => {
-      amounts.push(e.GetFiatEquivalent());
+      amounts.push(e.GetUSDEquivalent());
     });
     var data = [
       {
@@ -410,9 +427,9 @@ export class CStatistics {
     let crypto = 0;
 
     this.#m_arrCurrency.forEach((e) => {
-      if (e.IsFiat()) fiat += e.GetFiatEquivalent();
-      else if (e.IsStableCoin()) scoin += e.GetFiatEquivalent();
-      else crypto += e.GetFiatEquivalent();
+      if (e.IsFiat()) fiat += e.GetUSDEquivalent();
+      else if (e.IsStableCoin()) scoin += e.GetUSDEquivalent();
+      else crypto += e.GetUSDEquivalent();
     });
 
     data = [
@@ -439,25 +456,20 @@ export class CStatistics {
     Plotly.newPlot("tester4", data, layout);
   }
 
-  GetCurrentDepotValueInFiat() {
-    let value = 0.0;
-    this.#m_arrCurrency.forEach((e) => {
-      value += e.GetFiatEquivalent();
-    });
-
-    return value;
-  }
-
+  /**
+   * Get current nexo loyality level
+   * @returns Loyality level of type `LoyalityLevel`
+   */
   GetLoyalityLevel() {
     // No nexo tokens
     if (!this.#m_arrCurrency.has(CurrencyType.NEXO)) {
       return LoyalityLevel.BASE;
     }
 
-    const e = this.GetCurrentDepotValueInFiat();
+    const e = this.#GetCurrentDepotValueInUSD();
 
     // Percentage of NEXO Tokens in portfolio
-    const p = (100 / e) * this.#m_arrCurrency.get(CurrencyType.NEXO).GetFiatEquivalent();
+    const p = (100 / e) * this.#m_arrCurrency.get(CurrencyType.NEXO).GetUSDEquivalent();
 
     if (p < 1) return LoyalityLevel.BASE;
     else if (p >= 1 && p < 5) return LoyalityLevel.SILVER;
@@ -466,8 +478,8 @@ export class CStatistics {
 
     // Just in case..
     // This actually HITS when the CSV is messed up!
-    alert("CSV file is invalid. Stopping execution.");
-    throw new Error(`Unknown loyality level p=${p}`);
+    alert("CSV file is invalid. Unknown loyality level ${p}. Stopping execution.");
+    throw new Error(`Unknown loyality level p= ${p}`);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -495,5 +507,32 @@ export class CStatistics {
    */
   GetTotalInterestEarnedAsUSD() {
     return this.#m_fTotalInterestEarnedAsUSD;
+  }
+
+  /**
+   * Delays a call to method `x` by `ms` milliseconds
+   * @param {*} x Method to call
+   * @param {*} ms Milliseconds to wait
+   * @returns a new promise
+   */
+  DelayFetch(x, ms) {
+    return new Promise((resolve) =>
+      setTimeout(function () {
+        resolve(x);
+      }, ms)
+    );
+  }
+
+  /**
+   * Get current depot value in USD
+   * @returns Total depot value in USD
+   */
+  #GetCurrentDepotValueInUSD() {
+    let value = 0.0;
+    this.#m_arrCurrency.forEach((e) => {
+      value += e.GetUSDEquivalent();
+    });
+
+    return value;
   }
 }
