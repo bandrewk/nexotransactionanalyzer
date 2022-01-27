@@ -20,9 +20,9 @@
 import { CurrencyType, CCurrency } from "./currency.js";
 import { TransactionType } from "./transaction.js";
 
-/////////////////////////////////////////////////////
-/// Statistics helper module
-/////////////////////////////////////////////////////
+/**
+ * Loyality levels
+ */
 export const LoyalityLevel = {
   BASE: `BASE`, // <1% nexo tokens
   SILVER: `<span style="color: #c0c0c0">🥈 SILVER</span>`, // >1-5%
@@ -64,6 +64,9 @@ export class CStatistics {
     this.#m_arrCurrency = new Map();
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  // Add new transaction / currency
+  /////////////////////////////////////////////////////////////////////////////
   /**
    * Adds a new transaction to the stats
    */
@@ -92,123 +95,9 @@ export class CStatistics {
     }
   }
 
-  /**
-   * Get exchange rates for all currencys stored in `m_arrCurrency` as of TODAY
-   * @param {*} finishedCallback Callback function that gets called when exchange rates are ready
-   */
-  GetCurrentExchangeRates(finishedCallback = null) {
-    let urls = [];
-
-    // Collect API requests
-    this.#m_arrCurrency.forEach((e) => {
-      urls.push(e.GetExchangeAPIString());
-    });
-
-    // Make promises resolve to their final value
-    // let apiRequests = urls.map((url) => fetch(url).then((res) => res.json()));
-
-    // Go easy with the APIs and delay the calls a little (5 calls per sec max)
-    let i = 0;
-    let apiRequests = urls.map((url) =>
-      this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json()))
-    );
-    console.log(`Loading exchange rates.. ~${i}ms`);
-
-    // Wait for  all promises to settle
-    Promise.allSettled(apiRequests).then((responses) => {
-      responses.forEach((response, index) => {
-        // Loop through all responses
-        if (response.status === "fulfilled") {
-          // This is tailored to the coinbase API
-          const currency = response.value.data.currency;
-          // Success
-          if (this.#m_arrCurrency.has(currency)) {
-            // USD value
-            const value = parseFloat(response.value.data.rates.USD);
-
-            // Look up currency and set the usd value
-            this.#m_arrCurrency
-              .get(currency)
-              .SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
-
-            // Set interest earned in-coin value
-            this.#m_arrCurrency
-              .get(currency)
-              .SetInterestEarnedInUSD(
-                value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind()
-              );
-          }
-        } else if (response.status === "rejected") {
-          // Failed
-          console.log(`GetExchangeRate failed for: ${urls[index]} - ${response.reason}`);
-        }
-      });
-
-      // Calculate total interest earned in usd
-      this.#m_fTotalInterestEarnedAsUSD = 0;
-
-      this.#m_arrCurrency.forEach((v, k, m) => {
-        this.#m_fTotalInterestEarnedAsUSD += v.GetInterestEarnedInUSD();
-      });
-
-      console.log(`Loading exchange rates finished.`);
-      // We're ready !
-      if (finishedCallback) finishedCallback();
-    });
-  }
-
-  /**
-   * Get full Coinlist portfolio as html string
-   * @returns html ready for injection
-   */
-  GetCoinlistAsHTML() {
-    // Start with empty string
-    let html = ``;
-
-    // Go through all stored currencies
-    this.#m_arrCurrency.forEach((e) => {
-      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
-<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e
-        .GetType()
-        .toLowerCase()}" />
-<h3>${e.GetType()}</h3>
-<h4>${e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : e.GetAmount().toFixed(8)}</h4>
-<p>~$${e.GetUSDEquivalent().toFixed(2)}</p>
-</div>`;
-    }); //
-
-    return html;
-  }
-
-  /**
-   * Get full Coinlist earned in kind stats as html string
-   * @returns html ready for injection
-   */
-  GetCoinlistEarnedInKindAsHTML() {
-    // Start with empty string
-    let html = ``;
-
-    // Go through all stored currencies
-    this.#m_arrCurrency.forEach((e) => {
-      if (e.GetInterestEarnedInKind() === 0) return;
-
-      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
-<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e
-        .GetType()
-        .toLowerCase()}" />
-<h3>${e.GetType()}</h3>
-<h4>${
-        e.GetInterestEarnedInKind() % 1 === 0
-          ? e.GetInterestEarnedInKind().toFixed(2)
-          : e.GetInterestEarnedInKind().toFixed(8)
-      }</h4>
-<p>~$${e.GetInterestEarnedInUSD().toFixed(2)}</p>
-</div>`;
-    });
-
-    return html;
-  }
-
+  /////////////////////////////////////////////////////////////////////////////
+  // Add currency
+  /////////////////////////////////////////////////////////////////////////////
   /**
    * Adds currency to `#m_arrCurrency` array.
    * If not existent yet, will create a new entry.
@@ -282,6 +171,131 @@ export class CStatistics {
     // Add them individually
     this.AddCurrency(t, cur1, amount1);
     this.AddCurrency(t, cur2, amount2);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Portfolio value in USD
+  /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Get exchange rates for all currencys stored in `m_arrCurrency` as of TODAY
+   * @param {*} finishedCallback Callback function that gets called when exchange rates are ready
+   */
+  GetCurrentExchangeRates(finishedCallback = null) {
+    let urls = [];
+
+    // Collect API requests
+    this.#m_arrCurrency.forEach((e) => {
+      urls.push(e.GetExchangeAPIString());
+    });
+
+    // Make promises resolve to their final value
+    // let apiRequests = urls.map((url) => fetch(url).then((res) => res.json()));
+
+    // Go easy with the APIs and delay the calls a little (5 calls per sec max)
+    let i = 0;
+    let apiRequests = urls.map((url) =>
+      this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json()))
+    );
+    console.log(`Loading exchange rates.. requesting data for ~${i / 1000}s`);
+
+    // Wait for  all promises to settle
+    Promise.allSettled(apiRequests).then((responses) => {
+      responses.forEach((response, index) => {
+        // Loop through all responses
+        if (response.status === "fulfilled") {
+          // This is tailored to the coinbase API
+          const currency = response.value.data.currency;
+          // Success
+          if (this.#m_arrCurrency.has(currency)) {
+            // USD value
+            const value = parseFloat(response.value.data.rates.USD);
+
+            // Look up currency and set the usd value
+            this.#m_arrCurrency
+              .get(currency)
+              .SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
+
+            // Set interest earned in-coin value
+            this.#m_arrCurrency
+              .get(currency)
+              .SetInterestEarnedInUSD(
+                value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind()
+              );
+          }
+        } else if (response.status === "rejected") {
+          // Failed
+          console.log(`GetExchangeRate failed for: ${urls[index]} - ${response.reason}`);
+        }
+      });
+
+      // Calculate total interest earned in usd
+      this.#m_fTotalInterestEarnedAsUSD = 0;
+
+      this.#m_arrCurrency.forEach((v, k, m) => {
+        this.#m_fTotalInterestEarnedAsUSD += v.GetInterestEarnedInUSD();
+      });
+
+      console.log(`Loading exchange rates finished.`);
+      // We're ready !
+      if (finishedCallback) finishedCallback();
+    });
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // HTML Exports
+  /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Get full Coinlist portfolio as html string
+   * @returns html ready for injection
+   */
+  GetCoinlistAsHTML() {
+    // Start with empty string
+    let html = ``;
+
+    // Go through all stored currencies
+    this.#m_arrCurrency.forEach((e) => {
+      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
+<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e
+        .GetType()
+        .toLowerCase()}" />
+<h3>${e.GetType()}</h3>
+<h4>${
+        e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : parseFloat(e.GetAmount().toFixed(8))
+      }</h4>
+<p>~$${e.GetUSDEquivalent().toFixed(2)}</p>
+</div>`;
+    }); // parseFloat removes the padding that toFixed() leaves !
+
+    return html;
+  }
+
+  /**
+   * Get full Coinlist earned in kind stats as html string
+   * @returns html ready for injection
+   */
+  GetCoinlistEarnedInKindAsHTML() {
+    // Start with empty string
+    let html = ``;
+
+    // Go through all stored currencies
+    this.#m_arrCurrency.forEach((e) => {
+      if (e.GetInterestEarnedInKind() === 0) return;
+
+      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
+<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e
+        .GetType()
+        .toLowerCase()}" />
+<h3>${e.GetType()}</h3>
+<h4>${
+        e.GetInterestEarnedInKind() % 1 === 0
+          ? e.GetInterestEarnedInKind().toFixed(2)
+          : parseFloat(e.GetInterestEarnedInKind().toFixed(8))
+      }</h4>
+<p>~$${e.GetInterestEarnedInUSD().toFixed(2)}</p>
+</div>`;
+    }); // parseFloat removes the padding that toFixed() leaves !
+
+    return html;
   }
 
   /**
@@ -456,32 +470,6 @@ export class CStatistics {
     Plotly.newPlot("tester4", data, layout);
   }
 
-  /**
-   * Get current nexo loyality level
-   * @returns Loyality level of type `LoyalityLevel`
-   */
-  GetLoyalityLevel() {
-    // No nexo tokens
-    if (!this.#m_arrCurrency.has(CurrencyType.NEXO)) {
-      return LoyalityLevel.BASE;
-    }
-
-    const e = this.#GetCurrentDepotValueInUSD();
-
-    // Percentage of NEXO Tokens in portfolio
-    const p = (100 / e) * this.#m_arrCurrency.get(CurrencyType.NEXO).GetUSDEquivalent();
-
-    if (p < 1) return LoyalityLevel.BASE;
-    else if (p >= 1 && p < 5) return LoyalityLevel.SILVER;
-    else if (p >= 5 && p < 10) return LoyalityLevel.GOLD;
-    else if (p >= 10) return LoyalityLevel.PLATINUM;
-
-    // Just in case..
-    // This actually HITS when the CSV is messed up!
-    alert("CSV file is invalid. Unknown loyality level ${p}. Stopping execution.");
-    throw new Error(`Unknown loyality level p= ${p}`);
-  }
-
   /////////////////////////////////////////////////////////////////////////////
   // Helpers
   /////////////////////////////////////////////////////////////////////////////
@@ -527,12 +515,40 @@ export class CStatistics {
    * Get current depot value in USD
    * @returns Total depot value in USD
    */
-  #GetCurrentDepotValueInUSD() {
+  GetCurrentDepotValueInUSD() {
     let value = 0.0;
     this.#m_arrCurrency.forEach((e) => {
       value += e.GetUSDEquivalent();
     });
 
+    if (isNaN(value)) value = -1;
+
     return value;
+  }
+
+  /**
+   * Get current nexo loyality level
+   * @returns Loyality level of type `LoyalityLevel`
+   */
+  GetLoyalityLevel() {
+    // No nexo tokens
+    if (!this.#m_arrCurrency.has(CurrencyType.NEXO)) {
+      return LoyalityLevel.BASE;
+    }
+
+    const e = this.GetCurrentDepotValueInUSD();
+
+    // Percentage of NEXO Tokens in portfolio
+    const p = (100 / e) * this.#m_arrCurrency.get(CurrencyType.NEXO).GetUSDEquivalent();
+
+    if (p < 1) return LoyalityLevel.BASE;
+    else if (p >= 1 && p < 5) return LoyalityLevel.SILVER;
+    else if (p >= 5 && p < 10) return LoyalityLevel.GOLD;
+    else if (p >= 10) return LoyalityLevel.PLATINUM;
+
+    // Just in case..
+    // This actually HITS when the CSV is messed up!
+    alert("CSV file is invalid. Unknown loyality level ${p}. Stopping execution.");
+    throw new Error(`Unknown loyality level p= ${p}`);
   }
 }

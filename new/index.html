@@ -3,10 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="A layout example that shows off a responsive product landing page."
-    />
+    <meta name="description" content="A layout example that shows off a responsive product landing page." />
     <title>Landing Page &ndash; Layout Examples &ndash; Pure</title>
 
     <!-- PURE CDN -->
@@ -28,6 +25,9 @@
     <!-- GridJS CDN -->
     <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" />
+
+    <!-- Plotly CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
 
     <!-- Local -->
     <link rel="stylesheet" href="/css/styles.css" />
@@ -62,8 +62,8 @@
         <div class="splash">
           <h1 class="splash-head home-dropzone">Drop .csv here</h1>
           <p class="splash-subhead">
-            Your privacy matters. As this project is exposed to sensitive data, it's 100% open
-            source. <br />Do not share your nexo.io login with anyone.
+            Your privacy matters. As this project is exposed to sensitive data, it's 100% open source. <br />Do not
+            share your nexo.io login with anyone.
           </p>
           <p>
             <a href="http://purecss.io" class="pure-button pure-button-primary"
@@ -107,8 +107,8 @@
                 Stay safe
               </h3>
               <p>
-                Do not share your nexo.io login. This app only uses the exported transactions .csv
-                file. It has no persistend storage, data is immediatley deleted upon refresh.
+                Do not share your nexo.io login. This app only uses the exported transactions .csv file. It has no
+                persistend storage, data is immediatley deleted upon refresh.
               </p>
             </div>
           </div>
@@ -121,9 +121,7 @@
             <i class="fa fa-regular fa-code fa-5x" style="color: var(--third-color)"></i>
           </div>
           <div class="pure-u-1 pure-u-md-1-2 pure-u-lg-3-5">
-            <h2 class="content-head content-head-ribbon">
-              ❗Hey, this project Still in development❗
-            </h2>
+            <h2 class="content-head content-head-ribbon">❗Hey, this project Still in development❗</h2>
 
             Some features may not work yet. Such as:
             <ul>
@@ -134,8 +132,7 @@
 
             If you're brave enough send me a failed .csv to cheesecake@mom.com.
             <br />
-            Also, nexo tends to break their .csv export function rather often. As of today, it's
-            broken.
+            Also, nexo tends to break their .csv export function rather often. As of today, it's broken.
           </div>
         </div>
 
@@ -145,11 +142,10 @@
               <h2>Notice of Non-Affiliation and Disclaimer</h2>
 
               <p>
-                We are not affiliated, associated, authorized, endorsed by, or in any way officially
-                connected with Nexo Financial LLC, or any of its subsidiaries or its affiliates. The
-                official Nexo Financial LLC website can be found at https://www.nexo.io. The name
-                NEXO as well as related names, marks, emblems and images are registered trademarks
-                of their respective owners.
+                We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo
+                Financial LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can
+                be found at https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are
+                registered trademarks of their respective owners.
               </p>
             </div>
           </div>
@@ -163,12 +159,29 @@
     </div>
     <!-- home end -->
 
-    <!-- Coinlist end -->
     <div class="content-wrapper-def hidden" id="PageWrap">
       <div class="content">
         <!-- Overview begin -->
         <div id="PageOverview" class="hidden">
-          <h2 class="content-head is-center">PageOverview</h2>
+          <h2 class="content-head is-center">Overview</h2>
+
+          <div class="pure-u-1-24"></div>
+          <div class="pure-u-11-12">
+            <div class="is-center">
+              <hr />
+              <div id="overview">
+                <!--<div class="pure-u-5-5 pure-u-lg-3-4 overview-graph" id="ov-graph-portfolio"></div>-->
+                <div class="pure-u-5-5 pure-u-lg-1-2 overview-graph" id="ov-graph-interestearned"></div>
+                <div class="pure-u-5-5 pure-u-lg-1-4 overview-graph" id="ov-graph-pdivision"></div>
+                <div class="pure-u-5-5 pure-u-lg-1-2 overview-graph" id="ov-graph-dws"></div>
+                <div class="pure-u-5-5 pure-u-lg-1-4 overview-graph" id="ov-graph-adivision"></div>
+              </div>
+
+              <hr />
+            </div>
+          </div>
+
+          <div class="pure-u-1-24"></div>
         </div>
         <!-- Overview end -->
 
@@ -203,18 +216,13 @@
             <h2>Notice of Non-Affiliation and Disclaimer</h2>
 
             <p>
-              We are not affiliated, associated, authorized, endorsed by, or in any way officially
-              connected with Nexo Financial LLC, or any of its subsidiaries or its affiliates. The
-              official Nexo Financial LLC website can be found at https://www.nexo.io. The name NEXO
-              as well as related names, marks, emblems and images are registered trademarks of their
-              respective owners.
+              We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo
+              Financial LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can
+              be found at https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are
+              registered trademarks of their respective owners.
             </p>
           </div>
-          <img
-            src="https://api.moedog.org/count/@:testingyourmom"
-            alt=":testingyourmom"
-            style="padding-bottom: 2px"
-          />
+          <img src="https://api.moedog.org/count/@:testingyourmom" alt=":testingyourmom" style="padding-bottom: 2px" />
         </div>
       </div>
       <div class="footer l-box is-center">
