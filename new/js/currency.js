@@ -251,7 +251,7 @@ export class CCurrency {
       ) {
         let type = this.GetType().toLowerCase();
 
-        if (this.GetType() === CurrencyType.XRP) type = `ripple`; // coingecko api id for xrp is `ripple`..
+        if (this.GetType() === CurrencyType.XRP) type = `ripple`; // coingecko api id for xrp is `ripple`
 
         urls.push(
           `https://api.coingecko.com/api/v3/coins/${type}/history?date=${

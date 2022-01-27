@@ -20,10 +20,18 @@ import { CNavigator, State as Page } from "/js/navigator.js";
 import { CTransaction, TransactionType } from "/js/transaction.js";
 import { CStatistics } from "/js/statistics.js";
 
+/**
+ * Application module
+ */
 class CApp {
   // Page elements
   #m_eDropZone;
   #m_btnRawData;
+  #m_eOverview;
+
+  // Coinlist
+  #m_eCoinlistEarnedInCoin;
+  #m_eCoinlistPortfolio;
 
   // File handle
   #m_file;
@@ -41,10 +49,6 @@ class CApp {
   // Transaction table
   #m_cGrid;
   #m_bRawTableActive;
-
-  // Coinlist
-  #m_eCoinlistEarnedInCoin;
-  #m_eCoinlistPortfolio;
 
   constructor() {
     this.#Initiaize();
@@ -82,16 +86,21 @@ class CApp {
     this.#m_eCoinlistPortfolio = document.querySelector("#coinlist-portfolio");
     if (!(this.#m_eCoinlistEarnedInCoin && this.#m_eCoinlistPortfolio)) bFailed = true;
 
+    this.#m_eOverview = document.querySelector("#overview");
+    if (!this.#m_eOverview) bFailed = true;
+
     if (bFailed) {
       console.log(
         "Failed parsing document: Unable to catch all handles. Please verify that the script is loaded as module and the HTML is intact."
       );
     }
+
+    this.#RenderOverviewGraphs();
   }
 
-  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////
   /// File Handling
-  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////
 
   /**
    * Prevent default behavior
@@ -237,16 +246,13 @@ class CApp {
    * Exchanges rates have arrived, display them.
    */
   ReceiveCurrentExchangeRates() {
-    this.#m_eCoinlistPortfolio.insertAdjacentHTML(
-      `beforeend`,
-      this.#m_cStatistics.GetCoinlistAsHTML()
-    );
-    this.#m_eCoinlistEarnedInCoin.insertAdjacentHTML(
-      `beforeend`,
-      this.#m_cStatistics.GetCoinlistEarnedInKindAsHTML()
-    );
+    this.#RenderCoinlist();
+    this.#RenderOverview();
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  // Transactions
+  /////////////////////////////////////////////////////////////////////////////
   /**
    * Browser window has been resized
    * Transaction table needs to be redrawn.
@@ -345,6 +351,154 @@ class CApp {
     ];
   }
 
+  /////////////////////////////////////////////////////////////////////////////
+  // Coinlist
+  /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Render coinlist
+   */
+  #RenderCoinlist() {
+    this.#m_eCoinlistPortfolio.insertAdjacentHTML(`beforeend`, this.#m_cStatistics.GetCoinlistAsHTML());
+    this.#m_eCoinlistEarnedInCoin.insertAdjacentHTML(`beforeend`, this.#m_cStatistics.GetCoinlistEarnedInKindAsHTML());
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Overview
+  /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Render overview
+   */
+  #RenderOverview() {
+    let html = `              
+    <div class="pure-u-1-2 pure-u-lg-1-8 overview-element">
+    <h2>${this.#m_cStatistics.GetCurrentDepotValueInUSD().toFixed(2)}$</h2>
+    <p>💰 Depot value</p>
+  </div>
+  <div class="pure-u-1-2 pure-u-lg-1-8 overview-element">
+    <h2>${this.#m_arrTransaction.length + 1}</h2>
+    <p>🔂 Transactions</p>
+  </div>
+  <div class="pure-u-1-2 pure-u-lg-1-8 overview-element">
+    <h2> ${this.#m_cStatistics.GetTotalInterestEarnedAsUSD().toFixed(2)}$</h2>
+    <p>💸 Interest earned</p>
+  </div>
+  <div class="pure-u-1-2 pure-u-lg-1-8 overview-element">
+    <h2>0$</h2> <!-- Not yet implemented. -->
+    <p>🙇‍♂️ Outstanding loans</p>
+  </div>
+  <div class="pure-u-1-2 pure-u-lg-1-8 overview-element">
+    <h2>${this.#m_cStatistics.GetLoyalityLevel()}</h2>
+    <p>Membership level</p>
+  </div>`;
+
+    this.#m_eOverview.insertAdjacentHTML(`afterbegin`, html);
+  }
+
+  #RenderOverviewGraphs() {
+    var trace1 = {
+      type: "bar",
+      x: [1, 2, 3, 4],
+      y: [5, 10, 2, 8],
+      marker: {
+        color: "#C8A2C8",
+        line: {
+          width: 2.5,
+        },
+      },
+    };
+
+    var data = [trace1];
+
+    var layout = {
+      title: "Interest earned (USD)",
+      autosize: true,
+    };
+
+    var config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-interestearned", data, layout, config);
+
+    var trace1 = {
+      type: "bar",
+      x: [1, 2, 3, 4],
+      y: [5, 10, 2, 8],
+      marker: {
+        color: "#C8A2C8",
+        line: {
+          width: 2.5,
+        },
+      },
+    };
+
+    var data = [trace1];
+
+    var layout = {
+      title: "Deposits and Withdrawls (USD)",
+      autosize: true,
+    };
+
+    var config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-dws", data, layout, config);
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Pie chart
+    /////////////////////////////////////////////////////////////////////////////
+    var trace1 = {
+      values: [19, 26, 55],
+      labels: ["Residential", "Non-Residential", "Utility"],
+      type: "pie",
+    };
+
+    var data = [trace1];
+
+    var layout = {
+      title: "Portfolio division",
+      autosize: true,
+    };
+
+    var config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-pdivision", data, layout, config);
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Pie chart
+    /////////////////////////////////////////////////////////////////////////////
+    var trace1 = {
+      values: [19, 26, 55],
+      labels: ["Residential", "Non-Residential", "Utility"],
+      type: "pie",
+    };
+
+    var data = [trace1];
+
+    var layout = {
+      title: "Asset division",
+      autosize: true,
+    };
+
+    var config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-adivision", data, layout, config);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Etc
+  /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Start header background animation particle system
+   */
+  #StartParticleSystem() {
+    tsParticles
+      .loadJSON("tsparticles", "/js/psHeader.json")
+      .then((container) => {
+        //console.log("callback - tsparticles config loaded");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
   /**
    * Hyperlinks a blockchain tx to it's explorer website
    * @param {*} t Transaction
@@ -355,18 +509,10 @@ class CApp {
     let detailshtml = details;
 
     // ERC-20
-    if (
-      (t.GetCurrency() === `ETH` || t.GetCurrency() === `LINK`) &&
-      t.GetType() === TransactionType.DEPOSIT
-    ) {
+    if ((t.GetCurrency() === `ETH` || t.GetCurrency() === `LINK`) && t.GetType() === TransactionType.DEPOSIT) {
       let tx = details.substr(details.search(`/`) + 1, details.length).trim();
       detailshtml =
-        details.substr(0, details.search(`/`) + 2) +
-        `<a href="https://etherscan.io/tx/` +
-        tx +
-        `">` +
-        tx +
-        `</a>`;
+        details.substr(0, details.search(`/`) + 2) + `<a href="https://etherscan.io/tx/` + tx + `">` + tx + `</a>`;
     }
 
     // BTC
@@ -385,31 +531,9 @@ class CApp {
     if (t.GetCurrency() === `XRP` && t.GetType() === TransactionType.DEPOSIT) {
       let tx = details.substr(details.search(`/`) + 1, details.length).trim();
       detailshtml =
-        details.substr(0, details.search(`/`) + 2) +
-        `<a href="https://xrpscan.com/tx/` +
-        tx +
-        `">` +
-        tx +
-        `</a>`;
+        details.substr(0, details.search(`/`) + 2) + `<a href="https://xrpscan.com/tx/` + tx + `">` + tx + `</a>`;
     }
     return detailshtml;
-  }
-
-  /////////////////////////////////////////////////////
-  /// ETC
-  /////////////////////////////////////////////////////
-  /**
-   * Start header background animation particle system
-   */
-  #StartParticleSystem() {
-    tsParticles
-      .loadJSON("tsparticles", "/js/psHeader.json")
-      .then((container) => {
-        //console.log("callback - tsparticles config loaded");
-      })
-      .catch((error) => {
-        console.error(error);
-      });
   }
 }
 
