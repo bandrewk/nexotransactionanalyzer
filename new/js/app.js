@@ -94,8 +94,6 @@ class CApp {
         "Failed parsing document: Unable to catch all handles. Please verify that the script is loaded as module and the HTML is intact."
       );
     }
-
-    this.#RenderOverviewGraphs();
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -392,94 +390,10 @@ class CApp {
   </div>`;
 
     this.#m_eOverview.insertAdjacentHTML(`afterbegin`, html);
-  }
 
-  #RenderOverviewGraphs() {
-    var trace1 = {
-      type: "bar",
-      x: [1, 2, 3, 4],
-      y: [5, 10, 2, 8],
-      marker: {
-        color: "#C8A2C8",
-        line: {
-          width: 2.5,
-        },
-      },
-    };
-
-    var data = [trace1];
-
-    var layout = {
-      title: "Interest earned (USD)",
-      autosize: true,
-    };
-
-    var config = { responsive: true };
-
-    Plotly.newPlot("ov-graph-interestearned", data, layout, config);
-
-    var trace1 = {
-      type: "bar",
-      x: [1, 2, 3, 4],
-      y: [5, 10, 2, 8],
-      marker: {
-        color: "#C8A2C8",
-        line: {
-          width: 2.5,
-        },
-      },
-    };
-
-    var data = [trace1];
-
-    var layout = {
-      title: "Deposits and Withdrawls (USD)",
-      autosize: true,
-    };
-
-    var config = { responsive: true };
-
-    Plotly.newPlot("ov-graph-dws", data, layout, config);
-
-    /////////////////////////////////////////////////////////////////////////////
-    // Pie chart
-    /////////////////////////////////////////////////////////////////////////////
-    var trace1 = {
-      values: [19, 26, 55],
-      labels: ["Residential", "Non-Residential", "Utility"],
-      type: "pie",
-    };
-
-    var data = [trace1];
-
-    var layout = {
-      title: "Portfolio division",
-      autosize: true,
-    };
-
-    var config = { responsive: true };
-
-    Plotly.newPlot("ov-graph-pdivision", data, layout, config);
-
-    /////////////////////////////////////////////////////////////////////////////
-    // Pie chart
-    /////////////////////////////////////////////////////////////////////////////
-    var trace1 = {
-      values: [19, 26, 55],
-      labels: ["Residential", "Non-Residential", "Utility"],
-      type: "pie",
-    };
-
-    var data = [trace1];
-
-    var layout = {
-      title: "Asset division",
-      autosize: true,
-    };
-
-    var config = { responsive: true };
-
-    Plotly.newPlot("ov-graph-adivision", data, layout, config);
+    // Draw charts
+    this.#m_cStatistics.DrawPieCharts();
+    this.#m_cStatistics.DrawLineCharts(this.#m_arrTransaction);
   }
 
   /////////////////////////////////////////////////////////////////////////////

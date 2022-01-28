@@ -165,8 +165,7 @@ export class CStatistics {
     const amount1 = amount.substr(0, amount.search(`/`));
     const amount2 = amount.substr(amount.search(`/`) + 1, cur.length);
 
-    if (isNaN(amount1) || isNaN(amount2))
-      alert("Transaction file is invalid! Could not find exchange values.");
+    if (isNaN(amount1) || isNaN(amount2)) alert("Transaction file is invalid! Could not find exchange values.");
 
     // Add them individually
     this.AddCurrency(t, cur1, amount1);
@@ -218,9 +217,7 @@ export class CStatistics {
             // Set interest earned in-coin value
             this.#m_arrCurrency
               .get(currency)
-              .SetInterestEarnedInUSD(
-                value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind()
-              );
+              .SetInterestEarnedInUSD(value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind());
           }
         } else if (response.status === "rejected") {
           // Failed
@@ -255,13 +252,9 @@ export class CStatistics {
     // Go through all stored currencies
     this.#m_arrCurrency.forEach((e) => {
       html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
-<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e
-        .GetType()
-        .toLowerCase()}" />
+<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}" />
 <h3>${e.GetType()}</h3>
-<h4>${
-        e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : parseFloat(e.GetAmount().toFixed(8))
-      }</h4>
+<h4>${e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : parseFloat(e.GetAmount().toFixed(8))}</h4>
 <p>~$${e.GetUSDEquivalent().toFixed(2)}</p>
 </div>`;
     }); // parseFloat removes the padding that toFixed() leaves !
@@ -282,9 +275,7 @@ export class CStatistics {
       if (e.GetInterestEarnedInKind() === 0) return;
 
       html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
-<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e
-        .GetType()
-        .toLowerCase()}" />
+<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}" />
 <h3>${e.GetType()}</h3>
 <h4>${
         e.GetInterestEarnedInKind() % 1 === 0
@@ -377,9 +368,7 @@ export class CStatistics {
               console.log(`~~${currency + ` - ` + value}$`);
             } else console.log(`~~${currency} not found (${urls[index]})`);
           } else {
-            console.log(
-              `Could not identify API response.. stopping portolio graph generation (${urls[index]}).`
-            );
+            console.log(`Could not identify API response.. stopping portolio graph generation (${urls[index]}).`);
             return;
           }
         } else if (response.status === "rejected") {
@@ -406,18 +395,26 @@ export class CStatistics {
     return groupedbyday;
   }
 
+  /////////////////////////////////////////////////////
+  /// Charts
+  /////////////////////////////////////////////////////
   /**
-   * TODO, CHECK, REVISE
+   * Draw pie charts in `overview` page
    */
   DrawPieCharts() {
+    /////////////////////////////////////////////////////
+    /// Pie chart `Portfolio division`
+    /////////////////////////////////////////////////////
     let names = [];
     this.#m_arrCurrency.forEach((e) => {
       names.push(e.GetType());
     });
+
     let amounts = [];
     this.#m_arrCurrency.forEach((e) => {
       amounts.push(e.GetUSDEquivalent());
     });
+
     var data = [
       {
         type: "pie",
@@ -429,13 +426,19 @@ export class CStatistics {
       },
     ];
 
-    var layout = {
-      //margin: { t: 0, b: 0, l: 0, r: 0 },
+    let layout = {
       showlegend: true,
       title: "Portfolio division",
+      autosize: true,
     };
-    Plotly.newPlot("tester", data, layout);
 
+    const config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-pie1", data, layout, config);
+
+    /////////////////////////////////////////////////////
+    /// Pie chart `Asset division`
+    /////////////////////////////////////////////////////
     let fiat = 0;
     let scoin = 0;
     let crypto = 0;
@@ -463,11 +466,123 @@ export class CStatistics {
     ];
 
     layout = {
-      //margin: { t: 0, b: 0, l: 0, r: 0 },
       showlegend: true,
       title: "Asset division",
+      autosize: true,
     };
-    Plotly.newPlot("tester4", data, layout);
+    Plotly.newPlot("ov-graph-pie2", data, layout, config);
+  }
+
+  DrawLineCharts(arrTransaction) {
+    /////////////////////////////////////////////////////
+    /// Deposits and Withdrawals
+    /////////////////////////////////////////////////////
+    let arrDepositData = new Map();
+    let arrWithdrawData = new Map();
+    let arrInterestData = new Map();
+
+    // Collect data
+    arrTransaction.forEach((e) => {
+      const tmpDate = e.GetDateTime().substr(0, 10);
+
+      // Collect deposits
+      if (e.GetType() === TransactionType.DEPOSIT || e.GetType() === TransactionType.DEPOSITTOEXCHANGE) {
+        if (arrDepositData.get(tmpDate)) {
+          // There is alrady an entry for that day
+          arrDepositData.set(tmpDate, arrDepositData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()).toFixed(2));
+        } else arrDepositData.set(tmpDate, parseFloat(e.GetUSDEquivalent()).toFixed(2));
+      }
+
+      // Collect withdrawals
+      if (e.GetType() === TransactionType.WITHDRAWAL || e.GetType() === TransactionType.WITHDRAWEXCHANGED) {
+        if (arrWithdrawData.get(tmpDate)) {
+          // There is alrady an entry for that day
+          arrWithdrawData.set(tmpDate, arrWithdrawData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()).toFixed(2));
+        } else arrWithdrawData.set(tmpDate, -parseFloat(e.GetUSDEquivalent()).toFixed(2));
+      }
+
+      // Grab data for next chart too while we're in here
+      // Collect interest data
+      if (e.GetType() === TransactionType.INTEREST) {
+        if (arrInterestData.get(tmpDate)) {
+          // There is alrady an entry for that day
+          arrInterestData.set(tmpDate, arrInterestData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()));
+        } else {
+          arrInterestData.set(tmpDate, parseFloat(e.GetUSDEquivalent()));
+          console.log(parseFloat(e.GetUSDEquivalent()));
+        }
+      }
+    });
+
+    let trace1 = {
+      x: [...arrDepositData.keys()],
+      y: [...arrDepositData.values()],
+
+      name: `Deposits`,
+      mode: "lines+markers",
+      marker: {
+        size: 8,
+      },
+      line: {
+        width: 2,
+      },
+      connectgaps: true,
+    };
+
+    let trace2 = {
+      x: [...arrWithdrawData.keys()],
+      y: [...arrWithdrawData.values()],
+      mode: "lines+markers",
+      name: `Withdrawals`,
+      marker: {
+        size: 8,
+      },
+      line: {
+        width: 2,
+      },
+      connectgaps: true,
+    };
+
+    let data = [trace1, trace2];
+    let layout = {
+      title: "Deposits and Withdrawls (USD)",
+      autosize: true,
+      yaxis: {
+        title: "USD",
+        showline: false,
+      },
+    };
+
+    const config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-line1", data, layout, config);
+
+    /////////////////////////////////////////////////////
+    /// Interest earned per day
+    /////////////////////////////////////////////////////
+
+    console.log(arrInterestData);
+    trace1 = {
+      x: [...arrInterestData.keys()],
+      y: [...arrInterestData.values()],
+      type: `bar`,
+      name: `Interest earned`,
+      line: {
+        dash: "solid",
+        width: 2,
+      },
+    };
+
+    data = [trace1];
+    layout = {
+      title: "Interest earned (USD)",
+      autosize: true,
+      yaxis: {
+        title: "USD",
+        showline: false,
+      },
+    };
+    Plotly.newPlot("ov-graph-line2", data, layout, config);
   }
 
   /////////////////////////////////////////////////////////////////////////////
