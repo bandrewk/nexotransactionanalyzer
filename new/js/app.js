@@ -236,6 +236,10 @@ class CApp {
     // Navigate
     this.#m_cNavigator.ShowPage(Page.OVERVIEW);
 
+    // Register callbacks on navigator module
+    this.#m_cNavigator.AddPageChangedCallback(Page.TRANSACTIONS, this.OnPageTransactionsOpened.bind(this));
+    this.#m_cNavigator.AddPageChangedCallback(Page.OVERVIEW, this.OnPageOverviewOpened.bind(this));
+
     // Show menu
     //this.#m_eHeaderMenu.classList.remove("hidden");
     tsParticles
@@ -358,6 +362,23 @@ class CApp {
     ];
   }
 
+  /**
+   * Force table to be redrawn to adjust to any window size changes while it was hidden
+   */
+  OnPageTransactionsOpened() {
+    this.OnWindowResize();
+  }
+
+  /**
+   * Force all graphs to be redrawn to adjust to any window size changes while it was hidden
+   */
+  OnPageOverviewOpened() {
+    Plotly.update("ov-graph-line1");
+    Plotly.update("ov-graph-line2");
+    Plotly.update("ov-graph-pie1");
+    Plotly.update("ov-graph-pie2");
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // Coinlist
   /////////////////////////////////////////////////////////////////////////////
@@ -447,27 +468,20 @@ class CApp {
     // ERC-20
     if ((t.GetCurrency() === `ETH` || t.GetCurrency() === `LINK`) && t.GetType() === TransactionType.DEPOSIT) {
       let tx = details.substr(details.search(`/`) + 1, details.length).trim();
-      detailshtml =
-        details.substr(0, details.search(`/`) + 2) + `<a href="https://etherscan.io/tx/` + tx + `">` + tx + `</a>`;
+      detailshtml = details.substr(0, details.search(`/`) + 2) + `<a href="https://etherscan.io/tx/` + tx + `">` + tx + `</a>`;
     }
 
     // BTC
     if (t.GetCurrency() === `BTC` && t.GetType() === TransactionType.DEPOSIT) {
       let tx = details.substr(details.search(`/`) + 1, details.length).trim();
       detailshtml =
-        details.substr(0, details.search(`/`) + 2) +
-        `<a href="https://www.blockchain.com/btc/tx/` +
-        tx +
-        `">` +
-        tx +
-        `</a>`;
+        details.substr(0, details.search(`/`) + 2) + `<a href="https://www.blockchain.com/btc/tx/` + tx + `">` + tx + `</a>`;
     }
 
     // XRP
     if (t.GetCurrency() === `XRP` && t.GetType() === TransactionType.DEPOSIT) {
       let tx = details.substr(details.search(`/`) + 1, details.length).trim();
-      detailshtml =
-        details.substr(0, details.search(`/`) + 2) + `<a href="https://xrpscan.com/tx/` + tx + `">` + tx + `</a>`;
+      detailshtml = details.substr(0, details.search(`/`) + 2) + `<a href="https://xrpscan.com/tx/` + tx + `">` + tx + `</a>`;
     }
     return detailshtml;
   }

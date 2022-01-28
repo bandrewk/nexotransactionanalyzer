@@ -193,9 +193,7 @@ export class CStatistics {
 
     // Go easy with the APIs and delay the calls a little (5 calls per sec max)
     let i = 0;
-    let apiRequests = urls.map((url) =>
-      this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json()))
-    );
+    let apiRequests = urls.map((url) => this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json())));
     console.log(`Loading exchange rates.. requesting data for ~${i / 1000}s`);
 
     // Wait for  all promises to settle
@@ -211,9 +209,7 @@ export class CStatistics {
             const value = parseFloat(response.value.data.rates.USD);
 
             // Look up currency and set the usd value
-            this.#m_arrCurrency
-              .get(currency)
-              .SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
+            this.#m_arrCurrency.get(currency).SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
 
             // Set interest earned in-coin value
             this.#m_arrCurrency
@@ -309,9 +305,7 @@ export class CStatistics {
     // Make promises resolve to their final value
     // go easy with the APIs and delay the calls a little (5 calls per sec max)
     let i = 0;
-    let apiRequests = urls.map((url) =>
-      this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json()))
-    );
+    let apiRequests = urls.map((url) => this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json())));
 
     console.log(`~Load time ~${i}ms`);
 

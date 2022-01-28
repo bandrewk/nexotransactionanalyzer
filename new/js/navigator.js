@@ -38,13 +38,22 @@ export class CNavigator {
   /**
    * Contains menu buttons as DOM elements
    */
-  #m_mButton;
+  #m_arrButton;
+
   /**
    * Contains page sections as DOM elements
    */
-  #m_mPage;
+  #m_arrPage;
 
+  /**
+   * Wrapper for all content besides home
+   */
   #m_ePageWrap;
+
+  /**
+   * Contains registered callbacks for pagechanges
+   */
+  #m_arrCallback;
 
   constructor() {
     this.#ParseDocument();
@@ -59,26 +68,27 @@ export class CNavigator {
   #ParseDocument() {
     let bFailed = false;
 
-    this.#m_mButton = new Map();
-    this.#m_mPage = new Map();
+    this.#m_arrButton = new Map();
+    this.#m_arrPage = new Map();
+    this.#m_arrCallback = new Map();
 
     // Load pages
-    this.#m_mPage.set(State.HOME, document.querySelector("#PageHome"));
-    this.#m_mPage.set(State.COINLIST, document.querySelector("#PageCoinlist"));
-    this.#m_mPage.set(State.OVERVIEW, document.querySelector("#PageOverview"));
-    this.#m_mPage.set(State.TRANSACTIONS, document.querySelector("#PageTransactions"));
+    this.#m_arrPage.set(State.HOME, document.querySelector("#PageHome"));
+    this.#m_arrPage.set(State.COINLIST, document.querySelector("#PageCoinlist"));
+    this.#m_arrPage.set(State.OVERVIEW, document.querySelector("#PageOverview"));
+    this.#m_arrPage.set(State.TRANSACTIONS, document.querySelector("#PageTransactions"));
 
-    this.#m_mPage.forEach((element) => {
+    this.#m_arrPage.forEach((element) => {
       if (!element) bFailed = true;
     });
 
     // Load buttons
-    this.#m_mButton.set(State.HOME, document.querySelector("#btn-home"));
-    this.#m_mButton.set(State.COINLIST, document.querySelector("#btn-coinlist"));
-    this.#m_mButton.set(State.OVERVIEW, document.querySelector("#btn-overview"));
-    this.#m_mButton.set(State.TRANSACTIONS, document.querySelector("#btn-transactions"));
+    this.#m_arrButton.set(State.HOME, document.querySelector("#btn-home"));
+    this.#m_arrButton.set(State.COINLIST, document.querySelector("#btn-coinlist"));
+    this.#m_arrButton.set(State.OVERVIEW, document.querySelector("#btn-overview"));
+    this.#m_arrButton.set(State.TRANSACTIONS, document.querySelector("#btn-transactions"));
 
-    this.#m_mButton.forEach((element) => {
+    this.#m_arrButton.forEach((element) => {
       if (!element) bFailed = true;
     });
 
@@ -88,7 +98,7 @@ export class CNavigator {
     if (!this.#m_ePageWrap) bFailed = true;
 
     if (!bFailed) {
-      this.#m_mButton.forEach((element) => {
+      this.#m_arrButton.forEach((element) => {
         element.addEventListener("click", this.Clicked.bind(this));
       });
     } else {
@@ -106,30 +116,46 @@ export class CNavigator {
     //console.log(`Pressed ${e.target.id}`);
 
     switch (e.target.id) {
-      case this.#m_mButton.get(State.HOME).id:
+      case this.#m_arrButton.get(State.HOME).id:
         {
           if (this.#m_state === State.HOME) return;
           this.ShowPage(State.HOME);
         }
         break;
-      case this.#m_mButton.get(State.COINLIST).id:
+      case this.#m_arrButton.get(State.COINLIST).id:
         {
           if (this.#m_state === State.COINLIST) return;
           this.ShowPage(State.COINLIST);
         }
         break;
-      case this.#m_mButton.get(State.OVERVIEW).id:
+      case this.#m_arrButton.get(State.OVERVIEW).id:
         {
           if (this.#m_state === State.OVERVIEW) return;
           this.ShowPage(State.OVERVIEW);
         }
         break;
-      case this.#m_mButton.get(State.TRANSACTIONS).id:
+      case this.#m_arrButton.get(State.TRANSACTIONS).id:
         {
           if (this.#m_state === State.TRANSACTIONS) return;
           this.ShowPage(State.TRANSACTIONS);
         }
         break;
+    }
+
+    // Fire callback
+    if (this.#m_arrCallback.get(this.#m_state)) this.#m_arrCallback.get(this.#m_state)();
+  }
+
+  /**
+   * Calls the given `callback` when page `state` has been opened
+   * @param {*} state State
+   * @param {*} callback Callback to call
+   */
+  AddPageChangedCallback(state, callback) {
+    if (this.#m_arrCallback.get(state)) {
+      throw new Error(`Callback for ${state} is already registered`);
+    } else {
+      this.#m_arrCallback.set(state, callback);
     }
   }
 
@@ -138,19 +164,26 @@ export class CNavigator {
    * @param {} state Page to switch to
    */
   ShowPage(state) {
-    this.#m_mButton.forEach((element) => {
+    // Default style all buttons
+    this.#m_arrButton.forEach((element) => {
       element.parentNode.classList.remove(`pure-menu-selected`);
     });
 
-    this.#m_mPage.forEach((element) => {
+    // Hide all pages
+    this.#m_arrPage.forEach((element) => {
       element.classList.add(`hidden`);
     });
 
-    this.#m_mButton.get(state).parentNode.classList.add(`pure-menu-selected`);
-    this.#m_mPage.get(state).classList.remove(`hidden`);
+    // Highlight button and show page
+    this.#m_arrButton.get(state).parentNode.classList.add(`pure-menu-selected`);
+    this.#m_arrPage.get(state).classList.remove(`hidden`);
 
+    // Hide content wrap in Home
     if (state === State.HOME) {
       this.#m_ePageWrap.classList.add("hidden");
     } else this.#m_ePageWrap.classList.remove("hidden");
+
+    // Register state
+    this.#m_state = state;
   }
 }
