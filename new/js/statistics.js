@@ -188,6 +188,7 @@ export class CStatistics {
     });
 
     // Make promises resolve to their final value
+    // This would fire all calls at once but we can't do that due to API limits
     // let apiRequests = urls.map((url) => fetch(url).then((res) => res.json()));
 
     // Go easy with the APIs and delay the calls a little (5 calls per sec max)
@@ -473,6 +474,10 @@ export class CStatistics {
     Plotly.newPlot("ov-graph-pie2", data, layout, config);
   }
 
+  /**
+   * Draw line charts in `overview` page
+   * @param {*} arrTransaction Transaction array from CAPP
+   */
   DrawLineCharts(arrTransaction) {
     /////////////////////////////////////////////////////
     /// Deposits and Withdrawals
@@ -509,7 +514,6 @@ export class CStatistics {
           arrInterestData.set(tmpDate, arrInterestData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()));
         } else {
           arrInterestData.set(tmpDate, parseFloat(e.GetUSDEquivalent()));
-          console.log(parseFloat(e.GetUSDEquivalent()));
         }
       }
     });
@@ -545,7 +549,7 @@ export class CStatistics {
 
     let data = [trace1, trace2];
     let layout = {
-      title: "Deposits and Withdrawls (USD)",
+      title: "Deposits and Withdrawls",
       autosize: true,
       yaxis: {
         title: "USD",
@@ -575,7 +579,7 @@ export class CStatistics {
 
     data = [trace1];
     layout = {
-      title: "Interest earned (USD)",
+      title: "Interest earned",
       autosize: true,
       yaxis: {
         title: "USD",
