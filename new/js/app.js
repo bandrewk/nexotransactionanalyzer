@@ -234,10 +234,18 @@ class CApp {
     this.#m_cStatistics.GetCurrentExchangeRates(this.ReceiveCurrentExchangeRates.bind(this));
 
     // Navigate
-    this.#m_cNavigator.ShowPage(Page.TRANSACTIONS);
+    this.#m_cNavigator.ShowPage(Page.OVERVIEW);
 
     // Show menu
     //this.#m_eHeaderMenu.classList.remove("hidden");
+    tsParticles
+      .loadJSON("loader", "/js/psHeader.json")
+      .then((container) => {
+        //console.log("callback - tsparticles config loaded");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   }
 
   /**
@@ -246,6 +254,7 @@ class CApp {
   ReceiveCurrentExchangeRates() {
     this.#RenderCoinlist();
     this.#RenderOverview();
+    this.#FreeParticleSystems();
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -380,7 +389,7 @@ class CApp {
     <h2> ${this.#m_cStatistics.GetTotalInterestEarnedAsUSD().toFixed(2)}$</h2>
     <p>💸 Interest earned</p>
   </div>
-  <div class="pure-u-1-2 pure-u-lg-1-8 overview-element">
+  <div class="pure-u-1-2 pure-u-lg-1-8 overview-element" style="opacity: 0.5">
     <h2>0$</h2> <!-- Not yet implemented. -->
     <p>🙇‍♂️ Outstanding loans</p>
   </div>
@@ -411,6 +420,19 @@ class CApp {
       .catch((error) => {
         console.error(error);
       });
+  }
+
+  /**
+   * Stop and destroys unused particle systems to free resources
+   */
+  #FreeParticleSystems() {
+    let particles = tsParticles.domItem(0);
+    particles.stop();
+    particles.destroy();
+
+    particles = tsParticles.domItem(1);
+    particles.stop();
+    particles.destroy();
   }
 
   /**
