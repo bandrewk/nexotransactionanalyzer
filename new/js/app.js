@@ -63,6 +63,21 @@ class CApp {
 
     this.#m_cNavigator = new CNavigator();
     this.#m_cStatistics = new CStatistics();
+
+    //localStorage.removeItem("info-csv");
+    if (!localStorage.getItem("info-csv")) {
+      Swal.fire({
+        icon: "info",
+        title: "Nexo.io CSV export",
+        text: `Nexo's export functionality is currently not working as intended. Older exported transactions (before 12/21) will work though.`,
+        //footer: '<a href="">Why do I have this issue?</a>',
+      }).then((result) => {
+        /* Reload page when confirmed */
+        if (result.isConfirmed) {
+          localStorage.setItem("info-csv", "1");
+        }
+      });
+    }
   }
 
   /**
@@ -139,6 +154,9 @@ class CApp {
     // init array
     this.#m_arrTransaction = [];
 
+    // Init raw array
+    this.#m_arrRawTransactionData = [];
+
     // split by line
     let arr = content.split("\n");
 
@@ -147,15 +165,23 @@ class CApp {
 
     // Quick check if headers and data are present
     if (headers.length != 8 || arr.length <= 1) {
-      const error = "Transactions .CSV file is invalid. Please check and reload page.";
+      const error = "Invalid transaction file. Please reload and try again.";
 
       // Exit
-      alert(error);
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: error,
+        //footer: '<a href="">Why do I have this issue?</a>',
+      }).then((result) => {
+        /* Reload page when confirmed */
+        if (result.isConfirmed) {
+          location.reload();
+        }
+      });
+
       throw new Error(error);
     }
-
-    // Init raw array
-    this.#m_arrRawTransactionData = [];
 
     // Go through data line by line
     for (let i = 1; i < arr.length; i++) {
@@ -165,6 +191,7 @@ class CApp {
         obj[headers[j].trim()] = data[j].trim();
       }
 
+      console.log(obj);
       //
       this.#m_arrTransaction.push(
         new CTransaction(
