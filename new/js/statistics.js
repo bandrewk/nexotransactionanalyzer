@@ -27,7 +27,7 @@ export const LoyalityLevel = {
   BASE: `BASE`, // <1% nexo tokens
   SILVER: `<span style="color: #c0c0c0">🥈 SILVER</span>`, // >1-5%
   GOLD: `<span style="color: #ffd700">🥇 GOLD</span>`, // >5-10%
-  PLATINUM: `<span style="color: #e5e4e2">🔥 PLATINUM</span>`, // >10%
+  PLATINUM: `<span style="color: #c0bdb9">🔥 PLATINUM</span>`, // >10%
 };
 
 /**
@@ -129,8 +129,18 @@ export class CStatistics {
     // Check for valid values, if this fails the csv is messed up
     if (isNaN(amount)) {
       const errormsg =
-        "Transaction file is invalid! Stopping execution. Could not receive exchange values (Look at exchange transactions there probably a value missing).";
-      alert(errormsg);
+        "Transaction file is invalid! Could not receive exchange values (Look at exchange transactions there probably a value missing).";
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: errormsg,
+        //footer: '<a href="">Why do I have this issue?</a>',
+      }).then((result) => {
+        /* Reload page when confirmed */
+        if (result.isConfirmed) {
+          location.reload();
+        }
+      });
 
       // It makes no sense to continue execution after we failed here
       throw new Error(errormsg);
