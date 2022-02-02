@@ -569,7 +569,6 @@ export class CStatistics {
     /// Interest earned per day
     /////////////////////////////////////////////////////
 
-    console.log(arrInterestData);
     trace1 = {
       x: [...arrInterestData.keys()],
       y: [...arrInterestData.values()],
@@ -647,6 +646,15 @@ export class CStatistics {
     if (isNaN(value)) value = -1;
 
     return value;
+  }
+
+  /**
+   * Get CCurrency object
+   * @returns CCurrency object
+   */
+  GetCCurrency(cur) {
+    if (this.#m_arrCurrency.get(cur)) return this.#m_arrCurrency.get(cur);
+    else return null;
   }
 
   /**

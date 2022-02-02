@@ -191,53 +191,6 @@ export class CCurrency {
     this.#m_fUSDEquivalent = amount;
   }
 
-  /// TODO Add all currencies
-  GetFullName() {
-    switch (this.#m_type) {
-      // Currencies
-      case CurrencyType.BTC:
-        {
-          return "Bitcoin";
-        }
-        break;
-      case CurrencyType.ETH:
-        {
-          return "Ethereum";
-        }
-        break;
-      case CurrencyType.XRP:
-        {
-          return "XRP";
-        }
-        break;
-      // ERC-20 Tokens
-      case CurrencyType.NEXO:
-        {
-          return "NEXO Token";
-        }
-        break;
-      case CurrencyType.LINK:
-        {
-          return "Chainlink";
-        }
-        break;
-      // FIAT
-      case CurrencyType.EUR:
-        {
-          return "Euro";
-        }
-        break;
-      case CurrencyType.USD:
-        {
-          return "Dollar";
-        }
-        break;
-      default: {
-        return `not implemented`;
-      }
-    }
-  }
-
   // TODO: This is a mess! And currently only used to figure out portfoliio value
   // FIXME
   GetExchangeRate(history = false) {
@@ -290,15 +243,9 @@ export class CCurrency {
 
         // Format date for coinbase api (YYYY-MM-DD)
         const dateformated =
-          desiredDate.getFullYear() +
-          `-` +
-          (`0` + `${desiredDate.getMonth() + 1}`).substr(-2) +
-          `-` +
-          desiredDate.getDate();
+          desiredDate.getFullYear() + `-` + (`0` + `${desiredDate.getMonth() + 1}`).substr(-2) + `-` + desiredDate.getDate();
 
-        urls.push(
-          `https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${dateformated}`
-        );
+        urls.push(`https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${dateformated}`);
 
         // fetch(
         //   `https://api.coinbase.com/v2/prices/${
@@ -338,11 +285,7 @@ export class CCurrency {
    * @returns true if currency is FIAT
    */
   IsFiat() {
-    if (
-      this.GetType() === CurrencyType.EUR ||
-      this.GetType() === CurrencyType.USD ||
-      this.GetType() === CurrencyType.GBP
-    )
+    if (this.GetType() === CurrencyType.EUR || this.GetType() === CurrencyType.USD || this.GetType() === CurrencyType.GBP)
       return true;
     else return false;
   }
@@ -358,6 +301,21 @@ export class CCurrency {
       this.GetType() === CurrencyType.USDP ||
       this.GetType() === CurrencyType.USDC ||
       this.GetType() === CurrencyType.USDT
+    )
+      return true;
+    else return false;
+  }
+
+  /**
+   * Is ERC20 token? Includes ETH!
+   * @returns True if currency is ERC20 token
+   */
+  IsERC20Token() {
+    if (
+      this.GetType() === CurrencyType.ETH ||
+      this.GetType() === CurrencyType.LINK ||
+      this.GetType() === CurrencyType.USDT ||
+      this.GetType() === CurrencyType.NEXO
     )
       return true;
     else return false;

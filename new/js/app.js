@@ -19,6 +19,7 @@
 import { CNavigator, State as Page } from "/js/navigator.js";
 import { CTransaction, TransactionType } from "/js/transaction.js";
 import { CStatistics } from "/js/statistics.js";
+import { CCurrency, CurrencyType } from "./currency.js";
 
 /**
  * Application module
@@ -28,6 +29,7 @@ class CApp {
   #m_eDropZone;
   #m_btnRawData;
   #m_eOverview;
+  #m_btnDemo;
 
   // Coinlist
   #m_eCoinlistEarnedInCoin;
@@ -86,6 +88,7 @@ class CApp {
   #ParseDocument() {
     let bFailed = false;
 
+    // Drop zone
     this.#m_eDropZone = document.querySelector(".home-dropzone");
 
     if (this.#m_eDropZone) {
@@ -93,16 +96,27 @@ class CApp {
       this.#m_eDropZone.addEventListener("dragover", this.DragOver);
     } else bFailed = true;
 
+    // Button raw data
     this.#m_btnRawData = document.querySelector("#btnRawData");
-    this.#m_btnRawData.addEventListener("click", this.OnBtnRawDataClicked.bind(this));
-    if (!this.#m_btnRawData) bFailed = true;
 
+    if (this.#m_btnRawData) {
+      this.#m_btnRawData.addEventListener("click", this.OnBtnRawDataClicked.bind(this));
+    } else bFailed = true;
+
+    // Coinlist
     this.#m_eCoinlistEarnedInCoin = document.querySelector("#coinlist-earnedInCoin");
     this.#m_eCoinlistPortfolio = document.querySelector("#coinlist-portfolio");
     if (!(this.#m_eCoinlistEarnedInCoin && this.#m_eCoinlistPortfolio)) bFailed = true;
 
+    // Overview
     this.#m_eOverview = document.querySelector("#overview");
     if (!this.#m_eOverview) bFailed = true;
+
+    // Button demo
+    this.#m_btnDemo = document.querySelector("#btnDemo");
+    if (this.#m_btnDemo) {
+      this.#m_btnDemo.addEventListener("click", this.OnBtnDemoClicked.bind(this));
+    } else bFailed = true;
 
     if (bFailed) {
       console.log(
@@ -191,7 +205,6 @@ class CApp {
         obj[headers[j].trim()] = data[j].trim();
       }
 
-      console.log(obj);
       //
       this.#m_arrTransaction.push(
         new CTransaction(
@@ -249,9 +262,6 @@ class CApp {
     // Sing up for resize messages
     window.addEventListener("resize", this.OnWindowResize.bind(this));
 
-    // Render table pretty
-    this.RenderTransaction();
-
     // By default, the pretty table is rendered
     this.#m_bRawTableActive = false;
 
@@ -285,6 +295,7 @@ class CApp {
   ReceiveCurrentExchangeRates() {
     this.#RenderCoinlist();
     this.#RenderOverview();
+    this.RenderTransaction();
     this.#FreeParticleSystems();
   }
 
@@ -322,6 +333,25 @@ class CApp {
     this.#m_bRawTableActive = !this.#m_bRawTableActive;
     this.#m_btnRawData.classList.toggle(`pure-button-active`);
     this.RenderTransaction(this.#m_bRawTableActive);
+  }
+
+  /**
+   * Load demo content
+   */
+  OnBtnDemoClicked() {
+    fetch("demo-data.csv")
+      .then((response) => response.text())
+      .then((content) => {
+        // Do something with your data
+        this.ProcessFile(content);
+
+        Swal.fire({
+          icon: "info",
+          title: "Demo mode",
+          text: `This demo contains some sample data to verify functionality. It doesn't necessarily make sense.`,
+          //footer: '<a href="">Why do I have this issue?</a>',
+        });
+      });
   }
 
   /**
@@ -376,15 +406,14 @@ class CApp {
     )
       type = `⏬ ` + type;
 
-    // This is prone to XSS attacks
     return [
       t.GetId(),
       type,
       gridjs.html(currency),
-      t.GetAmount(true),
-      `$${t.GetUSDEquivalent(true)}`,
+      parseFloat(t.GetAmount(true)),
+      `$${parseFloat(t.GetUSDEquivalent(true))}`,
       gridjs.html(this.LinkTXsToExplorer(t, details)),
-      t.GetOutstandingLoan(),
+      `$${parseFloat(t.GetOutstandingLoan())}`,
       t.GetDateTime(),
     ];
   }
@@ -487,29 +516,51 @@ class CApp {
    * Hyperlinks a blockchain tx to it's explorer website
    * @param {*} t Transaction
    * @param {*} details Details string
-   * @returns Details with linked tx
+   * @returns Details with linked tx if successful otherwise will return passed details
    */
   LinkTXsToExplorer(t, details) {
     let detailshtml = details;
 
-    // ERC-20
-    if ((t.GetCurrency() === `ETH` || t.GetCurrency() === `LINK`) && t.GetType() === TransactionType.DEPOSIT) {
-      let tx = details.substr(details.search(`/`) + 1, details.length).trim();
-      detailshtml = details.substr(0, details.search(`/`) + 2) + `<a href="https://etherscan.io/tx/` + tx + `">` + tx + `</a>`;
+    if (t.GetType() != TransactionType.DEPOSIT) return detailshtml;
+
+    const tx = details.substr(details.search(`/`) + 1, details.length).trim();
+    let exp = null;
+
+    if (!this.#m_cStatistics.GetCCurrency(t.GetCurrency())) return details;
+
+    // Detect currency
+    if (this.#m_cStatistics.GetCCurrency(t.GetCurrency()).IsERC20Token()) {
+      //ERC20
+      exp = `https://etherscan.io/tx/`;
+    } else {
+      switch (t.GetCurrency()) {
+        case CurrencyType.BTC:
+          {
+            exp = `https://www.blockchain.com/btc/tx/`;
+          }
+          break;
+        case CurrencyType.XRP:
+          {
+            exp = `https://xrpscan.com/tx/`;
+          }
+          break;
+        case CurrencyType.DOGE:
+          {
+            exp = `https://blockchair.com/dogecoin/transaction/`;
+          }
+          break;
+        default:
+          {
+            // not implemented
+            return details;
+          }
+          break;
+      }
     }
 
-    // BTC
-    if (t.GetCurrency() === `BTC` && t.GetType() === TransactionType.DEPOSIT) {
-      let tx = details.substr(details.search(`/`) + 1, details.length).trim();
-      detailshtml =
-        details.substr(0, details.search(`/`) + 2) + `<a href="https://www.blockchain.com/btc/tx/` + tx + `">` + tx + `</a>`;
-    }
+    detailshtml =
+      details.substr(0, details.search(`/`) + 2) + `<a href="${exp}${tx}" target="_blank" rel="noopener noreferrer">${tx}</a>`;
 
-    // XRP
-    if (t.GetCurrency() === `XRP` && t.GetType() === TransactionType.DEPOSIT) {
-      let tx = details.substr(details.search(`/`) + 1, details.length).trim();
-      detailshtml = details.substr(0, details.search(`/`) + 2) + `<a href="https://xrpscan.com/tx/` + tx + `">` + tx + `</a>`;
-    }
     return detailshtml;
   }
 }
