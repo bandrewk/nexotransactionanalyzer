@@ -19,7 +19,7 @@
 import { CNavigator, State as Page } from "/js/navigator.js";
 import { CTransaction, TransactionType } from "/js/transaction.js";
 import { CStatistics } from "/js/statistics.js";
-import { CCurrency, CurrencyType } from "./currency.js";
+import { CurrencyType } from "/js/currency.js";
 
 /**
  * Application module
@@ -80,6 +80,9 @@ class CApp {
         }
       });
     }
+
+    // Use nexo api wherever possible
+    window.USE_NEXO_API = true;
   }
 
   /**
@@ -205,7 +208,10 @@ class CApp {
         obj[headers[j].trim()] = data[j].trim();
       }
 
-      //
+      // Sometimes theres an empty last line
+      if (obj.Transaction === "") break;
+
+      // Store transaction data
       this.#m_arrTransaction.push(
         new CTransaction(
           obj.Transaction,
@@ -272,21 +278,14 @@ class CApp {
 
     // Navigate
     this.#m_cNavigator.ShowPage(Page.OVERVIEW);
+    this.#m_cNavigator.ShowMenu();
 
     // Register callbacks on navigator module
     this.#m_cNavigator.AddPageChangedCallback(Page.TRANSACTIONS, this.OnPageTransactionsOpened.bind(this));
     this.#m_cNavigator.AddPageChangedCallback(Page.OVERVIEW, this.OnPageOverviewOpened.bind(this));
 
-    // Show menu
-    //this.#m_eHeaderMenu.classList.remove("hidden");
-    tsParticles
-      .loadJSON("loader", "/js/psHeader.json")
-      .then((container) => {
-        //console.log("callback - tsparticles config loaded");
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    // Loading anim
+    this.#StartLoadingAnimation();
   }
 
   /**
@@ -295,7 +294,7 @@ class CApp {
   ReceiveCurrentExchangeRates() {
     this.#RenderCoinlist();
     this.#RenderOverview();
-    this.RenderTransaction();
+    this.#RenderTransaction();
     this.#FreeParticleSystems();
   }
 
@@ -314,7 +313,7 @@ class CApp {
    * Renders the transactions table
    * @param {*} bRaw Render raw data?
    */
-  RenderTransaction(bRaw = false) {
+  #RenderTransaction(bRaw = false) {
     if (bRaw) {
       this.#m_cGrid.updateConfig({ data: this.#m_arrRawTransactionData }).forceRender();
       return;
@@ -332,7 +331,7 @@ class CApp {
   OnBtnRawDataClicked() {
     this.#m_bRawTableActive = !this.#m_bRawTableActive;
     this.#m_btnRawData.classList.toggle(`pure-button-active`);
-    this.RenderTransaction(this.#m_bRawTableActive);
+    this.#RenderTransaction(this.#m_bRawTableActive);
   }
 
   /**
@@ -362,10 +361,20 @@ class CApp {
   PrettierTransaction(t) {
     // Add icons to non-pair currencies
     let currency = t.GetCurrency();
+
     if (currency.search(`/`) === -1) {
-      currency =
-        `<img style="width: 16px; height: 16px" src="https://cryptoicon-api.vercel.app/api/icon/${currency.toLowerCase()}" /> ` +
-        currency;
+      // Nexo API
+      if (window.USE_NEXO_API) {
+        currency =
+          `<img style="width: 16px; height: 16px" src="https://static.nexo.io/currencies/${currency}${
+            this.#m_cStatistics.GetCCurrency(t.GetCurrency()).IsFiat() ? `X` : ``
+          }.svg" /> ` + currency;
+      } else {
+        // Third-party API
+        currency =
+          `<img style="width: 16px; height: 16px" src="https://cryptoicon-api.vercel.app/api/icon/${currency.toLowerCase()}" /> ` +
+          currency;
+      }
     }
 
     // Details
@@ -512,6 +521,17 @@ class CApp {
     particles.destroy();
   }
 
+  #StartLoadingAnimation() {
+    tsParticles
+      .loadJSON("loader", "/js/psHeader.json")
+      .then((container) => {
+        //console.log("callback - tsparticles config loaded");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
   /**
    * Hyperlinks a blockchain tx to it's explorer website
    * @param {*} t Transaction
@@ -547,6 +567,51 @@ class CApp {
         case CurrencyType.DOGE:
           {
             exp = `https://blockchair.com/dogecoin/transaction/`;
+          }
+          break;
+        case CurrencyType.BCH:
+          {
+            exp = `https://blockchair.com/bitcoin-cash/transaction/`;
+          }
+          break;
+        case CurrencyType.LTC:
+          {
+            exp = `https://blockchair.com/litecoin/transaction/`;
+          }
+          break;
+        case CurrencyType.EOS:
+          {
+            exp = `https://bloks.io/transaction/`;
+          }
+          break;
+        case CurrencyType.BNB:
+          {
+            exp = `https://binance.mintscan.io/txs/`;
+          }
+          break;
+        case CurrencyType.XLM:
+          {
+            exp = `https://stellarchain.io/tx/`;
+          }
+          break;
+        case CurrencyType.TRX:
+          {
+            exp = `https://tronscan.org/#/transaction/`;
+          }
+          break;
+        case CurrencyType.ADA:
+          {
+            exp = `https://explorer.cardano.org/de/transaction?id=`;
+          }
+          break;
+        case CurrencyType.DOT:
+          {
+            exp = `https://polkascan.io/polkadot/transaction/`;
+          }
+          break;
+        case CurrencyType.MATIC:
+          {
+            exp = `https://polygonscan.com/tx/`;
           }
           break;
         default:

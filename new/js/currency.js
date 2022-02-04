@@ -17,44 +17,54 @@
  */
 `use strict`;
 
-/////////////////////////////////////////////////////
-/// Transaction type definitions
-/////////////////////////////////////////////////////
+/**
+ * Currency type definitions
+ * The string equals to the definition in the .csv file
+ */
 export const CurrencyType = {
-  BTC: "BTC",
-  BCH: "BCH",
-  LTC: "LTC",
+  // Diverse blockchains
+  BTC: "BTC", // ✅ Fully working
+  BCH: "BCH", // ✅ Fully working ⚠️ Test me! ❔Icon
+  LTC: "LTC", // ✅ Fully working ⚠️ Test me! ❔Icon
 
-  EOS: "EOS",
-  BNB: "BNB",
-  XLM: "XLM",
+  EOS: "EOS", // ✅ Fully working ⚠️ Test me! ❔Icon
+  BNB: "BNB", // ✅ Fully working ⚠️ Test me! ❔Icon
+  XLM: "XLM", // ✅ Fully working ⚠️ Test me! ❔Icon
 
-  ETH: "ETH",
-  XRP: "XRP",
+  ETH: "ETH", // ✅ Fully working
+  XRP: "XRP", // ✅ Fully working
 
-  PAXG: "PAXG",
-  TRX: "TRX",
-  ADA: "ADA",
-  DOT: "DOT",
-  DOGE: "DOGE",
-  SOL: "SOL",
+  TRX: "TRX", // ⚠️ Test me! ❔Icon
+  ADA: "ADA", // ⚠️ Test me! ❔Icon
+  DOT: "DOT", // ⚠️ Test me! ❔Icon
+  DOGE: "DOGE", // ✅ Fully working
+  MATIC: "MATIC", // ⚠️ Test me! ❔Icon
+
+  // ❌ Disabled Top ups (no tx linking)
+  SOL: "SOL", // ❔Icon
+  LUNA: "LUNA", // ❔Icon
+  FTM: "FTM", // ❔Icon
+  AVAX: "AVAX", // ❔Icon
 
   // ERC-20
-  NEXO: "NEXO",
-  LINK: "LINK",
+  NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20
+  LINK: "LINK", // ✅ Fully working (ERC20)
+  PAXG: "PAXG", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
+  AXS: "AXS", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
+  UNI: "UNI", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
 
   // Stable Coins
-  DAI: "DAI",
-  TUSD: "TUSD",
-  USDP: "USDP",
-  USDC: "USDC",
-  USDT: "USDT",
+  DAI: "DAI", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
+  TUSD: "TUSD", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
+  USDP: "USDP", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
+  USDC: "USDC", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
+  USDT: "USDT", // ✅ Fully working (ERC20) ⚠️ Test me! ❔Icon
 
   // Fiat
   EUR: "EUR",
   USD: "USD",
   GBP: "GBP",
-}; //24
+}; // 30
 
 Object.freeze(CurrencyType);
 
@@ -315,7 +325,14 @@ export class CCurrency {
       this.GetType() === CurrencyType.ETH ||
       this.GetType() === CurrencyType.LINK ||
       this.GetType() === CurrencyType.USDT ||
-      this.GetType() === CurrencyType.NEXO
+      this.GetType() === CurrencyType.NEXO ||
+      this.GetType() === CurrencyType.USDC ||
+      this.GetType() === CurrencyType.USDP ||
+      this.GetType() === CurrencyType.TUSD ||
+      this.GetType() === CurrencyType.DAI ||
+      this.GetType() === CurrencyType.PAXG ||
+      this.GetType() === CurrencyType.AXS ||
+      this.GetType() === CurrencyType.UNI
     )
       return true;
     else return false;
