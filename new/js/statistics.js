@@ -255,11 +255,17 @@ export class CStatistics {
   GetCoinlistAsHTML() {
     // Start with empty string
     let html = ``;
+    let src = ``;
 
     // Go through all stored currencies
     this.#m_arrCurrency.forEach((e) => {
+      if (window.USE_NEXO_API) {
+        src = `https://static.nexo.io/currencies/${e.GetType()}${e.IsFiat() ? `X` : ``}.svg`;
+      } else {
+        src = `https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}`;
+      }
       html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
-<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}" />
+<img class="coinlist-icon" src="${src}" />
 <h3>${e.GetType()}</h3>
 <h4>${e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : parseFloat(e.GetAmount().toFixed(8))}</h4>
 <p>~$${e.GetUSDEquivalent().toFixed(2)}</p>
@@ -276,13 +282,19 @@ export class CStatistics {
   GetCoinlistEarnedInKindAsHTML() {
     // Start with empty string
     let html = ``;
-
+    let src = ``;
     // Go through all stored currencies
     this.#m_arrCurrency.forEach((e) => {
       if (e.GetInterestEarnedInKind() === 0) return;
 
+      if (window.USE_NEXO_API) {
+        src = `https://static.nexo.io/currencies/${e.GetType()}${e.IsFiat() ? `X` : ``}.svg"`;
+      } else {
+        src = `https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}`;
+      }
+
       html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
-<img class="coinlist-icon" src="https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}" />
+<img class="coinlist-icon" src="${src}" />
 <h3>${e.GetType()}</h3>
 <h4>${
         e.GetInterestEarnedInKind() % 1 === 0

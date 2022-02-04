@@ -186,4 +186,13 @@ export class CNavigator {
     // Register state
     this.#m_state = state;
   }
+
+  /**
+   * Shows the full menu
+   */
+  ShowMenu() {
+    this.#m_arrButton.forEach((element) => {
+      element.classList.remove(`hidden`);
+    });
+  }
 }
