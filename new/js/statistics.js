@@ -432,6 +432,47 @@ export class CStatistics {
       amounts.push(e.GetUSDEquivalent());
     });
 
+    // If we have more than 10 entries group small percentage amounts, otherwise the pie-chart won't be readable.
+    if (amounts.length > 10) {
+      // Everything below this percentage will be summarized
+      const MIN_PERCENTAGE = 1.5;
+
+      let total = 0;
+      let etc = 0;
+
+      amounts.forEach((x) => {
+        total += x;
+      });
+
+      const P = 100 / total;
+
+      for (let i = 0; i < amounts.length; i++) {
+        if (P * amounts[i] < MIN_PERCENTAGE) {
+          etc += amounts[i];
+
+          console.log(
+            `Grouped ${names[i]} with a value of ${amounts[i]} into ETC. Portfolio percentage is below ${MIN_PERCENTAGE} (${(
+              P * amounts[i]
+            ).toFixed(2)}%).`
+          );
+
+          // Setting them to NULL will make them invisible in the graph
+          amounts[i] = null;
+          names[i] = null;
+        }
+      }
+
+      names.push(`ETC < ${MIN_PERCENTAGE}%`);
+      amounts.push(etc);
+
+      // Inform user
+      Swal.fire({
+        icon: "info",
+        title: "Portfolio graph",
+        text: `Data in the portfolio graph has been grouped. Entries below ${MIN_PERCENTAGE}% of your portfolio are summarized in "ETC < ${MIN_PERCENTAGE}%".`,
+      });
+    }
+
     var data = [
       {
         type: "pie",

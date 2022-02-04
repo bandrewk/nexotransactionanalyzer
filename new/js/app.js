@@ -66,6 +66,17 @@ class CApp {
     this.#m_cNavigator = new CNavigator();
     this.#m_cStatistics = new CStatistics();
 
+    this.#DisplayInfo();
+
+    // Use nexo api wherever possible
+    window.USE_NEXO_API = true;
+  }
+
+  /**
+   * Display info about broken CSV export on nexo.io
+   * Only display it once when confirmed
+   */
+  #DisplayInfo() {
     //localStorage.removeItem("info-csv");
     if (!localStorage.getItem("info-csv")) {
       Swal.fire({
@@ -80,9 +91,6 @@ class CApp {
         }
       });
     }
-
-    // Use nexo api wherever possible
-    window.USE_NEXO_API = true;
   }
 
   /**
