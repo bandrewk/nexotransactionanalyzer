@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A layout example that shows off a responsive product landing page." />
+
     <title>Nexo Transaction Analyzer</title>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
 
     <!-- PURE CDN -->
     <link
@@ -17,7 +19,7 @@
 
     <!-- Font Awesome -->
     <!-- https://fontawesome.com/v4.7/icons/ -->
-    <script src="https://use.fontawesome.com/fd360d7507.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" crossorigin="anonymous" />
 
     <!-- TsParticles CDN -->
     <script src="https://unpkg.com/tsparticles@1.39.0/tsparticles.min.js"></script>
@@ -39,7 +41,7 @@
   <body>
     <div class="header">
       <div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
-        <a class="pure-menu-heading" href="">Nexo Transaction Analyzer</a>
+        <a class="pure-menu-heading" href=""><i class="fas fa-chart-bar"></i> Nexo Transaction Analyzer</a>
 
         <ul class="pure-menu-list">
           <li class="pure-menu-item pure-menu-selected">
@@ -75,9 +77,9 @@
               target="_blank"
               rel="noopener noreferrer"
               class="pure-button pure-button-primary"
-              ><i class="fa fa-github" aria-hidden="true"></i> Browse Source Code</a
+              ><i class="fab fa-github" aria-hidden="true"></i> Browse Source Code</a
             ><br /><br /><a href="#" class="pure-button pure-button-primary" id="btnDemo"
-              ><i class="fa fa-play-circle-o" aria-hidden="true"></i> Demo</a
+              ><i class="far fa-play-circle" aria-hidden="true"></i> Demo</a
             >
           </p>
         </div>
@@ -90,28 +92,28 @@
           <div class="pure-g">
             <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
               <h3 class="content-subhead">
-                <i class="fa fa-rocket"></i>
+                <i class="fa fa-table"></i>
                 Transactions
               </h3>
               <p>View, rewind and search in past transactions.</p>
             </div>
             <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
               <h3 class="content-subhead">
-                <i class="fa fa-mobile"></i>
+                <i class="fa fa-list"></i>
                 Coinlist
               </h3>
               <p>Easily see and track your coins.</p>
             </div>
             <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
               <h3 class="content-subhead">
-                <i class="fa fa-th-large"></i>
+                <i class="fa fa-chart-area"></i>
                 Graphs
               </h3>
               <p>Visualize your portfolio using graphs and charts.</p>
             </div>
             <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
               <h3 class="content-subhead">
-                <i class="fa fa-shield fa-6" aria-hidden="true"></i>
+                <i class="fa fa-user-shield fa-6" aria-hidden="true"></i>
                 Stay safe
               </h3>
               <p>
@@ -133,15 +135,28 @@
 
             Some features may not work yet. Such as:
             <ul>
-              <li>Loan tracking</li>
-              <li>Transaction linkage to blockchain explorer (TX linkage) for all currencies</li>
-              <li>Rejected transactions</li>
-              <li>Transactions for coins where more than one network is supported</li>
+              <li>❌ Loan tracking</li>
+              <li>❌ Handling rejected / failed transactions</li>
+              <li>❌ Transactions for coins where more than one network is supported</li>
             </ul>
-
-            Most of these features are not implemented because I simply did not see them yet.<br />
-            If you encounter trouble or want to help development send me a .csv to hello@nexo-ta.com. Data will be used in a
-            discrete manner.
+            What does work?
+            <ul>
+              <li>✅ Transaction tracking</li>
+              <li>✅ Transaction linkage to blockchain explorer (TX linkage) for all currencies</li>
+              <li>✅ Overview and graph generation</li>
+              <li>✅ Coinlist, including earned in-kind</li>
+              <li>✅ Portfolio value determination using exchange APIs</li>
+            </ul>
+            <!--
+            What is planned?
+            <ul>
+              <li>❔ Portfolio value over time graph</li>
+              <li>❔ More sorting functions for the transactions table including an export function</li>
+            </ul>
+-->
+            If you encounter any trouble feel free to send a not working .csv to hello@nexo-ta.com. It will be used in a discrete
+            manner to debug and fix the problem.
+            <br />
           </div>
         </div>
 
@@ -151,10 +166,17 @@
               <h2>Notice of Non-Affiliation and Disclaimer</h2>
 
               <p>
-                We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo Financial
-                LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can be found at
-                https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are registered trademarks
-                of their respective owners. <br /><br />
+                <b>
+                  We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo
+                  Financial LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can be
+                  found at https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are registered
+                  trademarks of their respective owners.</b
+                >
+                <br /><br />
+                This website is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+                warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+                details.
+                <br /><br />
                 Created by bandrewk. Support development:<br />
                 ETH: <> <br />BTC: <> <br />RVN: <>
               </p>
