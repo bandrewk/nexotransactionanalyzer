@@ -346,7 +346,7 @@ class CApp {
    * Load demo content
    */
   OnBtnDemoClicked() {
-    fetch("demo-data.csv")
+    fetch("demo-data-all-currencies.csv")
       .then((response) => response.text())
       .then((content) => {
         // Do something with your data
