@@ -202,8 +202,14 @@ export class CCurrency {
     this.#m_fUSDEquivalent = amount;
   }
 
-  // TODO: This is a mess! And currently only used to figure out portfoliio value
-  // FIXME
+  /**
+   * TODO, CHECK, REVISE
+   */
+  /**
+   * Unused mess
+   * @param {*} history
+   * @returns
+   */
   GetExchangeRate(history = false) {
     let urls = [];
     this.GetPortfolioValue().forEach((v, k, m) => {
