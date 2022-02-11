@@ -46,6 +46,7 @@ export const CurrencyType = {
   FTM: "FTM", // ✅ Fully working
   AVAX: "AVAX", // ✅ Fully working
   UST: "UST", // ✅ Fully working
+  ATOM: "ATOM", // ✅ Fully working
 
   // ERC-20
   NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20
@@ -304,6 +305,16 @@ export class CCurrency {
   IsFiat() {
     if (this.GetType() === CurrencyType.EUR || this.GetType() === CurrencyType.USD || this.GetType() === CurrencyType.GBP)
       return true;
+    else return false;
+  }
+
+  /**
+   * Check if currency (supplied as string) is FIAT
+   * @param {*} cur Currency string
+   * @returns true if currency is fiat
+   */
+  static IsFiat(cur) {
+    if (cur === CurrencyType.EUR || cur === CurrencyType.USD || cur === CurrencyType.GBP) return true;
     else return false;
   }
 
