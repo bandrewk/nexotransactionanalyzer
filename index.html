@@ -1,242 +1,270 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="loader.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A layout example that shows off a responsive product landing page." />
+
+    <title>Nexo Transaction Analyzer</title>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+
+    <!-- PURE CDN -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/purecss@2.0.6/build/pure-min.css"
+      integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/grids-responsive-min.css" />
+
+    <!-- Font Awesome -->
+    <!-- https://fontawesome.com/v4.7/icons/ -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" crossorigin="anonymous" />
+
+    <!-- TsParticles CDN -->
+    <script src="https://unpkg.com/tsparticles@1.39.0/tsparticles.min.js"></script>
+
+    <!-- GridJS CDN -->
+    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" />
+
+    <!-- Plotly CDN -->
     <script src="https://cdn.plot.ly/plotly-2.4.2.min.js"></script>
-    <script type="module" src="app.js"></script>
+
+    <!-- SweetAlert2 CDN -->
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Local -->
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script type="module" src="/js/app.js"></script>
   </head>
   <body>
-    <div class="header-container">
-      <h1>Nexo transacitons viewer</h1>
-      <div class="header-menu hidden">
-        <a id="btn-overview" href="#">Overview</a>
-        <a id="btn-coinlist" href="#">Coinlist</a>
-        <a id="btn-transactions" href="#">Transactions</a>
-        <a href="./index.html">EXIT</a>
+    <div class="header">
+      <div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+        <a class="pure-menu-heading" href=""><i class="fas fa-chart-bar"></i> Nexo Transaction Analyzer</a>
+
+        <ul class="pure-menu-list">
+          <li class="pure-menu-item pure-menu-selected">
+            <a href="" class="pure-menu-link" id="btn-home">Home</a>
+          </li>
+          <li class="pure-menu-item">
+            <a href="#" class="pure-menu-link hidden" id="btn-overview">Overview</a>
+          </li>
+          <li class="pure-menu-item">
+            <a href="#" class="pure-menu-link hidden" id="btn-coinlist">Coinlist</a>
+          </li>
+          <li class="pure-menu-item">
+            <a href="#" class="pure-menu-link hidden" id="btn-transactions">Transactions</a>
+          </li>
+        </ul>
       </div>
     </div>
-    <div class="body-container">
-      <!-- Start begin -->
-      <div class="start-container">
-        <br /><br />
-        <h3>
-          To get started, place the nexo transactions .csv in the box below:
-        </h3>
-        <div class="start-drop-zone">Drop .csv file here</div>
-      </div>
-      <!-- Start end -->
 
-      <!-- Overview begin -->
-      <div class="overview-container hidden">
-        <h1>Overview</h1>
-        <hr />
-        <!-- Loading icon -->
-        <div class="lds-container">
-          <div class="lds-ellipsis">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
+    <!-- home begin -->
+    <div id="PageHome" class="">
+      <div class="splash-container">
+        <div id="tsparticles"></div>
+        <div class="splash">
+          <h1 class="splash-head home-dropzone">Drop .csv here</h1>
+          <p class="splash-subhead">
+            Your privacy matters. As this project is exposed to sensitive data, it's 100% open source. <br /><b
+              >Do not share your nexo.io login. We'll never ask for any login data or wallet access.</b
+            >
+          </p>
+          <p>
+            <a
+              href="https://github.com/bandrewk/nexotransactionanalyzer"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="pure-button pure-button-primary"
+              ><i class="fab fa-github" aria-hidden="true"></i> Browse Source Code</a
+            ><br /><br /><a href="#" class="pure-button pure-button-primary" id="btnDemo"
+              ><i class="far fa-play-circle" aria-hidden="true"></i> Demo</a
+            >
+          </p>
+        </div>
+      </div>
+
+      <div class="content-wrapper">
+        <div class="content">
+          <h2 class="content-head is-center">Get an insight into your nexo.io account</h2>
+
+          <div class="pure-g">
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+              <h3 class="content-subhead">
+                <i class="fa fa-table"></i>
+                Transactions
+              </h3>
+              <p>View, rewind and search in past transactions.</p>
+            </div>
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+              <h3 class="content-subhead">
+                <i class="fa fa-list"></i>
+                Coinlist
+              </h3>
+              <p>Easily see and track your coins.</p>
+            </div>
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+              <h3 class="content-subhead">
+                <i class="fa fa-chart-area"></i>
+                Graphs
+              </h3>
+              <p>Visualize your portfolio using graphs and charts.</p>
+            </div>
+            <div class="l-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+              <h3 class="content-subhead">
+                <i class="fa fa-user-shield fa-6" aria-hidden="true"></i>
+                Stay safe
+              </h3>
+              <p>
+                Do not share your nexo.io login. This app only uses the exported transactions .csv file. It has no persistend
+                storage, data is immediatley deleted upon refresh.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div class="overview-element-container">
-          <div id="tester2" style="width: 900px; height: 350px">
-            <canvas id="myChart2"></canvas>
+        <div class="ribbon l-box-lrg pure-g">
+          <div class="l-box-lrg is-center pure-u-1 pure-u-md-1-2 pure-u-lg-2-5">
+            <i class="fa fa-regular fa-code fa-5x" style="color: var(--primary-color)"></i>
+            <i class="fa fa-regular fa-code fa-5x" style="color: var(--secondary-color)"></i>
+            <i class="fa fa-regular fa-code fa-5x" style="color: var(--third-color)"></i>
           </div>
-          <div id="tester" style="width: 380px"></div>
-          <div class="flexbreakline"></div>
-          <div id="tester3" style="width: 900px; height: 350px">
-            <canvas id="myChart"></canvas>
+          <div class="pure-u-1 pure-u-md-1-2 pure-u-lg-3-5">
+            <h2 class="content-head content-head-ribbon">❗beta version❗</h2>
+
+            Some features may not work yet. Such as:
+            <ul>
+              <li>❌ Loan tracking</li>
+              <li>❌ Handling rejected / failed transactions</li>
+              <li>❌ Transactions for coins where more than one network is supported</li>
+            </ul>
+            What does work?
+            <ul>
+              <li>✅ Transaction tracking</li>
+              <li>✅ Transaction linkage to blockchain explorer (TX linkage) for all currencies</li>
+              <li>✅ Overview and graph generation</li>
+              <li>✅ Coinlist, including earned in-kind</li>
+              <li>✅ Portfolio value determination using exchange APIs</li>
+            </ul>
+            <!--
+            What is planned?
+            <ul>
+              <li>❔ Portfolio value over time graph</li>
+              <li>❔ More sorting functions for the transactions table including an export function</li>
+            </ul>
+-->
+            If you encounter any trouble feel free to send a not working .csv to hello@nexo-ta.com. It will be used in a discrete
+            manner to debug and fix the problem.
+            <br />
           </div>
-          <div id="tester4" style="width: 380px"></div>
-          <div class="flexbreakline"></div>
-          <div id="tester5" style="width: 900px; height: 350px">
-            <canvas id="myChart"></canvas>
+        </div>
+
+        <div class="content">
+          <div class="pure-u-1">
+            <div class="l-box-lrg">
+              <h2>Notice of Non-Affiliation and Disclaimer</h2>
+
+              <p>
+                <b>
+                  We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo
+                  Financial LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can be
+                  found at https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are registered
+                  trademarks of their respective owners.</b
+                ></p>
+                
+                <p style="font-size: 0.9em">
+                This website is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+                warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+                details.</p>
+                <p style="font-size: 0.9em">
+                Support development:<br />
+                ETH: 0x6aa9da4a0f149a140f6813cbd84e1ee2df05e76e <br />BTC: bc1q5sl35at30wtftl4je7p0pwwxhwtekfe23602tj <br />RVN:
+                RCJ92C29iZimha5H4Lw3GwKQQNiCMdd5dh</p>
+              </p>
+            </div>
           </div>
-          <div id="tester6" style="width: 380px"></div>
-          <div class="flexbreakline"></div>
-          <!-- <div class="overview-element">
-            <h2>100000$</h2>
-            Depot value
-          </div>
-          <div class="overview-element">
-            <h2>304</h2>
-            Transactions
-          </div>
-          <div class="overview-element">
-            <h2>100$</h2>
-            Interest earned
-          </div>
-          <div class="overview-element">
-            <h2>100$</h2>
-            Outstanding loans
-          </div>
-          <div class="overview-element">
-            <h2>GOLD</h2>
-            Membership level
-          </div> -->
+          <img src="https://api.moedog.org/count/@:testingyourmom" alt=":testingyourmom" />
+          <!-- testingyourmom -->
+        </div>
+
+        <div class="footer l-box is-center">
+          © Copyright 2021-2022 nexo-ta.com. This is a non-commercial, not monetized website.
         </div>
       </div>
-      <!-- TODO -->
-      <!-- Overview end -->
-
-      <!-- Coinlist begin -->
-      <div class="coinlist-container hidden">
-        <h1>Coinlist</h1>
-        <hr />
-        <div class="coinlist-element-container">
-          <!-- <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div>
-          <div class="coinlist-element">
-            <img
-              class="coinlist-icon"
-              src="https://cryptoicon-api.vercel.app/api/icon/btc"
-            />
-            <h3>BTC</h3>
-            <h4>500.123123</h4>
-            <p>($1000)</p>
-          </div> -->
-        </div>
-        <h1>Coins earned as interest</h1>
-        <hr />
-        <div class="coinlist-element-container-interest"></div>
-      </div>
-      <!-- Coinlist end -->
-
-      <!-- Transactions begin -->
-      <div class="transactions-container hidden">
-        <h1>Transactions</h1>
-        <hr />
-        <table class="transactions-table">
-          <tr>
-            <th>Transaction</th>
-            <th>Type</th>
-            <th>Currency</th>
-            <th>Amount</th>
-            <th>USD Equivalent</th>
-            <th>Details</th>
-            <th>Outstanding Loan</th>
-            <th>Date</th>
-          </tr>
-        </table>
-      </div>
-      <!-- Transactions end -->
     </div>
+    <!-- home end -->
 
-    <div class="footer-container">
-      <hr />
-      <p>
-        © Copyright 2021 bandrewk. Sourcecode available on
-        <a href="https://www.github.com">Github</a>. This is a non-commercial,
-        not monetized website.
-      </p>
-      <h5>Notice of Non-Affiliation and Disclaimer</h5>
-      <p>
-        We are not affiliated, associated, authorized, endorsed by, or in any
-        way officially connected with Nexo Financial LLC, or any of its
-        subsidiaries or its affiliates. The official Nexo Financial LLC website
-        can be found at https://www.nexo.io.<br />
-        The name NEXO as well as related names, marks, emblems and images are
-        registered trademarks of their respective owners.
-      </p>
+    <div class="content-wrapper-def hidden" id="PageWrap">
+      <div class="content">
+        <div id="loader"></div>
+        <!-- Overview begin -->
+        <div id="PageOverview" class="hidden">
+          <h2 class="content-head is-center">Overview</h2>
+
+          <div class="pure-u-1-24"></div>
+          <div class="pure-u-11-12">
+            <div class="is-center">
+              <hr />
+              <div id="overview">
+                <!--<div class="pure-u-5-5 pure-u-lg-3-4 overview-graph" id="ov-graph-portfolio"></div>-->
+                <div class="pure-u-5-5 pure-u-lg-1-2 overview-graph" id="ov-graph-line1"></div>
+                <div class="pure-u-5-5 pure-u-lg-1-4 overview-graph" id="ov-graph-pie1"></div>
+                <div class="pure-u-5-5 pure-u-lg-1-2 overview-graph" id="ov-graph-line2" style="margin-bottom: 2em"></div>
+                <div class="pure-u-5-5 pure-u-lg-1-4 overview-graph" id="ov-graph-pie2" style="margin-bottom: 2em"></div>
+              </div>
+
+              <hr />
+            </div>
+          </div>
+
+          <div class="pure-u-1-24"></div>
+        </div>
+        <!-- Overview end -->
+
+        <!-- Coinlist begin -->
+        <div id="PageCoinlist" class="hidden">
+          <h2 class="content-head is-center">Coinlist</h2>
+          <div class="pure-u-1-24"></div>
+          <div class="pure-u-11-12 is-center">
+            <div id="coinlist-portfolio"></div>
+            <h2 class="content-head is-center">Coins earned as interest (All-Time)</h2>
+            <div id="coinlist-earnedInCoin"></div>
+          </div>
+          <br /><br /><br />
+        </div>
+
+        <!-- transactions begin -->
+        <div id="PageTransactions" class="hidden">
+          <h2 class="content-head is-center">Transactions</h2>
+
+          <div class="pure-u-1-24"></div>
+          <div class="pure-u-11-12">
+            <div class="is-center" id="transactionTable"></div>
+          </div>
+          <div class="pure-u-1-24"></div>
+
+          <a class="pure-button pure-button-primary" href="#" id="btnRawData">raw data</a>
+        </div>
+        <!-- transactions end -->
+
+        <div class="pure-u-1">
+          <div class="l-box-lrg">
+            <h2>Notice of Non-Affiliation and Disclaimer</h2>
+
+            <p>
+              We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with Nexo Financial
+              LLC, or any of its subsidiaries or its affiliates. The official Nexo Financial LLC website can be found at
+              https://www.nexo.io. The name NEXO as well as related names, marks, emblems and images are registered trademarks of
+              their respective owners.
+            </p>
+          </div>
+          <img src="https://api.moedog.org/count/@:testingyourmom" alt=":testingyourmom" style="padding-bottom: 2px" />
+        </div>
+      </div>
+      <div class="footer l-box is-center">
+        © Copyright 2021-2022 nexo-ta.com. This is a non-commercial, not monetized website.
+      </div>
     </div>
   </body>
 </html>
