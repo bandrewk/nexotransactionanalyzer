@@ -45,6 +45,7 @@ export const CurrencyType = {
   LUNA: "LUNA", // ✅ Fully working
   FTM: "FTM", // ✅ Fully working
   AVAX: "AVAX", // ✅ Fully working
+  UST: "UST", // ✅ Fully working
 
   // ERC-20
   NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20
