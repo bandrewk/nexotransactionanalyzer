@@ -19,7 +19,7 @@
 import { CNavigator, State as Page } from "/js/navigator.js";
 import { CTransaction, TransactionType } from "/js/transaction.js";
 import { CStatistics } from "/js/statistics.js";
-import { CurrencyType } from "/js/currency.js";
+import { CCurrency, CurrencyType } from "/js/currency.js";
 
 /**
  * Application module
@@ -82,7 +82,7 @@ class CApp {
       Swal.fire({
         icon: "info",
         title: "Nexo.io CSV export",
-        text: `Nexo's export functionality is currently not working as intended. Older exported transactions (before 12/21) will work though.`,
+        text: `Nexo's export functionality is currently not working as intended. Therefore recently exported files won't work. Older exported transactions (before 12/21) will work though.`,
         //footer: '<a href="">Why do I have this issue?</a>',
       }).then((result) => {
         /* Reload page when confirmed */
@@ -346,7 +346,7 @@ class CApp {
    * Load demo content
    */
   OnBtnDemoClicked() {
-    fetch("demo-data.csv") // -all-currencies
+    fetch("demo-data-all-currencies.csv") // -all-currencies
       .then((response) => response.text())
       .then((content) => {
         this.ProcessFile(content);
@@ -374,7 +374,7 @@ class CApp {
       if (window.USE_NEXO_API) {
         currency =
           `<img style="width: 16px; height: 16px" src="https://static.nexo.io/currencies/${currency}${
-            this.#m_cStatistics.GetCCurrency(t.GetCurrency()).IsFiat() ? `X` : ``
+            CCurrency.IsFiat(currency) ? `X` : ``
           }.svg" /> ` + currency;
       } else {
         // Third-party API
