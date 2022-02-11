@@ -346,10 +346,9 @@ class CApp {
    * Load demo content
    */
   OnBtnDemoClicked() {
-    fetch("demo-data-all-currencies.csv")
+    fetch("demo-data.csv") // -all-currencies
       .then((response) => response.text())
       .then((content) => {
-        // Do something with your data
         this.ProcessFile(content);
 
         Swal.fire({

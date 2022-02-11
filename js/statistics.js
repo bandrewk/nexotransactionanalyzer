@@ -314,6 +314,9 @@ export class CStatistics {
   /////////////////////////////////////////////////////
   /// Generate portfolio value over time
   /////////////////////////////////////////////////////
+  /**
+   * Unused mess
+   */
   GeneratePortfolioGraph() {
     let urls = [];
 
@@ -399,6 +402,9 @@ export class CStatistics {
     });
   }
 
+  /**
+   * Unused mess
+   */
   GroupTransactionsPerMonth(dates, amounts) {
     let groupedbyday = new Map();
 
@@ -616,7 +622,7 @@ export class CStatistics {
 
     const config = { responsive: true };
 
-    Plotly.newPlot("ov-graph-line1", data, layout, config);
+    Plotly.newPlot("ov-graph-line2", data, layout, config);
 
     /////////////////////////////////////////////////////
     /// Interest earned per day
@@ -642,7 +648,7 @@ export class CStatistics {
         showline: false,
       },
     };
-    Plotly.newPlot("ov-graph-line2", data, layout, config);
+    Plotly.newPlot("ov-graph-line1", data, layout, config);
   }
 
   /////////////////////////////////////////////////////////////////////////////
