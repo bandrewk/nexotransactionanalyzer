@@ -712,6 +712,9 @@ export class CStatistics {
    * @returns CCurrency object
    */
   GetCCurrency(cur) {
+    // This *might* be needed in some cases
+    //if (cur[cur.length] === `X`) cur = cur.substr(0, cur.length - 1);
+
     if (this.#m_arrCurrency.get(cur)) return this.#m_arrCurrency.get(cur);
     else return null;
   }
