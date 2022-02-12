@@ -264,11 +264,18 @@ export class CStatistics {
       } else {
         src = `https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}`;
       }
-      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
+
+      html += `<div class="pure-u-1-2 pure-u-lg-1-8 coinlist-container" bg-text="${e.GetType()}">
+      <div class="pure-g">
+      <div class="pure-u-2-5">
 <img class="coinlist-icon" src="${src}" />
-<h3>${e.GetType()}</h3>
+
+</div>
+<div class="pure-u-3-5">
+
 <h4>${e.GetAmount() % 1 === 0 ? e.GetAmount().toFixed(2) : parseFloat(e.GetAmount().toFixed(8))}</h4>
 <p>~$${e.GetUSDEquivalent().toFixed(2)}</p>
+</div></div>
 </div>`;
     }); // parseFloat removes the padding that toFixed() leaves !
 
@@ -293,16 +300,19 @@ export class CStatistics {
         src = `https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}`;
       }
 
-      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container">
+      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container" bg-text="${e.GetType()}">
+      <div class="pure-g">
+      <div class="pure-u-2-5">
 <img class="coinlist-icon" src="${src}" />
-<h3>${e.GetType()}</h3>
+</div>
+<div class="pure-u-3-5">
 <h4>${
         e.GetInterestEarnedInKind() % 1 === 0
           ? e.GetInterestEarnedInKind().toFixed(2)
           : parseFloat(e.GetInterestEarnedInKind().toFixed(8))
       }</h4>
 <p>~$${e.GetInterestEarnedInUSD().toFixed(2)}</p>
-</div>`;
+</div></div></div>`;
     }); // parseFloat removes the padding that toFixed() leaves !
 
     return html;

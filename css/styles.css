@@ -53,29 +53,52 @@
 
 .coinlist-container {
   box-shadow: rgba(9, 30, 66, 0.25) 0px 4px 8px -2px, rgba(9, 30, 66, 0.08) 0px 0px 0px 1px; /*92*/
-  border-radius: 8px;
+  border-radius: 10px;
   margin: 2em;
+  height: 6em;
   background-color: white;
+
+  padding: 20px 20px 100px 20px;
+  position: relative;
+  width: 400px;
+  overflow: hidden;
+}
+
+.coinlist-container::after {
+  color: var(--light-background);
+  opacity: 0.45;
+  content: attr(bg-text);
+  display: block;
+  font-size: 5em;
+  line-height: 1;
+  position: absolute;
+  bottom: -15px;
+  right: 0px;
 }
 
 .coinlist-container h3 {
   margin-block-end: 0.2em;
 }
 .coinlist-container h4 {
-  margin-block-start: 0.2em;
-  margin-block-end: 0.2em;
-  font-size: 1.2em;
+  margin-block-start: 0.6em;
+  margin-block-end: 0em;
+  text-align: left;
+  font-size: 1.6em;
 }
 .coinlist-container p {
-  margin-block-start: 0.2em;
+  margin-block-start: 0em;
+  text-align: left;
+  font-size: 1.1em;
+  z-index: 1;
+  position: absolute;
 }
 
 .coinlist-icon {
-  width: 54px;
+  width: 4em;
   display: block;
   margin-left: auto;
   margin-right: auto;
-  margin-top: 1rem;
+  margin-top: 0.5em;
   transition: width 0.25s;
 }
 
