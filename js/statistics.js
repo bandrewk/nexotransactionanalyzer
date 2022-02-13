@@ -91,7 +91,7 @@ export class CStatistics {
 
     // Count interest
     if (t.GetType() === TransactionType.INTEREST || t.GetType() === TransactionType.FIXEDTERMINTEREST) {
-      this.#m_arrCurrency.get(t.GetCurrency()).AddInterestEarnedInKind(t.GetAmount());
+      this.#m_arrCurrency.get(t.GetCurrency()).AddInterestInKind(t.GetAmount());
     }
 
     // Count cashback
@@ -238,9 +238,7 @@ export class CStatistics {
             this.#m_arrCurrency.get(currency).SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
 
             // Calculate interest earned
-            this.#m_arrCurrency
-              .get(currency)
-              .SetInterestEarnedInUSD(value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind());
+            this.#m_arrCurrency.get(currency).SetInterestInUSD(value * this.#m_arrCurrency.get(currency).GetInterestInKind());
 
             // Calculate cashback value
             this.#m_arrCurrency.get(currency).SetCashbackInUSD(value * this.#m_arrCurrency.get(currency).GetCashbackInKind());
@@ -255,7 +253,7 @@ export class CStatistics {
       this.#m_fTotalInterestEarnedAsUSD = 0;
 
       this.#m_arrCurrency.forEach((v, k, m) => {
-        this.#m_fTotalInterestEarnedAsUSD += v.GetInterestEarnedInUSD();
+        this.#m_fTotalInterestEarnedAsUSD += v.GetInterestInUSD();
       });
 
       console.log(`Loading exchange rates finished.`);
@@ -314,7 +312,7 @@ export class CStatistics {
     let src = ``;
     // Go through all stored currencies
     this.#m_arrCurrency.forEach((e) => {
-      if (e.GetInterestEarnedInKind() === 0) return;
+      if (e.GetInterestInKind() === 0) return;
 
       if (window.USE_NEXO_API) {
         src = `https://static.nexo.io/currencies/${e.GetType()}${e.IsFiat() ? `X` : ``}.svg"`;
@@ -328,12 +326,8 @@ export class CStatistics {
 <img class="coinlist-icon" src="${src}" />
 </div>
 <div class="pure-u-3-5">
-<h4>${
-        e.GetInterestEarnedInKind() % 1 === 0
-          ? e.GetInterestEarnedInKind().toFixed(2)
-          : parseFloat(e.GetInterestEarnedInKind().toFixed(8))
-      }</h4>
-<p>~$${e.GetInterestEarnedInUSD().toFixed(2)}</p>
+<h4>${e.GetInterestInKind() % 1 === 0 ? e.GetInterestInKind().toFixed(2) : parseFloat(e.GetInterestInKind().toFixed(8))}</h4>
+<p>~$${e.GetInterestInUSD().toFixed(2)}</p>
 </div></div></div>`;
     }); // parseFloat removes the padding that toFixed() leaves !
 
