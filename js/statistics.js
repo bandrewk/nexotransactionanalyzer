@@ -172,8 +172,18 @@ export class CStatistics {
    */
   #AddCurrencyPair(t, cur, amount) {
     // Get exchange pair
-    const cur1 = cur.substr(0, cur.search(`/`));
-    const cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
+    let cur1 = cur.substr(0, cur.search(`/`));
+    let cur2 = cur.substr(cur.search(`/`) + 1, cur.length);
+
+    // When exchanging FIAT to crypto we need to remove the last X (eg. EURX becomes EUR)
+    if (CCurrency.IsFiatX(cur1)) {
+      cur1 = cur1.substr(0, cur1.length - 1);
+    }
+
+    // I dont know if this transaction is possible but maybe for crypto to fiatX
+    if (CCurrency.IsFiatX(cur2)) {
+      cur2 = cur2.substr(0, cur2.length - 1);
+    }
 
     //console.log(`Found ${cur1} and ${cur2} (${cur})`);
 
@@ -268,6 +278,9 @@ export class CStatistics {
 
     // Go through all stored currencies
     this.#m_arrCurrency.forEach((e) => {
+      // Do not show empty currencies
+      if (e.GetAmount() === 0) return;
+
       if (window.USE_NEXO_API) {
         src = `https://static.nexo.io/currencies/${e.GetType()}${e.IsFiat() ? `X` : ``}.svg`;
       } else {
