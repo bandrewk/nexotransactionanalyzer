@@ -120,11 +120,13 @@ export class CCurrency {
   constructor(type, amount = 0) {
     this.#m_type = type;
     this.SetAmount(amount);
-    this.SetInterestEarnedInKind(0);
-    this.SetInterestEarnedInUSD(0);
     this.SetUSDEquivalent(0);
 
-    //Cashback
+    // Interest
+    this.#m_fInterestEarnedInKind = 0;
+    this.#m_fInterestEarnedInUSD = 0;
+
+    // Cashback
     this.#m_fCashbackReceivedInKind = 0;
     this.#m_fCashbackReceivedInUSD = 0;
 
@@ -164,27 +166,36 @@ export class CCurrency {
   /////////////////////////////////////////////////////////////////////////////
   // In-coin interest earned
   /////////////////////////////////////////////////////////////////////////////
-  GetInterestEarnedInKind() {
-    return this.#m_fInterestEarnedInKind;
-  }
-
-  SetInterestEarnedInKind(amount) {
-    this.#m_fInterestEarnedInKind = parseFloat(amount);
-  }
-
-  AddInterestEarnedInKind(amount) {
+  /**
+   * Add interest in-kind value. Adds to existing value.
+   * @param {*} amount
+   */
+  AddInterestInKind(amount) {
     this.#m_fInterestEarnedInKind += parseFloat(amount);
   }
 
-  /////////////////////////////////////////////////////////////////////////////
-  // In-coin interest earned as USD
-  /////////////////////////////////////////////////////////////////////////////
-  GetInterestEarnedInUSD() {
-    return this.#m_fInterestEarnedInUSD;
+  /**
+   * Get interest earned, in-kind
+   * @returns interest earned in-kind value
+   */
+  GetInterestInKind() {
+    return this.#m_fInterestEarnedInKind;
   }
 
-  SetInterestEarnedInUSD(amount) {
+  /**
+   * Set interest earned in USD-value
+   * @param {*} amount
+   */
+  SetInterestInUSD(amount) {
     this.#m_fInterestEarnedInUSD = parseFloat(amount);
+  }
+
+  /**
+   * Get interest earned as USD value
+   * @returns interest earned in USD value
+   */
+  GetInterestInUSD() {
+    return this.#m_fInterestEarnedInUSD;
   }
 
   /////////////////////////////////////////////////////////////////////////////
