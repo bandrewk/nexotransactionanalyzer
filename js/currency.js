@@ -100,6 +100,16 @@ export class CCurrency {
    */
   #m_fInterestEarnedInUSD;
 
+  /**
+   * Cashback received in kind,  not USD
+   */
+  #m_fCashbackReceivedInKind;
+
+  /**
+   * Cashback received in USD
+   */
+  #m_fCashbackReceivedInUSD;
+
   // TX
   #m_arrDateAdded; // Array of strings
   #m_arrAmountAdded; // Array of numbers
@@ -113,6 +123,10 @@ export class CCurrency {
     this.SetInterestEarnedInKind(0);
     this.SetInterestEarnedInUSD(0);
     this.SetUSDEquivalent(0);
+
+    //Cashback
+    this.#m_fCashbackReceivedInKind = 0;
+    this.#m_fCashbackReceivedInUSD = 0;
 
     this.#m_arrDateAdded = [];
     this.#m_arrAmountAdded = [];
@@ -171,6 +185,41 @@ export class CCurrency {
 
   SetInterestEarnedInUSD(amount) {
     this.#m_fInterestEarnedInUSD = parseFloat(amount);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Cashback
+  /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Add cashback value, in kind. Adds to existing value.
+   * @param {*} amount
+   */
+  AddCashbackInKind(amount) {
+    this.#m_fCashbackReceivedInKind += parseFloat(amount);
+  }
+
+  /**
+   * Get cashback value, in kind
+   * @returns cashback value in kind
+   */
+  GetCashbackInKind() {
+    return this.#m_fCashbackReceivedInKind;
+  }
+
+  /**
+   * Set cashback value in USD
+   * @param {*} amount cashback value in USD
+   */
+  SetCashbackInUSD(amount) {
+    this.#m_fCashbackReceivedInUSD += parseFloat(amount);
+  }
+
+  /**
+   * Cashback value in USD
+   * @returns Cashback in USD
+   */
+  GetCashbackInUSD() {
+    return this.#m_fCashbackReceivedInUSD;
   }
 
   /////////////////////////////////////////////////////////////////////////////

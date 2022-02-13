@@ -6,7 +6,7 @@ Source code of www.nexo-ta.com
 
 Supports all currencies.
 
-Version 1 implemented transactions (taken from `transaction.js`):
+Version 1 implemented transactions (taken from `js/transaction.js`):
 
 ```Javascript
 export const TransactionType = {

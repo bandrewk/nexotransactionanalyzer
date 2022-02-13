@@ -89,9 +89,14 @@ export class CStatistics {
       this.AddCurrency(t);
     }
 
+    // Count interest
     if (t.GetType() === TransactionType.INTEREST) {
-      // Keep track of interest earned per coin
       this.#m_arrCurrency.get(t.GetCurrency()).AddInterestEarnedInKind(t.GetAmount());
+    }
+
+    // Count cashback
+    if (t.GetType() === TransactionType.EXCHANGECASHBACK) {
+      this.#m_arrCurrency.get(t.GetCurrency()).AddCashbackInKind(t.GetAmount());
     }
   }
 
@@ -128,6 +133,7 @@ export class CStatistics {
 
     // Check for valid values, if this fails the csv is messed up
     if (isNaN(amount)) {
+      console.log(t);
       const errormsg =
         "Transaction file is invalid! Could not receive exchange values (Look at exchange transactions there probably a value missing).";
       Swal.fire({
@@ -221,10 +227,13 @@ export class CStatistics {
             // Look up currency and set the usd value
             this.#m_arrCurrency.get(currency).SetUSDEquivalent(value * parseFloat(this.#m_arrCurrency.get(currency).GetAmount()));
 
-            // Set interest earned in-coin value
+            // Calculate interest earned
             this.#m_arrCurrency
               .get(currency)
               .SetInterestEarnedInUSD(value * this.#m_arrCurrency.get(currency).GetInterestEarnedInKind());
+
+            // Calculate cashback value
+            this.#m_arrCurrency.get(currency).SetCashbackInUSD(value * this.#m_arrCurrency.get(currency).GetCashbackInKind());
           }
         } else if (response.status === "rejected") {
           // Failed
@@ -318,6 +327,33 @@ export class CStatistics {
     return html;
   }
 
+  GetCoinlistCashbackEarnedAsHTML() {
+    // Start with empty string
+    let html = ``;
+    let src = ``;
+    // Go through all stored currencies
+    this.#m_arrCurrency.forEach((e) => {
+      if (e.GetCashbackInKind() === 0) return;
+
+      if (window.USE_NEXO_API) {
+        src = `https://static.nexo.io/currencies/${e.GetType()}${e.IsFiat() ? `X` : ``}.svg"`;
+      } else {
+        src = `https://cryptoicon-api.vercel.app/api/icon/${e.GetType().toLowerCase()}`;
+      }
+
+      html += `<div class="pure-u-1-4 pure-u-lg-1-8 coinlist-container" bg-text="${e.GetType()}">
+          <div class="pure-g">
+          <div class="pure-u-2-5">
+    <img class="coinlist-icon" src="${src}" />
+    </div>
+    <div class="pure-u-3-5">
+    <h4>${e.GetCashbackInKind() % 1 === 0 ? e.GetCashbackInKind().toFixed(2) : parseFloat(e.GetCashbackInKind().toFixed(8))}</h4>
+    <p>~$${e.GetCashbackInUSD().toFixed(2)}</p>
+    </div></div></div>`;
+    }); // parseFloat removes the padding that toFixed() leaves !
+
+    return html;
+  }
   /**
    * TODO, CHECK, REVISE
    */
