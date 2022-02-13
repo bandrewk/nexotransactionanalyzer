@@ -29,11 +29,14 @@ class CApp {
   #m_eDropZone;
   #m_btnRawData;
   #m_eOverview;
+
   #m_btnDemo;
+  #m_btnCurrencyTest;
 
   // Coinlist
   #m_eCoinlistEarnedInCoin;
   #m_eCoinlistPortfolio;
+  #m_eCoinlistCashback;
 
   // File handle
   #m_file;
@@ -117,7 +120,8 @@ class CApp {
     // Coinlist
     this.#m_eCoinlistEarnedInCoin = document.querySelector("#coinlist-earnedInCoin");
     this.#m_eCoinlistPortfolio = document.querySelector("#coinlist-portfolio");
-    if (!(this.#m_eCoinlistEarnedInCoin && this.#m_eCoinlistPortfolio)) bFailed = true;
+    this.#m_eCoinlistCashback = document.querySelector("#coinlist-cashback");
+    if (!(this.#m_eCoinlistEarnedInCoin && this.#m_eCoinlistPortfolio && this.#m_eCoinlistCashback)) bFailed = true;
 
     // Overview
     this.#m_eOverview = document.querySelector("#overview");
@@ -127,6 +131,12 @@ class CApp {
     this.#m_btnDemo = document.querySelector("#btnDemo");
     if (this.#m_btnDemo) {
       this.#m_btnDemo.addEventListener("click", this.OnBtnDemoClicked.bind(this));
+    } else bFailed = true;
+
+    // Currency test
+    this.#m_btnCurrencyTest = document.querySelector("#btnCurrencyTest");
+    if (this.#m_btnCurrencyTest) {
+      this.#m_btnCurrencyTest.addEventListener("click", this.OnBtnCurrencyTestClicked.bind(this));
     } else bFailed = true;
 
     if (bFailed) {
@@ -346,6 +356,24 @@ class CApp {
    * Load demo content
    */
   OnBtnDemoClicked() {
+    fetch("demo-data.csv")
+      .then((response) => response.text())
+      .then((content) => {
+        this.ProcessFile(content);
+
+        Swal.fire({
+          icon: "info",
+          title: "Demo mode",
+          text: `This demo contains some sample data to verify functionality. It doesn't necessarily make sense.`,
+          //footer: '<a href="">Why do I have this issue?</a>',
+        });
+      });
+  }
+
+  /**
+   * Currency test (loads all currencies)
+   */
+  OnBtnCurrencyTestClicked() {
     fetch("demo-data-all-currencies.csv") // -all-currencies
       .then((response) => response.text())
       .then((content) => {
@@ -460,6 +488,7 @@ class CApp {
   #RenderCoinlist() {
     this.#m_eCoinlistPortfolio.insertAdjacentHTML(`beforeend`, this.#m_cStatistics.GetCoinlistAsHTML());
     this.#m_eCoinlistEarnedInCoin.insertAdjacentHTML(`beforeend`, this.#m_cStatistics.GetCoinlistEarnedInKindAsHTML());
+    this.#m_eCoinlistCashback.insertAdjacentHTML(`beforeend`, this.#m_cStatistics.GetCoinlistCashbackEarnedAsHTML());
   }
 
   /////////////////////////////////////////////////////////////////////////////

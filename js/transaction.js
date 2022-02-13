@@ -25,6 +25,9 @@ export const TransactionType = {
   WITHDRAWAL: `Withdrawal`,
   EXCHANGE: `Exchange`,
 
+  // Cashback
+  EXCHANGECASHBACK: `Exchange Cashback`,
+
   // Deposit Fiat
   EXCHANGEDEPOSITEDON: `ExchangeDepositedOn`,
   DEPOSITTOEXCHANGE: `DepositToExchange`,
