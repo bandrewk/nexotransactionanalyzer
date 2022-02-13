@@ -90,7 +90,7 @@ export class CStatistics {
     }
 
     // Count interest
-    if (t.GetType() === TransactionType.INTEREST) {
+    if (t.GetType() === TransactionType.INTEREST || t.GetType() === TransactionType.FIXEDTERMINTEREST) {
       this.#m_arrCurrency.get(t.GetCurrency()).AddInterestEarnedInKind(t.GetAmount());
     }
 
