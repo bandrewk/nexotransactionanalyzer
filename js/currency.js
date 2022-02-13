@@ -368,6 +368,16 @@ export class CCurrency {
   }
 
   /**
+   * Check if currency (supplied as string) is FIATX (Nexos 1:1 pegged fiat token)
+   * @param {*} cur Currency string
+   * @returns true if currency is fiatX
+   */
+  static IsFiatX(cur) {
+    if (cur === `EURX` || cur === `USDX` || cur === `GBPX`) return true;
+    else return false;
+  }
+
+  /**
    * Is currency a stablecoin?
    * @returns true if currency is a stablecoin
    */
