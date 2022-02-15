@@ -159,9 +159,6 @@ export class CStatistics {
     this.#m_arrCurrency.get(cur).AddAmount(amount);
 
     // Add historical data to the currency
-    //this.#m_arrCurrency.get(cur).AddTXDate(t.GetDateTime().substr(0, 7));
-    //this.#m_arrCurrency.get(cur).AddTXAmount(amount);
-
     this.#m_arrCurrency.get(cur).AddTransactionByDate(t.GetDateTime(), amount);
   }
 
@@ -363,115 +360,10 @@ export class CStatistics {
 
     return html;
   }
-  /**
-   * TODO, CHECK, REVISE
-   */
+
   /////////////////////////////////////////////////////
   /// Generate portfolio value over time
   /////////////////////////////////////////////////////
-  /**
-   * Unused mess
-   */
-  GeneratePortfolioGraph() {
-    let urls = [];
-
-    // Collect all fetch promises, we want to send and wait for all of them together
-    this.#m_arrCurrency.forEach((v, k, m) => {
-      v.SetPortfolioValue(this.GroupTransactionsPerMonth(v.GetTXDates(), v.GetTXAmounts()));
-
-      urls.push(...m.get(k).GetExchangeRate(true));
-    });
-
-    // Make promises resolve to their final value
-    // go easy with the APIs and delay the calls a little (5 calls per sec max)
-    let i = 0;
-    let apiRequests = urls.map((url) => this.DelayFetch(url, (i += 200)).then((url) => fetch(url).then((res) => res.json())));
-
-    console.log(`~Load time ~${i}ms`);
-
-    let month, year;
-    let currency, value;
-
-    // Wait for all promises to settle
-    Promise.allSettled(apiRequests).then((responses) => {
-      responses.forEach((response, index) => {
-        // Loop through all responses
-        if (response.status === "fulfilled") {
-          console.log(response);
-
-          // Process API endpoints..
-          if (urls[index].search(`coinbase`) >= 0) {
-            /////////////////////////////////////////////////////
-            /// Coinbase API
-            /////////////////////////////////////////////////////
-            // TODO Process coinbase API endpoint
-            console.log(`Response from coinbase~`);
-
-            year = urls[index].substr(-10, 4);
-            month = urls[index].substr(-5, 2);
-
-            currency = response.value.data.base;
-
-            if (this.#m_arrCurrency.has(currency)) {
-              // USD value
-              value = parseFloat(response.value.data.amount);
-
-              console.log(`~~${currency + ` - ` + value}$`);
-            } else console.log(`~~${currency} not found (${urls[index]})`);
-          } else if (urls[index].search(`coingecko`) >= 0) {
-            /////////////////////////////////////////////////////
-            /// Coingecko API
-            /////////////////////////////////////////////////////
-            // TODO Process coingecko API endpoint
-            console.log(`Response from coingecko~`);
-            //console.log(response.value);
-
-            currency = response.value.symbol.toUpperCase();
-
-            // TODO this works just extract the values (year, month)
-            // console.log(
-            //   `Year: ${urls[index].substr(-4, 4)}, Month: ${urls[index].substr(
-            //     -7,
-            //     2
-            //   )}`
-            // );
-
-            if (this.#m_arrCurrency.has(currency)) {
-              // USD value
-              value = parseFloat(response.value.market_data.current_price.usd);
-
-              console.log(`~~${currency + ` - ` + value}$`);
-            } else console.log(`~~${currency} not found (${urls[index]})`);
-          } else {
-            console.log(`Could not identify API response.. stopping portolio graph generation (${urls[index]}).`);
-            return;
-          }
-        } else if (response.status === "rejected") {
-          // Failed
-          console.log(`GetExchangeRate failed for: ${urls[index]} - ${response.reason}`);
-        }
-      });
-
-      // We're ready !
-      //if (finishedCallback) finishedCallback();
-    });
-  }
-
-  /**
-   * Unused mess
-   */
-  GroupTransactionsPerMonth(dates, amounts) {
-    let groupedbyday = new Map();
-
-    dates.forEach((e, i) => {
-      if (!groupedbyday.has(e)) {
-        groupedbyday.set(e, 0);
-      }
-      groupedbyday.set(e, parseFloat(groupedbyday.get(e)) + parseFloat(amounts[i]));
-    });
-
-    return groupedbyday;
-  }
 
   GetHistoricalPortfolioData() {
     let urls = [];
@@ -582,9 +474,13 @@ export class CStatistics {
     });
   }
 
+  /**
+   * Draws the portfolio chart graph
+   */
   DrawPortfolioChart() {
     let arrPortfolioData = new Map();
 
+    // Group all currencies per day
     this.#m_arrCurrency.forEach((element) => {
       element.GetHistoricPriceData().forEach((v, k, m) => {
         if (arrPortfolioData.get(k)) {
@@ -593,7 +489,7 @@ export class CStatistics {
       });
     });
 
-    console.log(arrPortfolioData);
+    //console.log(arrPortfolioData);
 
     let trace1 = {
       x: [...arrPortfolioData.keys()],
