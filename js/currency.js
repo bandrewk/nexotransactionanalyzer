@@ -112,14 +112,15 @@ export class CCurrency {
    */
   #m_fCashbackReceivedInUSD;
 
-  // TX
-  #m_arrDateAdded; // Array of strings
-  #m_arrAmountAdded; // Array of numbers
-
-  // MAP
-  #m_portfolioValue;
-
+  /**
+   * Transaction history dates + amounts (in-kind) (map)
+   */
   #m_arrTransaction;
+
+  /**
+   * Historic price data
+   *  dates + amounts (in usd) (map)
+   */
   #m_arrHistoricPriceData;
 
   constructor(type, amount = 0) {
@@ -134,9 +135,6 @@ export class CCurrency {
     // Cashback
     this.#m_fCashbackReceivedInKind = 0;
     this.#m_fCashbackReceivedInUSD = 0;
-
-    this.#m_arrDateAdded = [];
-    this.#m_arrAmountAdded = [];
 
     this.#m_arrTransaction = new Map();
     this.#m_arrHistoricPriceData = new Map();
@@ -260,122 +258,67 @@ export class CCurrency {
     this.#m_fUSDEquivalent = amount;
   }
 
+  /**
+   * Fills all date and value gaps in the transaction array `m_arrTransaction`
+   */
   FillTransactionGaps() {
     let dates = [...this.#m_arrTransaction.keys()];
     let values = [...this.#m_arrTransaction.values()];
-    //console.log(dates);
+
+    // Get all possible dates between the first transaction and today
     let fillerDates = this.#GetDatesBetween(new Date(dates[0]), window.LAST_TRANSACTION);
     console.log(`Start date: ${dates[0]}`);
+
+    // Temp storage
     let temp = new Map();
+
     let xid = 0;
+    // Starting at 1 because it includes the starting date
     for (let index = 1; index < fillerDates.length; index++) {
       let element = fillerDates[index];
 
+      // Loop through already stored dates
+      // Set the exact same value for all next dates till we find a new one,
+      // then use the new one.
       for (let x = 0; x < dates.length; ) {
         if (element === dates[x]) {
           xid = x;
         }
         x++;
       }
+
       temp.set(element, values[xid]);
     }
+
     console.log(`Filling gaps for.. ${this.GetType()}`);
     console.log(temp);
 
+    // Assign temp array
     this.#m_arrTransaction = temp;
   }
 
+  /**
+   * Get all possible dates between two dates
+   * @param {*} startDate Start date
+   * @param {*} endDate End date
+   * @returns alle dates in between including start and end date as an array in YYYY-MM-DD format
+   */
   #GetDatesBetween(startDate, endDate) {
     let dates = [];
 
-    // Strip hours minutes seconds etc.
     let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
 
     while (currentDate <= endDate) {
-      dates.push(currentDate.toISOString().split("T")[0]);
+      dates.push(currentDate.toISOString().split("T")[0]); //YYYY-MM-DD
 
       currentDate = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
-        currentDate.getDate() + 1 // Will increase month if over range
+        currentDate.getDate() + 1 // Swaps over to next month automatically
       );
     }
 
     return dates;
-  }
-
-  /**
-   * TODO, CHECK, REVISE
-   */
-  /**
-   * Unused mess
-   * @param {*} history
-   * @returns
-   */
-  GetExchangeRate(history = false) {
-    let urls = [];
-    this.GetPortfolioValue().forEach((v, k, m) => {
-      //console.log(k);
-
-      if (
-        this.GetType() == CurrencyType.NEXO || // TODO Coinbase also has no historic data for EUR
-        this.GetType() == CurrencyType.XRP
-      ) {
-        let type = this.GetType().toLowerCase();
-
-        if (this.GetType() === CurrencyType.XRP) type = `ripple`; // coingecko api id for xrp is `ripple`
-
-        urls.push(
-          `https://api.coingecko.com/api/v3/coins/${type}/history?date=${
-            k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
-          }`
-        );
-        // fetch(
-        //   `https://api.coingecko.com/api/v3/coins/${type}/history?date=${
-        //     k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
-        //   }`
-        // )
-        //   .then((response) => response.json())
-        //   .then((data) => console.log(data));
-
-        // console.log(
-        //   `https://api.coingecko.com/api/v3/coins/${this.#m_type.toLowerCase()}/history?date=${
-        //     k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
-        //   }`
-        // );
-
-        //dd-mm-year
-        // year-mm-dd
-        return;
-      } else {
-        // TODO move to top so other api calls can access this too...
-        // Set new date to 1st of next month
-        let desiredDate = new Date(parseInt(k.substring(0, 4)), parseInt(k.substring(5, 7)) + 1, 1);
-
-        // -1 = Last day of last month
-        desiredDate.setDate(desiredDate.getDate() - 1);
-
-        // If we reached the current month take todays date as we can't predict the future
-        if (desiredDate > Date.now()) {
-          desiredDate = new Date(Date.now());
-        }
-
-        // Format date for coinbase api (YYYY-MM-DD)
-        const dateformated =
-          desiredDate.getFullYear() + `-` + (`0` + `${desiredDate.getMonth() + 1}`).substr(-2) + `-` + desiredDate.getDate();
-
-        urls.push(`https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${dateformated}`);
-
-        // fetch(
-        //   `https://api.coinbase.com/v2/prices/${
-        //     this.#m_type
-        //   }-USD/spot?date=${dateformated}`
-        // )
-        //   .then((response) => response.json())
-        //   .then((data) => console.log(data));
-      }
-    });
-    return urls;
   }
 
   /**
@@ -406,6 +349,18 @@ export class CCurrency {
     });
 
     if (urls.length > 0) return urls;
+
+    if (this.GetType() === CurrencyType.EUR) {
+      // Whee we can use the ECB to grab EUR to USD data :D
+      //https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2009-05-01&endPeriod=2009-05-31
+
+      let dates = [...this.#m_arrTransaction.keys()];
+      urls.push(
+        `https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=${dates[0]}&endPeriod=${
+          dates[dates.length - 1]
+        }&detail=dataonly&format=jsondata`
+      );
+    }
 
     if (this.#IsCoingeckoApiSupported()) {
       //console.log(this.GetType());
@@ -456,6 +411,7 @@ export class CCurrency {
     // Convert dates to UNIX time format
     dates = dates.map((x) => Math.floor(new Date(x).getTime()));
 
+    // Match data
     for (let i = 0; i < data.length; i++) {
       for (let x = 0; x < dates.length; x++) {
         if (data[i][0] == dates[x]) {
@@ -464,8 +420,64 @@ export class CCurrency {
         }
       }
     }
+  }
 
-    //console.log(this.#m_arrHistoricPriceData);
+  /**
+   * Processes the response to EUR USD exchange rate from EU
+   * @param {*} eData data array
+   * @param {*} eDate date array
+   */
+  ReceiveEuropeRangeData(eData, eDate) {
+    // We need to fill gaps in the data as holidays are not included in the response..
+    // We are filling the europe response here!
+
+    let dates = [...this.#m_arrTransaction.keys()];
+    let amount = [...this.#m_arrTransaction.values()];
+
+    // Get all possible dates between the first transaction and today
+    let fillerDates = this.#GetDatesBetween(new Date(dates[0]), window.LAST_TRANSACTION);
+    console.log(`Start date: ${dates[0]}`);
+
+    // Temp storage
+    let temp = new Map();
+
+    let xid = 0;
+    // Starting at 1 because it includes the starting date
+    for (let index = 1; index < fillerDates.length; index++) {
+      let element = fillerDates[index];
+
+      // Loop through already stored dates
+      // Set the exact same value for all next dates till we find a new one,
+      // then use the new one.
+      for (let x = 0; x < eDate.length; ) {
+        if (element === eDate[x].id) {
+          xid = x;
+        }
+        x++;
+      }
+
+      temp.set(element, eData[xid][0]);
+    }
+
+    const filledDates = [...temp.keys()];
+    const filledValues = [...temp.values()];
+
+    // Match data
+    for (let i = 0; i < filledDates.length; i++) {
+      for (let x = 0; x < dates.length; x++) {
+        if (filledDates[i] == dates[x]) {
+          //console.log(`Match found!`);
+          this.#m_arrHistoricPriceData.set(new Date(dates[x]).toISOString().split("T")[0], amount[x] * filledValues[i]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Set USD price 1:1 1USD = 1USD
+   */
+  SetUSDData() {
+    this.#m_arrHistoricPriceData = this.#m_arrTransaction;
   }
 
   /////////////////////////////////////////////////////////////////////////////
