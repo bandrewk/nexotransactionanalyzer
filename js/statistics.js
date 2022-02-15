@@ -370,7 +370,12 @@ export class CStatistics {
 
     // Collect all fetch promises, we want to send and wait for all of them together
     this.#m_arrCurrency.forEach((v, k, m) => {
-      urls.push(...m.get(k).GetExchangeAPIStringHistoric());
+      // We don`t have to request USD data, just set it 1:1 1usd = 1usd
+      if (v.GetType() === CurrencyType.USD) {
+        v.SetUSDData();
+      } else {
+        urls.push(...m.get(k).GetExchangeAPIStringHistoric());
+      }
     });
 
     // Jonky donky way of calculating max api calls to be as fast as possible
@@ -458,6 +463,19 @@ export class CStatistics {
 
                 this.#m_arrCurrency.get(currency).ReceiveData(date, value);
               }
+            } else console.log(`~~${currency} not found (${urls[index]})`);
+          } else if (urls[index].search(`europa`) >= 0) {
+            /////////////////////////////////////////////////////
+            /// Europe ECB
+            /////////////////////////////////////////////////////
+            console.log(`Received europe response for EUR.`);
+            currency = CurrencyType.EUR;
+
+            if (this.#m_arrCurrency.has(currency)) {
+              date = response.value.dataSets[0].series["0:0:0:0:0"].observations;
+              value = response.value.structure.dimensions.observation[0].values;
+
+              this.#m_arrCurrency.get(currency).ReceiveEuropeRangeData(date, value);
             } else console.log(`~~${currency} not found (${urls[index]})`);
           } else {
             console.log(`Could not identify API response.. stopping portolio graph generation (${urls[index]}).`);
