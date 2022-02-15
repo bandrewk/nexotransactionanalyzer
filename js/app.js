@@ -74,8 +74,10 @@ class CApp {
     // Use nexo api wherever possible
     window.USE_NEXO_API = true;
 
+    // Demo mode?
     window.DEMO_MODE = false;
 
+    // First and last transaction recorded needed for historical data
     window.FIRST_TRANSACTION = new Date();
     window.LAST_TRANSACTION = new Date();
   }
@@ -224,7 +226,7 @@ class CApp {
     }
 
     arr = arr.reverse();
-    window.DEMO_MODE = true;
+
     // Go through data line by line
     for (let i = 0; i < arr.length - 1; i++) {
       let data = arr[i].split(",");

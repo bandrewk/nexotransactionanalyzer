@@ -23,44 +23,46 @@
  */
 export const CurrencyType = {
   // Diverse blockchains
-  BTC: "BTC", // ✅ Fully working ✅ Coinbase API with histroic data
-  BCH: "BCH", // ✅ Fully working ✅ Coinbase API with histroic data
-  LTC: "LTC", // ✅ Fully working ✅ Coinbase API with histroic data
+  // Note: Use coingecko whenever possible !! it's much much faster due to its range function than coinbase
+  // See helper methods for name conversion on bottom of this file, one COULD do this via the coingecko API too (search function) but we're on limited API requests so it's hardcoded.
+  BTC: "BTC", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: bitcoin)
+  BCH: "BCH", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: bitcoin-cash)
+  LTC: "LTC", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: litecoin)
 
-  EOS: "EOS", // ✅ Fully working ✅ Coinbase API with histroic data
+  EOS: "EOS", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: eos)
   BNB: "BNB", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: binancecoin)
-  XLM: "XLM", // ✅ Fully working ✅ Coinbase API with histroic data
+  XLM: "XLM", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: stellar)
 
-  ETH: "ETH", // ✅ Fully working ✅ Coinbase API with histroic data
+  ETH: "ETH", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: ethereum)
   XRP: "XRP", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: ripple)
 
   TRX: "TRX", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: tron)
-  ADA: "ADA", // ✅ Fully working ✅ Coinbase API with histroic data
-  DOT: "DOT", // ✅ Fully working ✅ Coinbase API with histroic data
-  DOGE: "DOGE", // ✅ Fully working ✅ Coinbase API with histroic data
-  MATIC: "MATIC", // ✅ Fully working ✅ Coinbase API with histroic data
+  ADA: "ADA", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: cardano)
+  DOT: "DOT", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: polkadot)
+  DOGE: "DOGE", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: dogecoin)
+  MATIC: "MATIC", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: matic-network)
 
   // ❌ Disabled top ups (no tx linking)
-  SOL: "SOL", // ✅ Fully working ✅ Coinbase API with histroic data
+  SOL: "SOL", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: solana)
   LUNA: "LUNA", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: terra-luna)
   FTM: "FTM", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: fantom)
-  AVAX: "AVAX", // ✅ Fully working ✅ Coinbase API with histroic data
-  UST: "UST", // ✅ Fully working ✅ Coinbase API with histroic data
-  ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data
+  AVAX: "AVAX", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: avalanche-2)
+  UST: "UST", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: terrausd)
+  ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: cosmos)
 
   // ERC-20
-  NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20 ❌ Coinbase API ✅ Coingecko API with histroic data
-  LINK: "LINK", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20 ❌ Coinbase API ✅ Coingecko API with histroic data (id: nexo)
+  LINK: "LINK", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: chainlink)
   PAXG: "PAXG", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: pax-gold)
-  AXS: "AXS", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
-  UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  AXS: "AXS", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: axie-infinity)
+  UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: uniswap)
 
   // Stable Coins
-  DAI: "DAI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  DAI: "DAI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: dai)
   TUSD: "TUSD", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: true-usd)
   USDP: "USDP", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: paxos-standard)
-  USDC: "USDC", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
-  USDT: "USDT", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  USDC: "USDC", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: usd-coin)
+  USDT: "USDT", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: tether)
 
   // Fiat
   EUR: "EUR", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
@@ -139,36 +141,6 @@ export class CCurrency {
     this.#m_arrTransaction = new Map();
     this.#m_arrHistoricPriceData = new Map();
   }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // Trying to get the portfolio value to work here..
-  /////////////////////////////////////////////////////////////////////////////
-  GetPortfolioValue() {
-    return this.#m_portfolioValue;
-  }
-
-  SetPortfolioValue(value) {
-    this.#m_portfolioValue = value;
-  }
-
-  AddTXDate(value) {
-    this.#m_arrDateAdded.push(value);
-  }
-
-  // Returns array
-  GetTXDates() {
-    return this.#m_arrDateAdded;
-  }
-
-  AddTXAmount(value) {
-    this.#m_arrAmountAdded.push(value);
-  }
-
-  // Returns array
-  GetTXAmounts() {
-    return this.#m_arrAmountAdded;
-  }
-  //////////////////////
 
   AddTransactionByDate(date, amount) {
     if (this.#m_arrTransaction.get(date)) {
@@ -291,7 +263,7 @@ export class CCurrency {
   FillTransactionGaps() {
     let dates = [...this.#m_arrTransaction.keys()];
     let values = [...this.#m_arrTransaction.values()];
-    console.log(dates);
+    //console.log(dates);
     let fillerDates = this.#GetDatesBetween(new Date(dates[0]), window.LAST_TRANSACTION);
     console.log(`Start date: ${dates[0]}`);
     let temp = new Map();
@@ -441,7 +413,7 @@ export class CCurrency {
       let dates = [...this.#m_arrTransaction.keys()];
 
       // Sort data oldest to newest
-      if (!window.DEMO_MODE) dates = dates.reverse();
+      //if (!window.DEMO_MODE) dates = dates.reverse();
 
       const start = Math.floor(new Date(dates[0]).getTime() / 1000);
       const end = Math.floor(new Date(dates[dates.length - 1]).getTime() / 1000);
@@ -476,10 +448,10 @@ export class CCurrency {
     let amount = [...this.#m_arrTransaction.values()];
 
     // Sort data oldest to newest
-    if (!window.DEMO_MODE) {
+    /*if (!window.DEMO_MODE) {
       amount = amount.reverse();
       dates = dates.reverse();
-    }
+    }*/
 
     // Convert dates to UNIX time format
     dates = dates.map((x) => Math.floor(new Date(x).getTime()));
@@ -632,6 +604,106 @@ export class CCurrency {
           return "paxos-standard";
         }
         break;
+      case CurrencyType.LINK:
+        {
+          return "chainlink";
+        }
+        break;
+      case CurrencyType.BTC:
+        {
+          return "bitcoin";
+        }
+        break;
+      case CurrencyType.ETH:
+        {
+          return "ethereum";
+        }
+        break;
+      case CurrencyType.USDT:
+        {
+          return "tether";
+        }
+        break;
+      case CurrencyType.USDC:
+        {
+          return "usd-coin";
+        }
+        break;
+      case CurrencyType.DAI:
+        {
+          return "dai";
+        }
+        break;
+      case CurrencyType.BCH:
+        {
+          return "bitcoin-cash";
+        }
+        break;
+      case CurrencyType.LTC:
+        {
+          return "litecoin";
+        }
+        break;
+      case CurrencyType.DOGE:
+        {
+          return "dogecoin";
+        }
+        break;
+      case CurrencyType.EOS:
+        {
+          return "eos";
+        }
+        break;
+      case CurrencyType.XLM:
+        {
+          return "stellar";
+        }
+        break;
+      case CurrencyType.ADA:
+        {
+          return "cardano";
+        }
+        break;
+      case CurrencyType.MATIC:
+        {
+          return "matic-network";
+        }
+        break;
+      case CurrencyType.DOT:
+        {
+          return "polkadot";
+        }
+        break;
+      case CurrencyType.SOL:
+        {
+          return "solana";
+        }
+        break;
+      case CurrencyType.AVAX:
+        {
+          return "avalanche-2";
+        }
+        break;
+      case CurrencyType.UST:
+        {
+          return "terrausd";
+        }
+        break;
+      case CurrencyType.ATOM:
+        {
+          return "cosmos";
+        }
+        break;
+      case CurrencyType.AXS:
+        {
+          return "axie-infinity";
+        }
+        break;
+      case CurrencyType.UNI:
+        {
+          return "uniswap";
+        }
+        break;
       default:
         console.log("Invalid currency in coingecko api");
         console.log(this.GetType());
@@ -690,6 +762,106 @@ export class CCurrency {
           return CurrencyType.USDP;
         }
         break;
+      case "chainlink":
+        {
+          return CurrencyType.LINK;
+        }
+        break;
+      case "bitcoin":
+        {
+          return CurrencyType.BTC;
+        }
+        break;
+      case "ethereum":
+        {
+          return CurrencyType.ETH;
+        }
+        break;
+      case "tether":
+        {
+          return CurrencyType.USDT;
+        }
+        break;
+      case "usd-coin":
+        {
+          return CurrencyType.USDC;
+        }
+        break;
+      case "dai":
+        {
+          return CurrencyType.DAI;
+        }
+        break;
+      case "bitcoin-cash":
+        {
+          return CurrencyType.BCH;
+        }
+        break;
+      case "litecoin":
+        {
+          return CurrencyType.LTC;
+        }
+        break;
+      case "dogecoin":
+        {
+          return CurrencyType.DOGE;
+        }
+        break;
+      case "eos":
+        {
+          return CurrencyType.EOS;
+        }
+        break;
+      case "stellar":
+        {
+          return CurrencyType.XLM;
+        }
+        break;
+      case "cardano":
+        {
+          return CurrencyType.ADA;
+        }
+        break;
+      case "matic-network":
+        {
+          return CurrencyType.MATIC;
+        }
+        break;
+      case "polkadot":
+        {
+          return CurrencyType.DOT;
+        }
+        break;
+      case "solana":
+        {
+          return CurrencyType.SOL;
+        }
+        break;
+      case "avalanche-2":
+        {
+          return CurrencyType.AVAX;
+        }
+        break;
+      case "terrausd":
+        {
+          return CurrencyType.UST;
+        }
+        break;
+      case "cosmos":
+        {
+          return CurrencyType.ATOM;
+        }
+        break;
+      case "axie-infinity":
+        {
+          return CurrencyType.AXS;
+        }
+        break;
+      case "uniswap":
+        {
+          return CurrencyType.UNI;
+        }
+        break;
       default:
         console.log("Invalid currency in coingecko api");
         console.log(cur);
@@ -701,6 +873,9 @@ export class CCurrency {
    * @returns true if supported
    */
   #IsCoinbaseApiSupported() {
+    // This is implemented and working but we switched to the coingecko api 100% for historical data as it's much faster
+    return false;
+
     const cur = this.GetType();
     if (
       cur === CurrencyType.BNB ||
