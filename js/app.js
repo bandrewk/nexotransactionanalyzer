@@ -73,6 +73,11 @@ class CApp {
 
     // Use nexo api wherever possible
     window.USE_NEXO_API = true;
+
+    window.DEMO_MODE = false;
+
+    window.FIRST_TRANSACTION = new Date();
+    window.LAST_TRANSACTION = new Date();
   }
 
   /**
@@ -218,8 +223,10 @@ class CApp {
       throw new Error(error);
     }
 
+    arr = arr.reverse();
+    window.DEMO_MODE = true;
     // Go through data line by line
-    for (let i = 1; i < arr.length; i++) {
+    for (let i = 0; i < arr.length - 1; i++) {
       let data = arr[i].split(",");
       let obj = {};
       for (let j = 0; j < data.length; j++) {
@@ -293,6 +300,7 @@ class CApp {
     this.#m_arrTransaction.map((t) => arr.push(this.#m_cStatistics.AddTransaction(t)));
 
     this.#m_cStatistics.GetCurrentExchangeRates(this.ReceiveCurrentExchangeRates.bind(this));
+    this.#m_cStatistics.GetHistoricalPortfolioData();
 
     // Navigate
     this.#m_cNavigator.ShowPage(Page.OVERVIEW);
@@ -356,6 +364,8 @@ class CApp {
    * Load demo content
    */
   OnBtnDemoClicked() {
+    window.DEMO_MODE = true;
+
     fetch("demo-data.csv")
       .then((response) => response.text())
       .then((content) => {
@@ -374,6 +384,8 @@ class CApp {
    * Currency test (loads all currencies)
    */
   OnBtnCurrencyTestClicked() {
+    window.DEMO_MODE = true;
+
     fetch("demo-data-all-currencies.csv") // -all-currencies
       .then((response) => response.text())
       .then((content) => {

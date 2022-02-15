@@ -159,8 +159,10 @@ export class CStatistics {
     this.#m_arrCurrency.get(cur).AddAmount(amount);
 
     // Add historical data to the currency
-    this.#m_arrCurrency.get(cur).AddTXDate(t.GetDateTime().substr(0, 7));
-    this.#m_arrCurrency.get(cur).AddTXAmount(amount);
+    //this.#m_arrCurrency.get(cur).AddTXDate(t.GetDateTime().substr(0, 7));
+    //this.#m_arrCurrency.get(cur).AddTXAmount(amount);
+
+    this.#m_arrCurrency.get(cur).AddTransactionByDate(t.GetDateTime(), amount);
   }
 
   /**
@@ -471,6 +473,157 @@ export class CStatistics {
     return groupedbyday;
   }
 
+  GetHistoricalPortfolioData() {
+    let urls = [];
+
+    // Collect all fetch promises, we want to send and wait for all of them together
+    this.#m_arrCurrency.forEach((v, k, m) => {
+      urls.push(...m.get(k).GetExchangeAPIStringHistoric());
+    });
+
+    // Jonky donky way of calculating max api calls to be as fast as possible
+    // This can go wrong if too many coingecko calls are present
+    let cb = 0; //coinbase api calls
+    let cg = 0; //coingecko api calls
+
+    //Count api calls
+    urls.forEach((element) => {
+      if (element.search(`coinbase`) >= 0) cb++;
+      else cg++;
+    });
+
+    // If more coingecko calls are present give it a little more time
+    let maxTime = cb * 200 + cg * (urls.length / 2 > cg ? 600 : 800);
+
+    console.log(`Requesting API data for.. ${maxTime}ms`);
+
+    let timePerRequest = maxTime / urls.length;
+    console.log(`Requesting every.. ${timePerRequest}ms`);
+
+    // Make promises resolve to their final value
+    // go easy with the APIs and delay the calls a little (5 calls per sec max)
+    let i = 0;
+    let apiRequests = urls.map((url) =>
+      this.DelayFetch(url, (i += timePerRequest)).then((url) => fetch(url).then((res) => res.json()))
+    );
+
+    console.log(`~Load time ~${i}ms`);
+
+    let date;
+    let currency, value;
+
+    // Wait for all promises to settle
+    Promise.allSettled(apiRequests).then((responses) => {
+      responses.forEach((response, index) => {
+        // Loop through all responses
+        if (response.status === "fulfilled") {
+          //console.log(response);
+
+          // Process API endpoints..
+          if (urls[index].search(`coinbase`) >= 0) {
+            /////////////////////////////////////////////////////
+            /// Coinbase API
+            /////////////////////////////////////////////////////
+            // TODO Process coinbase API endpoint
+            // console.log(`Response from coinbase~`);
+
+            currency = response.value.data.base;
+
+            if (this.#m_arrCurrency.has(currency)) {
+              date = urls[index].substr(-10, 10);
+
+              this.#m_arrCurrency.get(currency).ReceiveData(date, parseFloat(response.value.data.amount));
+              //console.log(`~~${currency + ` - ` + value}$`);
+            } else console.log(`~~${currency} not found (${urls[index]})`);
+          } else if (urls[index].search(`coingecko`) >= 0) {
+            /////////////////////////////////////////////////////
+            /// Coingecko API
+            /////////////////////////////////////////////////////
+            // TODO Process coingecko API endpoint
+            //console.log(`Response from coingecko~`);
+
+            // Remove https://api.coingecko.com/api/v3/coins/
+            currency = urls[index].substr(39, urls[index].length);
+            currency = currency.substr(0, currency.search(`/`));
+            //console.log(`Received coingecko response for ${currency}.`);
+            currency = CCurrency.NormalizeCoingeckoApiName(currency);
+            //console.log(`Converted to.. ${currency}`);
+
+            if (this.#m_arrCurrency.has(currency)) {
+              // Range request answer
+              if (urls[index].search(`from`) >= 0) {
+                this.#m_arrCurrency.get(currency).ReceiveCoingeckoRangeData(response.value.prices);
+              } else {
+                // Single request answer
+                value = parseFloat(response.value.market_data.current_price.usd);
+
+                // Grab date (DD-MM-YYYY)
+                date = urls[index].substr(-10, 10);
+
+                // Format to YYYY-MM-DD
+                date = date.split(`-`);
+                date = `${date[2]}-${date[1]}-${date[0]}`;
+
+                this.#m_arrCurrency.get(currency).ReceiveData(date, value);
+              }
+            } else console.log(`~~${currency} not found (${urls[index]})`);
+          } else {
+            console.log(`Could not identify API response.. stopping portolio graph generation (${urls[index]}).`);
+            return;
+          }
+        } else if (response.status === "rejected") {
+          // Failed
+          console.log(`GetExchangeRate failed for: ${urls[index]} - ${response.reason}`);
+        }
+      });
+
+      // We're ready !
+      this.DrawPortfolioChart();
+    });
+  }
+
+  DrawPortfolioChart() {
+    let arrPortfolioData = new Map();
+
+    this.#m_arrCurrency.forEach((element) => {
+      element.GetHistoricPriceData().forEach((v, k, m) => {
+        if (arrPortfolioData.get(k)) {
+          arrPortfolioData.set(k, arrPortfolioData.get(k) + parseFloat(v));
+        } else arrPortfolioData.set(k, parseFloat(v));
+      });
+    });
+
+    console.log(arrPortfolioData);
+
+    let trace1 = {
+      x: [...arrPortfolioData.keys()],
+      y: [...arrPortfolioData.values()],
+
+      name: `Deposits`,
+      type: `bar`,
+      marker: {
+        size: 8,
+      },
+      line: {
+        width: 2,
+      },
+      connectgaps: true,
+    };
+
+    let data = [trace1];
+    let layout = {
+      title: "Portfolio Value",
+      autosize: true,
+      yaxis: {
+        title: "USD",
+        showline: false,
+      },
+    };
+
+    const config = { responsive: true };
+
+    Plotly.newPlot("ov-graph-portfolio", data, layout, config);
+  }
   /////////////////////////////////////////////////////
   /// Charts
   /////////////////////////////////////////////////////
@@ -488,6 +641,11 @@ export class CStatistics {
 
     let amounts = [];
     this.#m_arrCurrency.forEach((e) => {
+      // Hide zero entries
+      if (e.GetUSDEquivalent() === 0) {
+        amounts.push(null);
+        return;
+      }
       amounts.push(e.GetUSDEquivalent());
     });
 
@@ -509,11 +667,11 @@ export class CStatistics {
         if (P * amounts[i] < MIN_PERCENTAGE) {
           etc += amounts[i];
 
-          console.log(
+          /*console.log(
             `Grouped ${names[i]} with a value of ${amounts[i]} into ETC. Portfolio percentage is below ${MIN_PERCENTAGE} (${(
               P * amounts[i]
             ).toFixed(2)}%).`
-          );
+          );*/
 
           // Setting them to NULL will make them invisible in the graph
           amounts[i] = null;
@@ -530,7 +688,7 @@ export class CStatistics {
         title: "Portfolio graph",
         text: `Data in the portfolio graph has been grouped. Entries below ${MIN_PERCENTAGE}% of your portfolio are summarized in "ETC < ${MIN_PERCENTAGE}%".`,
       });
-    }
+    } //if
 
     var data = [
       {
