@@ -23,50 +23,50 @@
  */
 export const CurrencyType = {
   // Diverse blockchains
-  BTC: "BTC", // ✅ Fully working
-  BCH: "BCH", // ✅ Fully working
-  LTC: "LTC", // ✅ Fully working
+  BTC: "BTC", // ✅ Fully working ✅ Coinbase API with histroic data
+  BCH: "BCH", // ✅ Fully working ✅ Coinbase API with histroic data
+  LTC: "LTC", // ✅ Fully working ✅ Coinbase API with histroic data
 
-  EOS: "EOS", // ✅ Fully working
-  BNB: "BNB", // ✅ Fully working
-  XLM: "XLM", // ✅ Fully working
+  EOS: "EOS", // ✅ Fully working ✅ Coinbase API with histroic data
+  BNB: "BNB", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: binancecoin)
+  XLM: "XLM", // ✅ Fully working ✅ Coinbase API with histroic data
 
-  ETH: "ETH", // ✅ Fully working
-  XRP: "XRP", // ✅ Fully working
+  ETH: "ETH", // ✅ Fully working ✅ Coinbase API with histroic data
+  XRP: "XRP", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: ripple)
 
-  TRX: "TRX", // ✅ Fully working
-  ADA: "ADA", // ✅ Fully working
-  DOT: "DOT", // ✅ Fully working
-  DOGE: "DOGE", // ✅ Fully working
-  MATIC: "MATIC", // ✅ Fully working
+  TRX: "TRX", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: tron)
+  ADA: "ADA", // ✅ Fully working ✅ Coinbase API with histroic data
+  DOT: "DOT", // ✅ Fully working ✅ Coinbase API with histroic data
+  DOGE: "DOGE", // ✅ Fully working ✅ Coinbase API with histroic data
+  MATIC: "MATIC", // ✅ Fully working ✅ Coinbase API with histroic data
 
   // ❌ Disabled top ups (no tx linking)
-  SOL: "SOL", // ✅ Fully working
-  LUNA: "LUNA", // ✅ Fully working
-  FTM: "FTM", // ✅ Fully working
-  AVAX: "AVAX", // ✅ Fully working
-  UST: "UST", // ✅ Fully working
-  ATOM: "ATOM", // ✅ Fully working
+  SOL: "SOL", // ✅ Fully working ✅ Coinbase API with histroic data
+  LUNA: "LUNA", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: terra-luna)
+  FTM: "FTM", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: fantom)
+  AVAX: "AVAX", // ✅ Fully working ✅ Coinbase API with histroic data
+  UST: "UST", // ✅ Fully working ✅ Coinbase API with histroic data
+  ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data
 
   // ERC-20
-  NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20
-  LINK: "LINK", // ✅ Fully working (ERC20)
-  PAXG: "PAXG", // ✅ Fully working (ERC20)
-  AXS: "AXS", // ✅ Fully working (ERC20)
-  UNI: "UNI", // ✅ Fully working (ERC20)
+  NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20 ❌ Coinbase API ✅ Coingecko API with histroic data
+  LINK: "LINK", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  PAXG: "PAXG", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: pax-gold)
+  AXS: "AXS", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
 
   // Stable Coins
-  DAI: "DAI", // ✅ Fully working (ERC20)
-  TUSD: "TUSD", // ✅ Fully working (ERC20)
-  USDP: "USDP", // ✅ Fully working (ERC20)
-  USDC: "USDC", // ✅ Fully working (ERC20)
-  USDT: "USDT", // ✅ Fully working (ERC20)
+  DAI: "DAI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  TUSD: "TUSD", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: true-usd)
+  USDP: "USDP", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: paxos-standard)
+  USDC: "USDC", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
+  USDT: "USDT", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data
 
   // Fiat
-  EUR: "EUR", // ✅ Fully working
-  USD: "USD", // ✅ Fully working
-  GBP: "GBP", // ✅ Fully working
-}; // 30 currencies supported as of 04.02.2022
+  EUR: "EUR", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
+  USD: "USD", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
+  GBP: "GBP", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
+}; // 32 currencies supported as of 15.02.2022
 
 Object.freeze(CurrencyType);
 
@@ -117,6 +117,9 @@ export class CCurrency {
   // MAP
   #m_portfolioValue;
 
+  #m_arrTransaction;
+  #m_arrHistoricPriceData;
+
   constructor(type, amount = 0) {
     this.#m_type = type;
     this.SetAmount(amount);
@@ -132,6 +135,9 @@ export class CCurrency {
 
     this.#m_arrDateAdded = [];
     this.#m_arrAmountAdded = [];
+
+    this.#m_arrTransaction = new Map();
+    this.#m_arrHistoricPriceData = new Map();
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -161,6 +167,25 @@ export class CCurrency {
   // Returns array
   GetTXAmounts() {
     return this.#m_arrAmountAdded;
+  }
+  //////////////////////
+
+  AddTransactionByDate(date, amount) {
+    if (this.#m_arrTransaction.get(date)) {
+      this.#m_arrTransaction.set(date, this.GetAmount()); //this.#m_arrTransaction.get(date) + parseFloat(amount));
+    } else this.#m_arrTransaction.set(date, this.GetAmount()); //parseFloat(amount));
+
+    if (new Date(date) < window.FIRST_TRANSACTION) window.FIRST_TRANSACTION = new Date(date);
+
+    //console.log(`Date: ${date} / ${this.GetAmount()} / ${this.GetType()}`);
+  }
+
+  GetTransactions() {
+    return this.#m_arrTransaction;
+  }
+
+  GetHistoricPriceData() {
+    return this.#m_arrHistoricPriceData;
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -263,6 +288,50 @@ export class CCurrency {
     this.#m_fUSDEquivalent = amount;
   }
 
+  FillTransactionGaps() {
+    let dates = [...this.#m_arrTransaction.keys()];
+    let values = [...this.#m_arrTransaction.values()];
+    console.log(dates);
+    let fillerDates = this.#GetDatesBetween(new Date(dates[0]), window.LAST_TRANSACTION);
+    console.log(`Start date: ${dates[0]}`);
+    let temp = new Map();
+    let xid = 0;
+    for (let index = 1; index < fillerDates.length; index++) {
+      let element = fillerDates[index];
+
+      for (let x = 0; x < dates.length; ) {
+        if (element === dates[x]) {
+          xid = x;
+        }
+        x++;
+      }
+      temp.set(element, values[xid]);
+    }
+    console.log(`Filling gaps for.. ${this.GetType()}`);
+    console.log(temp);
+
+    this.#m_arrTransaction = temp;
+  }
+
+  #GetDatesBetween(startDate, endDate) {
+    let dates = [];
+
+    // Strip hours minutes seconds etc.
+    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+    while (currentDate <= endDate) {
+      dates.push(currentDate.toISOString().split("T")[0]);
+
+      currentDate = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate() + 1 // Will increase month if over range
+      );
+    }
+
+    return dates;
+  }
+
   /**
    * TODO, CHECK, REVISE
    */
@@ -345,6 +414,88 @@ export class CCurrency {
     return `https://api.coinbase.com/v2/exchange-rates?currency=${this.#m_type}`;
   }
 
+  GetExchangeAPIStringHistoric() {
+    this.FillTransactionGaps();
+
+    let urls = [];
+    this.#m_arrTransaction.forEach((v, k, m) => {
+      if (this.#IsCoinbaseApiSupported()) {
+        urls.push(`https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${k}`);
+      } else if (this.#IsCoingeckoApiSupported()) {
+        if ([...this.#m_arrTransaction.keys()].length < 10)
+          urls.push(
+            `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/history?date=${
+              k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
+            }`
+          );
+      } else {
+        console.log(`No API support for ${this.GetType()}`);
+      }
+    });
+
+    if (urls.length > 0) return urls;
+
+    if (this.#IsCoingeckoApiSupported()) {
+      //console.log(this.GetType());
+      //console.log(this.#m_arrTransaction);
+      let dates = [...this.#m_arrTransaction.keys()];
+
+      // Sort data oldest to newest
+      if (!window.DEMO_MODE) dates = dates.reverse();
+
+      const start = Math.floor(new Date(dates[0]).getTime() / 1000);
+      const end = Math.floor(new Date(dates[dates.length - 1]).getTime() / 1000);
+
+      //console.log(`Start: ${start}, end: ${end}`);
+      urls.push(
+        `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/market_chart/range?vs_currency=usd&from=${start}&to=${end}`
+      );
+    }
+
+    return urls;
+  }
+
+  /**
+   * Receives the response of a single date request
+   * @param {*} date date
+   * @param {*} value price value
+   */
+  ReceiveData(date, value) {
+    if (this.#m_arrTransaction.get(date)) {
+      //console.log(`date found!`);
+      this.#m_arrHistoricPriceData.set(date, value * this.#m_arrTransaction.get(date));
+    }
+  }
+
+  /**
+   * Receives the response of a range date request
+   * @param {*} data range data
+   */
+  ReceiveCoingeckoRangeData(data) {
+    let dates = [...this.#m_arrTransaction.keys()];
+    let amount = [...this.#m_arrTransaction.values()];
+
+    // Sort data oldest to newest
+    if (!window.DEMO_MODE) {
+      amount = amount.reverse();
+      dates = dates.reverse();
+    }
+
+    // Convert dates to UNIX time format
+    dates = dates.map((x) => Math.floor(new Date(x).getTime()));
+
+    for (let i = 0; i < data.length; i++) {
+      for (let x = 0; x < dates.length; x++) {
+        if (data[i][0] == dates[x]) {
+          // console.log(`Match found!`);
+          this.#m_arrHistoricPriceData.set(new Date(dates[x]).toISOString().split("T")[0], amount[x] * data[i][1]);
+        }
+      }
+    }
+
+    //console.log(this.#m_arrHistoricPriceData);
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // Helper methods to identify currency type
   /////////////////////////////////////////////////////////////////////////////
@@ -424,5 +575,157 @@ export class CCurrency {
     )
       return true;
     else return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // API helpers
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Convert currency type to a compatible format for coingecko api
+   * @returns valid coingecko api name as string
+   */
+  #GetCoingeckoApiID() {
+    switch (this.GetType()) {
+      case CurrencyType.BNB:
+        {
+          return "binancecoin";
+        }
+        break;
+      case CurrencyType.XRP:
+        {
+          return "ripple";
+        }
+        break;
+      case CurrencyType.TRX:
+        {
+          return "tron";
+        }
+        break;
+      case CurrencyType.LUNA:
+        {
+          return "terra-luna";
+        }
+        break;
+      case CurrencyType.FTM:
+        {
+          return "fantom";
+        }
+        break;
+      case CurrencyType.NEXO:
+        {
+          return "nexo";
+        }
+        break;
+      case CurrencyType.PAXG:
+        {
+          return "pax-gold";
+        }
+        break;
+      case CurrencyType.TUSD:
+        {
+          return "true-usd";
+        }
+        break;
+      case CurrencyType.USDP:
+        {
+          return "paxos-standard";
+        }
+        break;
+      default:
+        console.log("Invalid currency in coingecko api");
+        console.log(this.GetType());
+    }
+  }
+
+  /**
+   * Reverse function of GetCoingeckoApiID
+   * @param {*} cur Currency in coingecko api format
+   * @returns currency in our app format
+   */
+  static NormalizeCoingeckoApiName(cur) {
+    switch (cur) {
+      case "binancecoin":
+        {
+          return CurrencyType.BNB;
+        }
+        break;
+      case "ripple":
+        {
+          return CurrencyType.XRP;
+        }
+        break;
+      case "tron":
+        {
+          return CurrencyType.TRX;
+        }
+        break;
+      case "terra-luna":
+        {
+          return CurrencyType.LUNA;
+        }
+        break;
+      case "fantom":
+        {
+          return CurrencyType.FTM;
+        }
+        break;
+      case "nexo":
+        {
+          return CurrencyType.NEXO;
+        }
+        break;
+      case "pax-gold":
+        {
+          return CurrencyType.PAXG;
+        }
+        break;
+      case "true-usd":
+        {
+          return CurrencyType.TUSD;
+        }
+        break;
+      case "paxos-standard":
+        {
+          return CurrencyType.USDP;
+        }
+        break;
+      default:
+        console.log("Invalid currency in coingecko api");
+        console.log(cur);
+    }
+  }
+
+  /**
+   * Check if currency is supported by coinbase api
+   * @returns true if supported
+   */
+  #IsCoinbaseApiSupported() {
+    const cur = this.GetType();
+    if (
+      cur === CurrencyType.BNB ||
+      cur === CurrencyType.XRP ||
+      cur === CurrencyType.TRX ||
+      cur === CurrencyType.LUNA ||
+      cur === CurrencyType.FTM ||
+      cur === CurrencyType.NEXO ||
+      cur === CurrencyType.PAXG ||
+      cur === CurrencyType.TUSD ||
+      cur === CurrencyType.USDP ||
+      this.IsFiat() ||
+      CCurrency.IsFiatX(cur)
+    ) {
+      return false;
+    } else return true;
+  }
+
+  /**
+   * Check if currency is supported by coingecko api
+   * @returns true if supported
+   */
+  #IsCoingeckoApiSupported() {
+    const cur = this.GetType();
+    if (this.#IsCoinbaseApiSupported() || this.IsFiat() || CCurrency.IsFiatX(cur)) return false;
+    else return true;
   }
 }
