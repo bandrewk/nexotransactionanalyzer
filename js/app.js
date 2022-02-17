@@ -487,6 +487,7 @@ class CApp {
    * Force all graphs to be redrawn to adjust to any window size changes while it was hidden
    */
   OnPageOverviewOpened() {
+    Plotly.update("ov-graph-portfolio");
     Plotly.update("ov-graph-line1");
     Plotly.update("ov-graph-line2");
     Plotly.update("ov-graph-pie1");
