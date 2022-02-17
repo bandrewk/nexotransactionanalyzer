@@ -428,7 +428,8 @@ class CApp {
 
     // Details
     let details = t.GetDetails();
-    if (details.substr(0, 8) === `approved`) details = `✅ ` + details;
+    if (details.substr(0, details.search(` `)) === `approved`) details = `✅ ` + details;
+    else if (details.substr(0, details.search(` `)) === `pending`) details = `⚠️ ` + details;
     else details = `❌ ` + details;
 
     // Transaction type

@@ -56,10 +56,16 @@ export class CStatistics {
    */
   #m_arrCurrency;
 
+  /**
+   * Total referral bonus earned (all-time)
+   */
+  #m_fTotalReferralBonusEarned;
+
   constructor() {
     this.#m_fTotalCryptoDeposited = 0;
     this.#m_fTotalFiatDeposited = 0;
     this.#m_fTotalInterestEarnedAsUSD = 0;
+    this.#m_fTotalReferralBonusEarned = 0;
 
     this.#m_arrCurrency = new Map();
   }
@@ -71,6 +77,12 @@ export class CStatistics {
    * Adds a new transaction to the stats
    */
   AddTransaction(t) {
+    // Do not process pending transactions
+    if (t.GetDetails().search(`pending`) >= 0) {
+      console.log(`Skipping pending transaction ${t.GetId()}.`);
+      return;
+    }
+
     if (t.GetType() === TransactionType.DEPOSIT) {
       this.#m_fTotalCryptoDeposited += parseFloat(t.GetUSDEquivalent(false));
     }
@@ -97,6 +109,12 @@ export class CStatistics {
     // Count cashback
     if (t.GetType() === TransactionType.EXCHANGECASHBACK) {
       this.#m_arrCurrency.get(t.GetCurrency()).AddCashbackInKind(t.GetAmount());
+    }
+
+    // Count ref bonus
+    if (t.GetType() === TransactionType.REFERRALBONUS) {
+      // It's always in bitcoin so we might as well track it here
+      this.m_fTotalReferralBonusEarned += t.GetAmount();
     }
   }
 
@@ -159,7 +177,7 @@ export class CStatistics {
     this.#m_arrCurrency.get(cur).AddAmount(amount);
 
     // Add historical data to the currency
-    this.#m_arrCurrency.get(cur).AddTransactionByDate(t.GetDateTime(), amount);
+    this.#m_arrCurrency.get(cur).AddTransactionByDate(t.GetDateTime());
   }
 
   /**
@@ -371,7 +389,7 @@ export class CStatistics {
     // Collect all fetch promises, we want to send and wait for all of them together
     this.#m_arrCurrency.forEach((v, k, m) => {
       // We don`t have to request USD data, just set it 1:1 1usd = 1usd
-      if (v.GetType() === CurrencyType.USD) {
+      if (v.GetType() === CurrencyType.FIAT.USD) {
         v.SetUSDData();
       } else {
         urls.push(...m.get(k).GetExchangeAPIStringHistoric());
@@ -469,7 +487,7 @@ export class CStatistics {
             /// Europe ECB
             /////////////////////////////////////////////////////
             console.log(`Received europe response for EUR.`);
-            currency = CurrencyType.EUR;
+            currency = CurrencyType.FIAT.EUR;
 
             if (this.#m_arrCurrency.has(currency)) {
               date = response.value.dataSets[0].series["0:0:0:0:0"].observations;
@@ -847,14 +865,14 @@ export class CStatistics {
    */
   GetLoyalityLevel() {
     // No nexo tokens
-    if (!this.#m_arrCurrency.has(CurrencyType.NEXO)) {
+    if (!this.#m_arrCurrency.has(CurrencyType.ERC20.NEXO)) {
       return LoyalityLevel.BASE;
     }
 
     const e = this.GetCurrentDepotValueInUSD();
 
     // Percentage of NEXO Tokens in portfolio
-    const p = (100 / e) * this.#m_arrCurrency.get(CurrencyType.NEXO).GetUSDEquivalent();
+    const p = (100 / e) * this.#m_arrCurrency.get(CurrencyType.ERC20.NEXO).GetUSDEquivalent();
 
     if (p < 1) return LoyalityLevel.BASE;
     else if (p >= 1 && p < 5) return LoyalityLevel.SILVER;
