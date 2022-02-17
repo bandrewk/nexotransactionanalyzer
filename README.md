@@ -19,6 +19,9 @@ export const TransactionType = {
   // Cashback
   EXCHANGECASHBACK: `Exchange Cashback`,
 
+  // Refs
+  REFERRALBONUS: `ReferralBonus`,
+
   // Deposit Fiat
   EXCHANGEDEPOSITEDON: `ExchangeDepositedOn`,
   DEPOSITTOEXCHANGE: `DepositToExchange`,
