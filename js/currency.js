@@ -22,7 +22,7 @@
  * The string equals to the definition in the .csv file
  */
 export const CurrencyType = {
-  // Diverse blockchains
+  // Diverse blockchain networks
   // Note: Use coingecko whenever possible !! it's much much faster due to its range function than coinbase
   // See helper methods for name conversion on bottom of this file, one COULD do this via the coingecko API too (search function) but we're on limited API requests so it's hardcoded.
   BTC: "BTC", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: bitcoin)
@@ -50,25 +50,32 @@ export const CurrencyType = {
   UST: "UST", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: terrausd)
   ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: cosmos)
 
-  // ERC-20
-  NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20 ❌ Coinbase API ✅ Coingecko API with histroic data (id: nexo)
-  LINK: "LINK", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: chainlink)
-  PAXG: "PAXG", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: pax-gold)
-  AXS: "AXS", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: axie-infinity)
-  UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: uniswap)
+  // ERC-20 tokens
+  ERC20: {
+    NEXO: "NEXO", // ✅ Fully working (ERC20) ❌ Not working for BEP20 ❌ Coinbase API ✅ Coingecko API with histroic data (id: nexo)
+    LINK: "LINK", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: chainlink)
+    PAXG: "PAXG", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: pax-gold)
+    AXS: "AXS", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: axie-infinity)
+    UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: uniswap)
+    MANA: "MANA", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: decentraland)
 
-  // Stable Coins
-  DAI: "DAI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: dai)
-  TUSD: "TUSD", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: true-usd)
-  USDP: "USDP", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: paxos-standard)
-  USDC: "USDC", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: usd-coin)
-  USDT: "USDT", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: tether)
+    // Stable tokens
+    STABLE: {
+      DAI: "DAI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: dai)
+      TUSD: "TUSD", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: true-usd)
+      USDP: "USDP", // ✅ Fully working (ERC20) ❌ Coinbase API ✅ Coingecko API with histroic data (id: paxos-standard)
+      USDC: "USDC", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: usd-coin)
+      USDT: "USDT", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: tether)
+    },
+  },
 
   // Fiat
-  EUR: "EUR", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
-  USD: "USD", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
-  GBP: "GBP", // ✅ Fully working ❌ Coinbase API (responds but empty) ❌ Coingecko API
-}; // 32 currencies supported as of 15.02.2022
+  FIAT: {
+    EUR: "EUR", // ✅ Fully working ✅ ECB API fully working
+    USD: "USD", // ✅ Fully working ✅ No API needed
+    GBP: "GBP", // ✅ Fully working ❌ Not implemented
+  },
+}; // 33 currencies supported as of 17.02.2022
 
 Object.freeze(CurrencyType);
 
@@ -125,7 +132,7 @@ export class CCurrency {
 
   constructor(type, amount = 0) {
     this.#m_type = type;
-    this.SetAmount(amount);
+    this.#m_fAmount = 0;
     this.SetUSDEquivalent(0);
 
     // Interest
@@ -140,20 +147,24 @@ export class CCurrency {
     this.#m_arrHistoricPriceData = new Map();
   }
 
-  AddTransactionByDate(date, amount) {
+  /**
+   * Adds a transaction snapshot to the historic prices array
+   * @param {*} date transaction date
+   */
+  AddTransactionByDate(date) {
     if (this.#m_arrTransaction.get(date)) {
-      this.#m_arrTransaction.set(date, this.GetAmount()); //this.#m_arrTransaction.get(date) + parseFloat(amount));
-    } else this.#m_arrTransaction.set(date, this.GetAmount()); //parseFloat(amount));
+      // We just need the current amount here as it includes all previous transactions.
+      this.#m_arrTransaction.set(date, this.GetAmount());
+    } else this.#m_arrTransaction.set(date, this.GetAmount());
 
+    // Keep track of the first transaction
     if (new Date(date) < window.FIRST_TRANSACTION) window.FIRST_TRANSACTION = new Date(date);
-
-    //console.log(`Date: ${date} / ${this.GetAmount()} / ${this.GetType()}`);
   }
 
-  GetTransactions() {
-    return this.#m_arrTransaction;
-  }
-
+  /**
+   * Returns the saved historic price data
+   * @returns historic price data
+   */
   GetHistoricPriceData() {
     return this.#m_arrHistoricPriceData;
   }
@@ -231,18 +242,26 @@ export class CCurrency {
   /////////////////////////////////////////////////////////////////////////////
   //
   /////////////////////////////////////////////////////////////////////////////
+  /**
+   * Get type of currency
+   * @returns CurrencyType
+   */
   GetType() {
     return this.#m_type;
   }
 
+  /**
+   * Get currency amound, in-kind value
+   * @returns amount in-kind
+   */
   GetAmount() {
     return this.#m_fAmount;
   }
 
-  SetAmount(amount) {
-    this.#m_fAmount = amount;
-  }
-
+  /**
+   * Adds the specified amount to the currency
+   * @param {*} amount  amount in-kind
+   */
   AddAmount(amount) {
     this.#m_fAmount += amount;
   }
@@ -350,7 +369,7 @@ export class CCurrency {
 
     if (urls.length > 0) return urls;
 
-    if (this.GetType() === CurrencyType.EUR) {
+    if (this.GetType() === CurrencyType.FIAT.EUR) {
       // Whee we can use the ECB to grab EUR to USD data :D
       //https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2009-05-01&endPeriod=2009-05-31
 
@@ -498,9 +517,10 @@ export class CCurrency {
    * @returns true if currency is FIAT
    */
   IsFiat() {
-    if (this.GetType() === CurrencyType.EUR || this.GetType() === CurrencyType.USD || this.GetType() === CurrencyType.GBP)
-      return true;
-    else return false;
+    for (let key in CurrencyType.FIAT) {
+      if (this.GetType() === key) return true;
+    }
+    return false;
   }
 
   /**
@@ -509,8 +529,10 @@ export class CCurrency {
    * @returns true if currency is fiat
    */
   static IsFiat(cur) {
-    if (cur === CurrencyType.EUR || cur === CurrencyType.USD || cur === CurrencyType.GBP) return true;
-    else return false;
+    for (let key in CurrencyType.FIAT) {
+      if (cur === key) return true;
+    }
+    return false;
   }
 
   /**
@@ -528,15 +550,10 @@ export class CCurrency {
    * @returns true if currency is a stablecoin
    */
   IsStableCoin() {
-    if (
-      this.GetType() === CurrencyType.DAI ||
-      this.GetType() === CurrencyType.TUSD ||
-      this.GetType() === CurrencyType.USDP ||
-      this.GetType() === CurrencyType.USDC ||
-      this.GetType() === CurrencyType.USDT
-    )
-      return true;
-    else return false;
+    for (let key in CurrencyType.ERC20.STABLE) {
+      if (this.GetType() === key) return true;
+    }
+    return false;
   }
 
   /**
@@ -544,21 +561,17 @@ export class CCurrency {
    * @returns True if currency is ERC20 token
    */
   IsERC20Token() {
-    if (
-      this.GetType() === CurrencyType.ETH ||
-      this.GetType() === CurrencyType.LINK ||
-      this.GetType() === CurrencyType.USDT ||
-      this.GetType() === CurrencyType.NEXO ||
-      this.GetType() === CurrencyType.USDC ||
-      this.GetType() === CurrencyType.USDP ||
-      this.GetType() === CurrencyType.TUSD ||
-      this.GetType() === CurrencyType.DAI ||
-      this.GetType() === CurrencyType.PAXG ||
-      this.GetType() === CurrencyType.AXS ||
-      this.GetType() === CurrencyType.UNI
-    )
-      return true;
-    else return false;
+    for (let key in CurrencyType.ERC20) {
+      if (this.GetType() === key) return true;
+    }
+
+    for (let key in CurrencyType.ERC20.STABLE) {
+      if (this.GetType() === key) return true;
+    }
+
+    if (this.GetType() === CurrencyType.ETH) return true;
+
+    return false;
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -596,27 +609,27 @@ export class CCurrency {
           return "fantom";
         }
         break;
-      case CurrencyType.NEXO:
+      case CurrencyType.ERC20.NEXO:
         {
           return "nexo";
         }
         break;
-      case CurrencyType.PAXG:
+      case CurrencyType.ERC20.PAXG:
         {
           return "pax-gold";
         }
         break;
-      case CurrencyType.TUSD:
+      case CurrencyType.ERC20.STABLE.TUSD:
         {
           return "true-usd";
         }
         break;
-      case CurrencyType.USDP:
+      case CurrencyType.ERC20.STABLE.USDP:
         {
           return "paxos-standard";
         }
         break;
-      case CurrencyType.LINK:
+      case CurrencyType.ERC20.LINK:
         {
           return "chainlink";
         }
@@ -631,17 +644,17 @@ export class CCurrency {
           return "ethereum";
         }
         break;
-      case CurrencyType.USDT:
+      case CurrencyType.ERC20.STABLE.USDT:
         {
           return "tether";
         }
         break;
-      case CurrencyType.USDC:
+      case CurrencyType.ERC20.STABLE.USDC:
         {
           return "usd-coin";
         }
         break;
-      case CurrencyType.DAI:
+      case CurrencyType.ERC20.STABLE.DAI:
         {
           return "dai";
         }
@@ -706,14 +719,19 @@ export class CCurrency {
           return "cosmos";
         }
         break;
-      case CurrencyType.AXS:
+      case CurrencyType.ERC20.AXS:
         {
           return "axie-infinity";
         }
         break;
-      case CurrencyType.UNI:
+      case CurrencyType.ERC20.UNI:
         {
           return "uniswap";
+        }
+        break;
+      case CurrencyType.ERC20.MANA:
+        {
+          return "decentraland";
         }
         break;
       default:
@@ -756,27 +774,27 @@ export class CCurrency {
         break;
       case "nexo":
         {
-          return CurrencyType.NEXO;
+          return CurrencyType.ERC20.NEXO;
         }
         break;
       case "pax-gold":
         {
-          return CurrencyType.PAXG;
+          return CurrencyType.ERC20.PAXG;
         }
         break;
       case "true-usd":
         {
-          return CurrencyType.TUSD;
+          return CurrencyType.ERC20.STABLE.TUSD;
         }
         break;
       case "paxos-standard":
         {
-          return CurrencyType.USDP;
+          return CurrencyType.ERC20.STABLE.USDP;
         }
         break;
       case "chainlink":
         {
-          return CurrencyType.LINK;
+          return CurrencyType.ERC20.LINK;
         }
         break;
       case "bitcoin":
@@ -791,17 +809,17 @@ export class CCurrency {
         break;
       case "tether":
         {
-          return CurrencyType.USDT;
+          return CurrencyType.ERC20.STABLE.USDT;
         }
         break;
       case "usd-coin":
         {
-          return CurrencyType.USDC;
+          return CurrencyType.ERC20.STABLE.USDC;
         }
         break;
       case "dai":
         {
-          return CurrencyType.DAI;
+          return CurrencyType.ERC20.STABLE.DAI;
         }
         break;
       case "bitcoin-cash":
@@ -866,12 +884,17 @@ export class CCurrency {
         break;
       case "axie-infinity":
         {
-          return CurrencyType.AXS;
+          return CurrencyType.ERC20.AXS;
         }
         break;
       case "uniswap":
         {
-          return CurrencyType.UNI;
+          return CurrencyType.ERC20.UNI;
+        }
+        break;
+      case "decentraland":
+        {
+          return CurrencyType.ERC20.MANA;
         }
         break;
       default:
