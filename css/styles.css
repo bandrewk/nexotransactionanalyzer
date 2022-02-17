@@ -5,7 +5,7 @@
 }
 
 /*
-    COLOR PALETTE:
+    
     #3772FF Blue Crayola
     #060606 Rich Black FOGRA 39
     #DF2935 Rose Madder
@@ -23,6 +23,32 @@
   --light-background: #e6e8e6;
 
   --header-label-dark: #34495e;
+}
+
+/* Loading icon */
+.lds-dual-ring {
+  display: inline-block;
+  width: 80px;
+  height: 80px;
+}
+.lds-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6px solid var(--primary-color);
+  border-color: var(--primary-color) transparent var(--primary-color) transparent;
+  animation: lds-dual-ring 1.2s linear infinite;
+}
+@keyframes lds-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .overview-graph {

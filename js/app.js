@@ -465,6 +465,8 @@ class CApp {
     )
       type = `⏬ ` + type;
 
+    if (type === TransactionType.REFERRALBONUS) type = `🫂 ` + type;
+
     return [
       t.GetId(),
       type,

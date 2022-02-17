@@ -26,8 +26,8 @@ import { TransactionType } from "./transaction.js";
 export const LoyalityLevel = {
   BASE: `BASE`, // <1% nexo tokens
   SILVER: `<span style="color: #c0c0c0">🥈 SILVER</span>`, // >1-5%
-  GOLD: `<span style="color: #ffd700">🥇 GOLD</span>`, // >5-10%
-  PLATINUM: `<span style="color: #c0bdb9">🔥 PLATINUM</span>`, // >10%
+  GOLD: `<span style="color: #ffd700">🥇 GOLD</span>`, // >5-<10%
+  PLATINUM: `<span style="color: #c0bdb9">🔥 PLATINUM</span>`, // >=10%
 };
 
 /**
@@ -555,6 +555,11 @@ export class CStatistics {
     const config = { responsive: true };
 
     Plotly.newPlot("ov-graph-portfolio", data, layout, config);
+
+    const loader = document.querySelector("#portfolio-loader");
+
+    if (loader) loader.classList.add(`hidden`);
+    else console.log(`Could not find portfolio loader.`);
   }
   /////////////////////////////////////////////////////
   /// Charts
