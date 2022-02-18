@@ -385,19 +385,62 @@ export class CStatistics {
 
   GetHistoricalPortfolioData() {
     let urls = [];
-
     // Collect all fetch promises, we want to send and wait for all of them together
     this.#m_arrCurrency.forEach((v, k, m) => {
       // We don`t have to request USD data, just set it 1:1 1usd = 1usd
       if (v.GetType() === CurrencyType.FIAT.USD) {
         v.SetUSDData();
+
+        // Draw portfolio if we don`t have anything else in portfolio to call the regular generation method
+        if (!this.HasCrypto() && !this.HasEUR() && !this.HasGBP()) this.DrawPortfolioChart();
+      } // GBP is a little weird, request GBP to EUR and convert EUR to USD
+      else if (v.GetType() === CurrencyType.FIAT.GBP) {
+        const arr = v.GetGBPAPIRequest();
+
+        const req = arr.map((url) => fetch(url).then((res) => res.json()));
+
+        let data1 = null;
+        let dates1 = null;
+        let data2 = null;
+        let dates2 = null;
+
+        // Wait for all promises to settle
+        Promise.allSettled(req).then((responses) => {
+          responses.forEach((response, index) => {
+            // Loop through all responses
+            if (response.status === "fulfilled") {
+              // Process API endpoints..
+              if (arr[index].search(`GBP`) >= 0) {
+                //console.log(`Received ECB response for GBP (GBP to EUR).`);
+
+                data1 = response.value.dataSets[0].series["0:0:0:0:0"].observations;
+                dates1 = response.value.structure.dimensions.observation[0].values;
+              }
+              if (arr[index].search(`USD`) >= 0) {
+                //console.log(`Received ECB response for GBP (EUR to USD).`);
+                data2 = response.value.dataSets[0].series["0:0:0:0:0"].observations;
+                dates2 = response.value.structure.dimensions.observation[0].values;
+
+                if (data1 != null) {
+                  // Process data
+                  v.ReceiveECBGBPRangeData(data1, dates1, data2, dates2);
+                }
+              }
+            } else if (response.status === "rejected") {
+              // Failed
+              console.log(`GetExchangeRate failed for: ${urls[index]} - ${response.reason}`);
+            }
+          });
+
+          // Draw portfolio if we don`t have anything else in portfolio to call the regular generation method
+          if (!this.HasCrypto() && !this.HasEUR()) this.DrawPortfolioChart();
+        });
       } else {
-        urls.push(...m.get(k).GetExchangeAPIStringHistoric());
+        urls.push(...v.GetExchangeAPIStringHistoric());
       }
-    });
+    }); //forEach
 
     // Jonky donky way of calculating max api calls to be as fast as possible
-    // This can go wrong if too many coingecko calls are present
     let cb = 0; //coinbase api calls
     let cg = 0; //coingecko api calls
 
@@ -408,11 +451,11 @@ export class CStatistics {
     });
 
     // If more coingecko calls are present give it a little more time
-    let maxTime = cb * 200 + cg * (urls.length / 2 > cg ? 600 : 800);
+    const maxTime = cb * 200 + cg * (urls.length / 2 > cg ? 600 : 800);
 
     console.log(`Requesting API data for.. ${maxTime}ms`);
 
-    let timePerRequest = maxTime / urls.length;
+    const timePerRequest = maxTime / urls.length;
     console.log(`Requesting every.. ${timePerRequest}ms`);
 
     // Make promises resolve to their final value
@@ -486,14 +529,14 @@ export class CStatistics {
             /////////////////////////////////////////////////////
             /// Europe ECB
             /////////////////////////////////////////////////////
-            console.log(`Received europe response for EUR.`);
+            console.log(`Received ECB response for EUR.`);
             currency = CurrencyType.FIAT.EUR;
 
             if (this.#m_arrCurrency.has(currency)) {
-              date = response.value.dataSets[0].series["0:0:0:0:0"].observations;
-              value = response.value.structure.dimensions.observation[0].values;
+              value = response.value.dataSets[0].series["0:0:0:0:0"].observations;
+              date = response.value.structure.dimensions.observation[0].values;
 
-              this.#m_arrCurrency.get(currency).ReceiveEuropeRangeData(date, value);
+              this.#m_arrCurrency.get(currency).ReceiveECBEuroRangeData(value, date);
             } else console.log(`~~${currency} not found (${urls[index]})`);
           } else {
             console.log(`Could not identify API response.. stopping portolio graph generation (${urls[index]}).`);
@@ -556,8 +599,8 @@ export class CStatistics {
 
     Plotly.newPlot("ov-graph-portfolio", data, layout, config);
 
+    // Hide loading animation
     const loader = document.querySelector("#portfolio-loader");
-
     if (loader) loader.classList.add(`hidden`);
     else console.log(`Could not find portfolio loader.`);
   }
@@ -888,5 +931,47 @@ export class CStatistics {
     // This actually HITS when the CSV is messed up!
     alert("CSV file is invalid. Unknown loyality level ${p}. Stopping execution.");
     throw new Error(`Unknown loyality level p= ${p}`);
+  }
+
+  /**
+   * Does the user have crypto in its portfolio?
+   * @returns true if he has
+   */
+  HasCrypto() {
+    let found = false;
+
+    this.#m_arrCurrency.forEach((element) => {
+      if (element.IsCrypto() || element.IsStableCoin()) {
+        found = true;
+      }
+    });
+
+    return found;
+  }
+
+  /**
+   * Does the user have euro in its portfolio?
+   * @returns true if he has
+   */
+  HasEUR() {
+    let found = false;
+    this.#m_arrCurrency.forEach((element) => {
+      if (element.GetType() == CurrencyType.FIAT.EUR) found = true;
+    });
+
+    return found;
+  }
+
+  /**
+   * Does the user have gbp in its portfolio?
+   * @returns true if he has
+   */
+  HasGBP() {
+    let found = false;
+    this.#m_arrCurrency.forEach((element) => {
+      if (element.GetType() == CurrencyType.FIAT.GBP) found = true;
+    });
+
+    return found;
   }
 }
