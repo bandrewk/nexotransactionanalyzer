@@ -225,12 +225,16 @@ class CApp {
       throw new Error(error);
     }
 
-    arr = arr.reverse();
+    if (!window.DEMO_MODE) arr = arr.reverse();
 
     // Go through data line by line
-    for (let i = 0; i < arr.length - 1; i++) {
+    let i = 0;
+    if (window.DEMO_MODE) i = 1;
+
+    for (i; i < arr.length - 1; i++) {
       let data = arr[i].split(",");
       let obj = {};
+
       for (let j = 0; j < data.length; j++) {
         obj[headers[j].trim()] = data[j].trim();
       }
