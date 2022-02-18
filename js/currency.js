@@ -73,7 +73,7 @@ export const CurrencyType = {
   FIAT: {
     EUR: "EUR", // ✅ Fully working ✅ ECB API fully working
     USD: "USD", // ✅ Fully working ✅ No API needed
-    GBP: "GBP", // ✅ Fully working ❌ Not implemented
+    GBP: "GBP", // ✅ Fully working ✅ ECB API fully working (probably inaccurate) ❌ Bank of England API isn`t working (cors)
   },
 }; // 33 currencies supported as of 17.02.2022
 
@@ -286,7 +286,7 @@ export class CCurrency {
 
     // Get all possible dates between the first transaction and today
     let fillerDates = this.#GetDatesBetween(new Date(dates[0]), window.LAST_TRANSACTION);
-    console.log(`Start date: ${dates[0]}`);
+    //console.log(`Start date: ${dates[0]}`);
 
     // Temp storage
     let temp = new Map();
@@ -309,8 +309,8 @@ export class CCurrency {
       temp.set(element, values[xid]);
     }
 
-    console.log(`Filling gaps for.. ${this.GetType()}`);
-    console.log(temp);
+    //console.log(`Filling gaps for.. ${this.GetType()}`);
+    //console.log(temp);
 
     // Assign temp array
     this.#m_arrTransaction = temp;
@@ -348,29 +348,50 @@ export class CCurrency {
     return `https://api.coinbase.com/v2/exchange-rates?currency=${this.#m_type}`;
   }
 
+  /**
+   * Gets the api string to request historic data since the first deposit
+   * @returns API string to request historic data
+   */
   GetExchangeAPIStringHistoric() {
     this.FillTransactionGaps();
 
     let urls = [];
-    this.#m_arrTransaction.forEach((v, k, m) => {
-      if (this.#IsCoinbaseApiSupported()) {
-        urls.push(`https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${k}`);
-      } else if (this.#IsCoingeckoApiSupported()) {
-        if ([...this.#m_arrTransaction.keys()].length < 10)
-          urls.push(
-            `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/history?date=${
-              k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
-            }`
-          );
-      } else {
-        console.log(`No API support for ${this.GetType()}`);
-      }
-    });
+    if (!this.IsFiat()) {
+      this.#m_arrTransaction.forEach((v, k, m) => {
+        if (this.#IsCoinbaseApiSupported()) {
+          urls.push(`https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${k}`);
+        } else if (this.#IsCoingeckoApiSupported()) {
+          if ([...this.#m_arrTransaction.keys()].length < 10)
+            urls.push(
+              `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/history?date=${
+                k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
+              }`
+            );
+        } else {
+          if (!this.IsFiat()) console.log(`No crypto api support for ${this.GetType()}`);
+        }
+      });
 
-    if (urls.length > 0) return urls;
+      if (urls.length > 0) return urls;
+
+      if (this.#IsCoingeckoApiSupported()) {
+        let dates = [...this.#m_arrTransaction.keys()];
+
+        // Sort data oldest to newest
+        //if (!window.DEMO_MODE) dates = dates.reverse();
+
+        const start = Math.floor(new Date(dates[0]).getTime() / 1000);
+        const end = Math.floor(new Date(dates[dates.length - 1]).getTime() / 1000);
+
+        //console.log(`Start: ${start}, end: ${end}`);
+        urls.push(
+          `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/market_chart/range?vs_currency=usd&from=${start}&to=${end}`
+        );
+      }
+    } //if
 
     if (this.GetType() === CurrencyType.FIAT.EUR) {
-      // Whee we can use the ECB to grab EUR to USD data :D
+      // We can use the ECB to grab all EUR related data
       //https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2009-05-01&endPeriod=2009-05-31
 
       let dates = [...this.#m_arrTransaction.keys()];
@@ -379,26 +400,60 @@ export class CCurrency {
           dates[dates.length - 1]
         }&detail=dataonly&format=jsondata`
       );
-    }
-
-    if (this.#IsCoingeckoApiSupported()) {
-      //console.log(this.GetType());
-      //console.log(this.#m_arrTransaction);
+    } else if (this.GetType() === CurrencyType.FIAT.GBP) {
+      /* Ooooooops, doesn't work. Bank of england hasn't set any cors headers thus we can`t fetch infos from there.
+      //https://www.bankofengland.co.uk/boeapps/database/fromshowcolumns.asp?Travel=NIxIRxSUx&FromSeries=1&ToSeries=50&DAT=RNG&FD=1&FM=Jan&FY=2012&TD=17&TM=Feb&TY=2022&FNY=&CSVF=TT&html.x=100&html.y=14&C=C8P&Filter=N#
       let dates = [...this.#m_arrTransaction.keys()];
 
-      // Sort data oldest to newest
-      //if (!window.DEMO_MODE) dates = dates.reverse();
+      // Format time range
+      const fy = dates[0].substr(0, 4);
+      const fd = dates[0].substr(-2, 2);
 
-      const start = Math.floor(new Date(dates[0]).getTime() / 1000);
-      const end = Math.floor(new Date(dates[dates.length - 1]).getTime() / 1000);
+      let tmpDate = new Date(dates[0]);
+      const fm = tmpDate.toLocaleString("default", { month: "short" });
 
-      //console.log(`Start: ${start}, end: ${end}`);
+      const ty = dates[dates.length - 1].substr(0, 4);
+      const td = dates[dates.length - 1].substr(-2, 2);
+
+      tmpDate = new Date(dates[dates.length - 1]);
+      const tm = tmpDate.toLocaleString("default", { month: "short" });
+
       urls.push(
-        `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/market_chart/range?vs_currency=usd&from=${start}&to=${end}`
-      );
+        `https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=${fd}/${fm}/${fy}&Dateto=${td}/${tm}/${ty}&SeriesCodes=XUDLUSS&UsingCodes=Y&CSVF=TN`
+      );*/
     }
 
     return urls;
+  }
+
+  /**
+   * Get GBP API request data
+   * @returns Array of url requests for GBP currency
+   */
+  GetGBPAPIRequest() {
+    this.FillTransactionGaps();
+    let urls = [];
+    let dates = [...this.#m_arrTransaction.keys()];
+    urls.push(
+      `https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.GBP.EUR.SP00.A?startPeriod=${dates[0]}&endPeriod=${
+        dates[dates.length - 1]
+      }&detail=dataonly&format=jsondata`
+    );
+    urls.push(
+      `https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=${dates[0]}&endPeriod=${
+        dates[dates.length - 1]
+      }&detail=dataonly&format=jsondata`
+    );
+
+    return urls;
+  }
+
+  /**
+   * Set USD price 1:1 1USD = 1USD
+   */
+  SetUSDData() {
+    this.FillTransactionGaps();
+    this.#m_arrHistoricPriceData = this.#m_arrTransaction;
   }
 
   /**
@@ -442,20 +497,54 @@ export class CCurrency {
   }
 
   /**
-   * Processes the response to EUR USD exchange rate from EU
-   * @param {*} eData data array
-   * @param {*} eDate date array
+   * Converts GBP to EUR to USD. This not 100% accurate but we can`t pull data from the bank of england.
+   * @param {*} _data1  GBP to EUR dataset
+   * @param {*} _dates1 GBP to EUR dataset (dates)
+   * @param {*} _data2  EUR to USD dataset
+   * @param {*} _dates2  EUR to USD dataset (dates)
    */
-  ReceiveEuropeRangeData(eData, eDate) {
-    // We need to fill gaps in the data as holidays are not included in the response..
-    // We are filling the europe response here!
-
+  ReceiveECBGBPRangeData(_data1, _dates1, _data2, _dates2) {
     let dates = [...this.#m_arrTransaction.keys()];
     let amount = [...this.#m_arrTransaction.values()];
 
+    const GBPToEUR = this.#FillDateGapsInECBData(_data1, _dates1, new Date(dates[0]));
+    const EURToUSD = this.#FillDateGapsInECBData(_data2, _dates2, new Date(dates[0]));
+
+    let filledDates = [...GBPToEUR.keys()];
+    let filledValues = [...GBPToEUR.values()];
+
+    // Convert GBP to EUR
+    for (let i = 0; i < filledDates.length; i++) {
+      for (let x = 0; x < dates.length; x++) {
+        if (filledDates[i] === dates[x]) {
+          this.#m_arrHistoricPriceData.set(dates[x], amount[x] / filledValues[i]); // i.e. 100GBP / 0.8394 EUR = 119EUR
+        }
+      }
+    }
+
+    filledDates = [...EURToUSD.keys()];
+    filledValues = [...EURToUSD.values()];
+
+    // Convert EUR to USD
+    for (let i = 0; i < filledDates.length; i++) {
+      for (let x = 0; x < dates.length; x++) {
+        if (filledDates[i] === dates[x]) {
+          this.#m_arrHistoricPriceData.set(dates[x], this.#m_arrHistoricPriceData.get(dates[x]) * filledValues[i]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Fills an data array response from ECB (holidays are missing)
+   * @param {*} _data Data array from ECB JSON response
+   * @param {*} _dates Dates array from ECB JSON response
+   * @param {*} _startDate Starting day for the filling process
+   * @returns Filled Map object
+   */
+  #FillDateGapsInECBData(_data, _dates, _startDate) {
     // Get all possible dates between the first transaction and today
-    let fillerDates = this.#GetDatesBetween(new Date(dates[0]), window.LAST_TRANSACTION);
-    console.log(`Start date: ${dates[0]}`);
+    let fillerDates = this.#GetDatesBetween(_startDate, window.LAST_TRANSACTION);
 
     // Temp storage
     let temp = new Map();
@@ -468,18 +557,32 @@ export class CCurrency {
       // Loop through already stored dates
       // Set the exact same value for all next dates till we find a new one,
       // then use the new one.
-      for (let x = 0; x < eDate.length; ) {
-        if (element === eDate[x].id) {
+      for (let x = 0; x < _dates.length; ) {
+        if (element === _dates[x].id) {
           xid = x;
         }
         x++;
       }
 
-      temp.set(element, eData[xid][0]);
+      temp.set(element, _data[xid][0]);
     }
 
-    const filledDates = [...temp.keys()];
-    const filledValues = [...temp.values()];
+    return temp;
+  }
+
+  /**
+   * Processes the response to EUR USD exchange rate from EU
+   * @param {*} eData data array
+   * @param {*} eDate date array
+   */
+  ReceiveECBEuroRangeData(_data, _dates) {
+    let dates = [...this.#m_arrTransaction.keys()];
+    let amount = [...this.#m_arrTransaction.values()];
+
+    const EURtoUSD = this.#FillDateGapsInECBData(_data, _dates, new Date(dates[0]));
+
+    const filledDates = [...EURtoUSD.keys()];
+    const filledValues = [...EURtoUSD.values()];
 
     // Match data
     for (let i = 0; i < filledDates.length; i++) {
@@ -490,13 +593,6 @@ export class CCurrency {
         }
       }
     }
-  }
-
-  /**
-   * Set USD price 1:1 1USD = 1USD
-   */
-  SetUSDData() {
-    this.#m_arrHistoricPriceData = this.#m_arrTransaction;
   }
 
   /////////////////////////////////////////////////////////////////////////////
