@@ -747,18 +747,20 @@ export class CStatistics {
 
       // Collect deposits
       if (e.GetType() === TransactionType.DEPOSIT || e.GetType() === TransactionType.DEPOSITTOEXCHANGE) {
+        console.log(e.GetUSDEquivalent());
         if (arrDepositData.get(tmpDate)) {
           // There is alrady an entry for that day
-          arrDepositData.set(tmpDate, arrDepositData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()).toFixed(2));
-        } else arrDepositData.set(tmpDate, parseFloat(e.GetUSDEquivalent()).toFixed(2));
+
+          arrDepositData.set(tmpDate, arrDepositData.get(tmpDate) + e.GetUSDEquivalent());
+        } else arrDepositData.set(tmpDate, e.GetUSDEquivalent());
       }
 
       // Collect withdrawals
       if (e.GetType() === TransactionType.WITHDRAWAL || e.GetType() === TransactionType.WITHDRAWEXCHANGED) {
         if (arrWithdrawData.get(tmpDate)) {
           // There is alrady an entry for that day
-          arrWithdrawData.set(tmpDate, arrWithdrawData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()).toFixed(2));
-        } else arrWithdrawData.set(tmpDate, -parseFloat(e.GetUSDEquivalent()).toFixed(2));
+          arrWithdrawData.set(tmpDate, arrWithdrawData.get(tmpDate) + e.GetUSDEquivalent());
+        } else arrWithdrawData.set(tmpDate, -e.GetUSDEquivalent());
       }
 
       // Grab data for next chart too while we're in here
@@ -766,12 +768,14 @@ export class CStatistics {
       if (e.GetType() === TransactionType.INTEREST) {
         if (arrInterestData.get(tmpDate)) {
           // There is alrady an entry for that day
-          arrInterestData.set(tmpDate, arrInterestData.get(tmpDate) + parseFloat(e.GetUSDEquivalent()));
+          arrInterestData.set(tmpDate, arrInterestData.get(tmpDate) + e.GetUSDEquivalent());
         } else {
-          arrInterestData.set(tmpDate, parseFloat(e.GetUSDEquivalent()));
+          arrInterestData.set(tmpDate, e.GetUSDEquivalent());
         }
       }
     });
+
+    console.log(arrDepositData);
 
     let trace1 = {
       x: [...arrDepositData.keys()],

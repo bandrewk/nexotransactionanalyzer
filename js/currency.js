@@ -361,7 +361,8 @@ export class CCurrency {
         if (this.#IsCoinbaseApiSupported()) {
           urls.push(`https://api.coinbase.com/v2/prices/${this.#m_type}-USD/spot?date=${k}`);
         } else if (this.#IsCoingeckoApiSupported()) {
-          if ([...this.#m_arrTransaction.keys()].length < 10)
+          // Only do single requests for up to 10 days
+          if ([...this.#m_arrTransaction.keys()].length <= 10)
             urls.push(
               `https://api.coingecko.com/api/v3/coins/${this.#GetCoingeckoApiID()}/history?date=${
                 k.substr(-2) + `-` + k.substring(5, 7) + `-` + k.substring(0, 4)
@@ -377,11 +378,22 @@ export class CCurrency {
       if (this.#IsCoingeckoApiSupported()) {
         let dates = [...this.#m_arrTransaction.keys()];
 
+        let start = Math.floor(new Date(dates[0]).getTime() / 1000);
+        const end = Math.floor(new Date(dates[dates.length - 1]).getTime() / 1000);
+
+        // Minimum of 90 days is required by coingecko API to reply with daily values
+        if (dates.length < 90) {
+          //console.log(`Data below 90 days.. expanding.`);
+
+          let firstDate = new Date(dates[0]);
+          let correctedFirstDate = new Date(firstDate - (95 - dates.length) * 86400000);
+          start = Math.floor(correctedFirstDate.getTime() / 1000);
+
+          //console.log(`...old: ${firstDate}, new: ${correctedFirstDate}`);
+        }
+
         // Sort data oldest to newest
         //if (!window.DEMO_MODE) dates = dates.reverse();
-
-        const start = Math.floor(new Date(dates[0]).getTime() / 1000);
-        const end = Math.floor(new Date(dates[dates.length - 1]).getTime() / 1000);
 
         //console.log(`Start: ${start}, end: ${end}`);
         urls.push(

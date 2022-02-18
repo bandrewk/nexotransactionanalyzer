@@ -231,7 +231,10 @@ class CApp {
     let i = 0;
     if (window.DEMO_MODE) i = 1;
 
-    for (i; i < arr.length - 1; i++) {
+    let length = arr.length - 1;
+    if (window.DEMO_MODE) length = arr.length;
+
+    for (i; i < length; i++) {
       let data = arr[i].split(",");
       let obj = {};
 
