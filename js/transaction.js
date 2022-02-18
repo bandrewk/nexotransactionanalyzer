@@ -69,7 +69,7 @@ export class CTransaction {
     this.#m_sType = type;
     this.#m_sCurrency = currency;
     this.#m_fAmount = amount;
-    this.#m_fUSDEquivalent = usde.slice(1);
+    this.#m_fUSDEquivalent = parseFloat(usde.slice(1));
     this.#m_sDetails = details;
     this.#m_fOutstandingLoan = oloan.slice(1);
     this.#m_sDateTime = datetime;
