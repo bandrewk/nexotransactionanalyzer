@@ -320,7 +320,7 @@ export class CStatistics {
   }
 
   /**
-   * Get full Coinlist earned in kind stats as html string
+   * Get Coinlist earned in kind stats as html string
    * @returns html ready for injection
    */
   GetCoinlistEarnedInKindAsHTML() {
@@ -351,6 +351,10 @@ export class CStatistics {
     return html;
   }
 
+  /**
+   * Get Coinlist earned cashback stats as html string
+   * @returns html ready for injection
+   */
   GetCoinlistCashbackEarnedAsHTML() {
     // Start with empty string
     let html = ``;
@@ -567,9 +571,6 @@ export class CStatistics {
         } else arrPortfolioData.set(k, parseFloat(v));
       });
     });
-
-    //console.log(arrPortfolioData);
-
     let trace1 = {
       x: [...arrPortfolioData.keys()],
       y: [...arrPortfolioData.values()],
