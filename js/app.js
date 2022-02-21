@@ -92,7 +92,7 @@ class CApp {
       Swal.fire({
         icon: "info",
         title: "Nexo.io CSV export",
-        text: `Nexo's export functionality is currently not working as intended. Therefore recently exported files won't work. Older exported transactions (before 12/21) will work though.`,
+        text: `Nexo's export functionality is currently not working as intended. Therefore recently exported files won't work if they include an exchange transaction. Older exported transactions (before 10/21) will work though.`,
         //footer: '<a href="">Why do I have this issue?</a>',
       }).then((result) => {
         /* Reload page when confirmed */

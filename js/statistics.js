@@ -747,10 +747,8 @@ export class CStatistics {
 
       // Collect deposits
       if (e.GetType() === TransactionType.DEPOSIT || e.GetType() === TransactionType.DEPOSITTOEXCHANGE) {
-        console.log(e.GetUSDEquivalent());
         if (arrDepositData.get(tmpDate)) {
           // There is alrady an entry for that day
-
           arrDepositData.set(tmpDate, arrDepositData.get(tmpDate) + e.GetUSDEquivalent());
         } else arrDepositData.set(tmpDate, e.GetUSDEquivalent());
       }
@@ -774,8 +772,6 @@ export class CStatistics {
         }
       }
     });
-
-    console.log(arrDepositData);
 
     let trace1 = {
       x: [...arrDepositData.keys()],
