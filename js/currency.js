@@ -58,6 +58,7 @@ export const CurrencyType = {
     AXS: "AXS", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: axie-infinity)
     UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: uniswap)
     MANA: "MANA", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: decentraland)
+    SAND: "SAND", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: the-sandbox)
 
     // Stable tokens
     STABLE: {
@@ -851,6 +852,11 @@ export class CCurrency {
           return "decentraland";
         }
         break;
+      case CurrencyType.ERC20.SAND:
+        {
+          return "the-sandbox";
+        }
+        break;
       default:
         console.log("Invalid currency in coingecko api");
         console.log(this.GetType());
@@ -1012,6 +1018,11 @@ export class CCurrency {
       case "decentraland":
         {
           return CurrencyType.ERC20.MANA;
+        }
+        break;
+      case "the-sandbox":
+        {
+          return CurrencyType.ERC20.SAND;
         }
         break;
       default:
