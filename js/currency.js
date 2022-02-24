@@ -49,6 +49,7 @@ export const CurrencyType = {
   AVAX: "AVAX", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: avalanche-2)
   UST: "UST", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: terrausd)
   ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: cosmos)
+  KSM: "KSM", // ✅ Fully working ✅ Coingecko API with histroic data (id: kusama)
 
   // ERC-20 tokens
   ERC20: {
@@ -76,7 +77,7 @@ export const CurrencyType = {
     USD: "USD", // ✅ Fully working ✅ No API needed
     GBP: "GBP", // ✅ Fully working ✅ ECB API fully working (probably inaccurate) ❌ Bank of England API isn`t working (cors)
   },
-}; // 33 currencies supported as of 17.02.2022
+}; // 35 currencies supported as of 24.02.2022
 
 Object.freeze(CurrencyType);
 
@@ -857,6 +858,11 @@ export class CCurrency {
           return "the-sandbox";
         }
         break;
+      case CurrencyType.KSM:
+        {
+          return "kusama";
+        }
+        break;
       default:
         console.log("Invalid currency in coingecko api");
         console.log(this.GetType());
@@ -1023,6 +1029,11 @@ export class CCurrency {
       case "the-sandbox":
         {
           return CurrencyType.ERC20.SAND;
+        }
+        break;
+      case "kusama":
+        {
+          return CurrencyType.KSM;
         }
         break;
       default:

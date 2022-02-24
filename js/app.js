@@ -670,6 +670,11 @@ class CApp {
             exp = `https://polkascan.io/polkadot/transaction/`;
           }
           break;
+        case CurrencyType.KSM:
+          {
+            exp = `https://polkascan.io/kusama/transaction/`;
+          }
+          break;
         case CurrencyType.MATIC:
           {
             exp = `https://polygonscan.com/tx/`;
