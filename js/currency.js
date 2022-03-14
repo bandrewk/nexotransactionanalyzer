@@ -25,6 +25,7 @@ export const CurrencyType = {
   // Diverse blockchain networks
   // Note: Use coingecko whenever possible !! it's much much faster due to its range function than coinbase
   // See helper methods for name conversion on bottom of this file, one COULD do this via the coingecko API too (search function) but we're on limited API requests so it's hardcoded.
+  // Name in brackets has to be 1:1 the one nexo exports in its transactions csv
   BTC: "BTC", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: bitcoin)
   BCH: "BCH", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: bitcoin-cash)
   LTC: "LTC", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: litecoin)
@@ -60,6 +61,10 @@ export const CurrencyType = {
     UNI: "UNI", // ✅ Fully working (ERC20) ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: uniswap)
     MANA: "MANA", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: decentraland)
     SAND: "SAND", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: the-sandbox)
+    AAVE: "AAVE", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: aave)
+    CRV: "CRV", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: curve-dao-token)
+    GALA: "GALA", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: gala)
+    SUSHI: "SUSHI", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: sushi)
 
     // Stable tokens
     STABLE: {
@@ -863,6 +868,26 @@ export class CCurrency {
           return "kusama";
         }
         break;
+      case CurrencyType.ERC20.AAVE:
+        {
+          return "aave";
+        }
+        break;
+      case CurrencyType.ERC20.CRV:
+        {
+          return "curve-dao-token";
+        }
+        break;
+      case CurrencyType.ERC20.GALA:
+        {
+          return "gala";
+        }
+        break;
+      case CurrencyType.ERC20.SUSHI:
+        {
+          return "sushi";
+        }
+        break;
       default:
         console.log("Invalid currency in coingecko api");
         console.log(this.GetType());
@@ -1034,6 +1059,26 @@ export class CCurrency {
       case "kusama":
         {
           return CurrencyType.KSM;
+        }
+        break;
+      case "aave":
+        {
+          return CurrencyType.ERC20.AAVE;
+        }
+        break;
+      case "curve-dao-token":
+        {
+          return CurrencyType.ERC20.CRV;
+        }
+        break;
+      case "gala":
+        {
+          return CurrencyType.ERC20.GALA;
+        }
+        break;
+      case "sushi":
+        {
+          return CurrencyType.ERC20.SUSHI;
         }
         break;
       default:
