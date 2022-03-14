@@ -126,3 +126,7 @@ XZY223,Deposit,ATOM,100,$50, approved /  xyz,$0,2021-12-20
 XZY224,Deposit,MANA,100,$50, approved /  xyz,$0,2021-12-20
 XZY225,Deposit,SAND,100,$50, approved /  xyz,$0,2021-12-23
 XZY226,Deposit,KSM,100,$50, approved / 11547889-1,$0,2022-01-01
+XZY227,Deposit,AAVE,100, $50, approved / 1154788911,$0,2022-01-01
+XZY228,Deposit,CRV,100, $50, approved / 1154788922,$0,2022-01-01
+XZY229,Deposit,GALA,100, $50, approved / 1154788923,$0,2022-01-01
+XZY229,Deposit,SUSHI,100, $50, approved / 1154788924,$0,2022-01-01
