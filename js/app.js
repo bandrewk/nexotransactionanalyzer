@@ -88,16 +88,16 @@ class CApp {
    */
   #DisplayInfo() {
     //localStorage.removeItem("info-csv");
-    if (!localStorage.getItem("info-csv")) {
+    if (!localStorage.getItem("info-csv-20220401")) {
       Swal.fire({
         icon: "info",
-        title: "Nexo.io CSV export",
-        text: `Nexo's export functionality is currently not working as intended. Therefore recently exported files won't work if they include an exchange transaction. Older exported transactions (before 10/21) will work though.`,
+        title: "Warning",
+        text: `Nexo's CSV export has been revamped and this tool is not yet compatible with the new format. It'll be updated shortly.`,
         //footer: '<a href="">Why do I have this issue?</a>',
       }).then((result) => {
         /* Reload page when confirmed */
         if (result.isConfirmed) {
-          localStorage.setItem("info-csv", "1");
+          localStorage.setItem("info-csv-20220401", "");
         }
       });
     }
