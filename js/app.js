@@ -680,6 +680,11 @@ class CApp {
             exp = `https://polygonscan.com/tx/`;
           }
           break;
+        case CurrencyType.NEAR:
+          {
+            exp = `https://explorer.near.org/transactions/`;
+          }
+          break;
         default:
           {
             // not implemented
