@@ -571,15 +571,20 @@ class CApp {
 
   /**
    * Stop and destroys unused particle systems to free resources
+   * WARNING: Racing condition, see Issue no. 2. Thanks to nathanosdev. Will be fixed in next release.
    */
   #FreeParticleSystems() {
     let particles = tsParticles.domItem(0);
-    particles.stop();
-    particles.destroy();
+    if (particles) {
+      particles.stop();
+      particles.destroy();
+    }
 
     particles = tsParticles.domItem(1);
-    particles.stop();
-    particles.destroy();
+    if (particles) {
+      particles.stop();
+      particles.destroy();
+    }
   }
 
   #StartLoadingAnimation() {
