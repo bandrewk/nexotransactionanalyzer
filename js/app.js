@@ -97,7 +97,7 @@ class CApp {
       }).then((result) => {
         /* Reload page when confirmed */
         if (result.isConfirmed) {
-          localStorage.setItem("info-csv-20220401", "");
+          localStorage.setItem("info-csv-20220401", "1");
         }
       });
     }
