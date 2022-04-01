@@ -49,8 +49,9 @@ export const CurrencyType = {
   FTM: "FTM", // ✅ Fully working ❌ Coinbase API ✅ Coingecko API with histroic data (id: fantom)
   AVAX: "AVAX", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: avalanche-2)
   UST: "UST", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: terrausd)
-  ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko API with histroic data (id: cosmos)
+  ATOM: "ATOM", // ✅ Fully working ✅ Coinbase API with histroic data ✅ Coingecko APIw ith histroic data (id: cosmos)
   KSM: "KSM", // ✅ Fully working ✅ Coingecko API with histroic data (id: kusama)
+  NEAR: "NEAR", // ✅ Fully working ✅ Coingecko API with histroic data (id: near)
 
   // ERC-20 tokens
   ERC20: {
@@ -65,6 +66,7 @@ export const CurrencyType = {
     CRV: "CRV", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: curve-dao-token)
     GALA: "GALA", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: gala)
     SUSHI: "SUSHI", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: sushi)
+    APE: "APE", // ✅ Fully working (ERC20) ✅ Coingecko API with histroic data (id: apecoin)
 
     // Stable tokens
     STABLE: {
@@ -888,6 +890,16 @@ export class CCurrency {
           return "sushi";
         }
         break;
+      case CurrencyType.NEAR:
+        {
+          return "near";
+        }
+        break;
+      case CurrencyType.ERC20.APE:
+        {
+          return "apecoin";
+        }
+        break;
       default:
         console.log("Invalid currency in coingecko api");
         console.log(this.GetType());
@@ -1079,6 +1091,16 @@ export class CCurrency {
       case "sushi":
         {
           return CurrencyType.ERC20.SUSHI;
+        }
+        break;
+      case "near":
+        {
+          return CurrencyType.NEAR;
+        }
+        break;
+      case "apecoin":
+        {
+          return CurrencyType.ERC20.APE;
         }
         break;
       default:
