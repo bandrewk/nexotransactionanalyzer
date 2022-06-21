@@ -1,0 +1,167 @@
+/**********************************/
+/* Sidebar */
+/**********************************/
+
+.sidebar {
+  display: flex;
+  padding: 4.8rem 6.4rem;
+
+  flex-direction: column;
+  align-items: center;
+
+  justify-content: space-between;
+  border-right: 2px dashed rgba(0, 0, 0, 0.075);
+}
+
+.sidebar-logo {
+  overflow: visible;
+  font-size: 2.6rem;
+  font-weight: 600;
+  color: #091741;
+  transition: all 0.3s;
+
+  cursor: pointer;
+}
+
+.sidebar-logo:hover {
+  text-shadow: 0 0 30px rgba(30, 77, 216, 0.3);
+}
+
+.sidebar-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3.2rem;
+
+  list-style: none;
+}
+
+.sidebar-list ul:first-child {
+  margin-bottom: 10rem;
+}
+
+.sidebar-list i {
+  color: #122e82;
+}
+
+.sidebar-list p {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  font-size: 1rem;
+
+  opacity: 0.8;
+  color: #1e4dd8;
+
+  margin-bottom: -1.5rem;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  font-size: 2rem;
+  letter-spacing: 1px;
+
+  cursor: pointer;
+
+  transition: all 0.3s;
+
+  background: none;
+  border: none;
+}
+
+.sidebar-item:hover,
+.sidebar-item:focus {
+  color: #1e4dd8;
+  transform: scale(1.05);
+  border: none;
+  outline: none;
+}
+
+.sidebar-item:hover i,
+.sidebar-item:focus i {
+  transform: scale(1.05);
+  outline: none;
+}
+
+/**********************************/
+/* Content */
+/**********************************/
+.content-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  background-color: #fff;
+  padding: 6.4rem 3.2rem 3.2rem 3.2rem;
+
+  overflow-y: auto;
+
+  max-width: 130rem;
+  margin: 0 auto;
+  gap: 3.2rem;
+}
+
+.main-text {
+  margin: 3.2rem 0;
+}
+
+/* Mobile navigation */
+.header {
+  position: relative;
+}
+
+.btn-mobile-nav {
+  position: absolute;
+  right: 0;
+  bottom: 50%;
+  z-index: 9999;
+
+  background: none;
+  border: none;
+
+  cursor: pointer;
+
+  transition: all 0.3s;
+  transform: translate(0, 50%);
+
+  color: #091741;
+}
+
+.btn-mobile-nav:hover {
+  transform: translate(0, 50%) scale(1.05);
+}
+
+.btn-mobile-nav i {
+  font-size: 3.6rem;
+}
+
+.btn-mobile-nav--icon[name="close"] {
+  display: none;
+}
+
+/**********************************/
+/* Footer */
+/**********************************/
+.footer p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.footer p span {
+  display: inline-block;
+  font-weight: 500;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+  color: #091741;
+  /* margin-bottom: 1rem; */
+}
+
+/**
+- Font sizes (px)
+10 / 12 / 14 / 16 / 18 / 20 / 24 / 30 / 36 / 44 / 52 / 62 / 74 / 86 / 98
+
+- Spacing System (px)
+2 / 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 80 / 96 / 128
+**/
