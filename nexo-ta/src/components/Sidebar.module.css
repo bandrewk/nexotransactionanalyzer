@@ -1,0 +1,86 @@
+/**********************************/
+/* Sidebar */
+/**********************************/
+
+.sidebar {
+  display: flex;
+  padding: 4.8rem 6.4rem;
+
+  flex-direction: column;
+  align-items: center;
+
+  justify-content: space-between;
+  border-right: 2px dashed rgba(0, 0, 0, 0.075);
+}
+
+.sidebar-logo {
+  overflow: visible;
+  font-size: 2.6rem;
+  font-weight: 600;
+  color: #091741;
+  transition: all 0.3s;
+
+  cursor: pointer;
+}
+
+.sidebar-logo:hover {
+  text-shadow: 0 0 30px rgba(30, 77, 216, 0.3);
+}
+
+.sidebar-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3.2rem;
+
+  list-style: none;
+}
+
+.sidebar-list ul:first-child {
+  margin-bottom: 10rem;
+}
+
+.sidebar-list i {
+  color: #122e82;
+}
+
+.sidebar-list p {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  font-size: 1rem;
+
+  opacity: 0.8;
+  color: #1e4dd8;
+
+  margin-bottom: -1.5rem;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  font-size: 2rem;
+  letter-spacing: 1px;
+
+  cursor: pointer;
+
+  transition: all 0.3s;
+
+  background: none;
+  border: none;
+}
+
+.sidebar-item:hover,
+.sidebar-item:focus {
+  color: #1e4dd8;
+  transform: scale(1.05);
+  border: none;
+  outline: none;
+}
+
+.sidebar-item:hover i,
+.sidebar-item:focus i {
+  transform: scale(1.05);
+  outline: none;
+}
