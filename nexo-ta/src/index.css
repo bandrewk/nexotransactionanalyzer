@@ -21,8 +21,8 @@ html {
   /* background-color: #fff; */
   color: #333;
 
-  display: grid;
-  grid-template-columns: 30rem 1fr;
+  /* display: grid;
+  grid-template-columns: 30rem 1fr; */
 
   height: 100vh;
 }
