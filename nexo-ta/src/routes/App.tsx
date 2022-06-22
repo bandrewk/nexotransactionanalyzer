@@ -1,6 +1,5 @@
 import React from "react";
 import classes from "./App.module.css";
-import "./App.css";
 import { Link } from "react-router-dom";
 
 function App() {

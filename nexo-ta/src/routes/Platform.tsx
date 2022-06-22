@@ -1,6 +1,12 @@
 import { useLocation, Route, BrowserRouter, Routes } from "react-router-dom";
+import Footer from "../components/Footer/Footer";
+import Coinlist from "../components/Platform/Coinlist";
+import Home from "../components/Platform/Home";
+import Overview from "../components/Platform/Overview";
+import Transactions from "../components/Platform/Transactions";
 import Sidebar from "../components/Sidebar/Sidebar";
-import SidebarMenuItem from "../components/Sidebar/SidebarMenuItem";
+import ContentArea from "../components/UI/Layout/ContentArea";
+import HeadingPrimary from "../components/UI/Text/HeadingPrimary";
 import classes from "./Platform.module.css";
 
 const Platform = () => {
@@ -9,14 +15,17 @@ const Platform = () => {
   return (
     <div className={classes.platform}>
       <Sidebar />
-      <p>
-        <Routes>
-          <Route path="/home" element={<p>Home</p>} />
-          <Route path="/overview" element={<p>Overview</p>} />
-          <Route path="/coinlist" element={<p>Coinlist</p>} />
-          <Route path="/transactions" element={<p>Transactions</p>} />
-        </Routes>
-      </p>
+      <ContentArea>
+        <main>
+          <Routes>
+            <Route path="/home" element={<Home />} />
+            <Route path="/overview" element={<Overview />} />
+            <Route path="/coinlist" element={<Coinlist />} />
+            <Route path="/transactions" element={<Transactions />} />
+          </Routes>
+        </main>
+        <Footer />
+      </ContentArea>
     </div>
   );
 };

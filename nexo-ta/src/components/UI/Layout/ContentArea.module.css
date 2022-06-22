@@ -1,0 +1,11 @@
+.content-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: #fff;
+  padding: 6.4rem 3.2rem 3.2rem 3.2rem;
+  overflow-y: auto;
+  max-width: 130rem;
+  margin: 0 auto;
+  gap: 3.2rem;
+}
