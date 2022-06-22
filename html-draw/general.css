@@ -48,7 +48,7 @@ body {
   color: #333;
 
   display: grid;
-  grid-template-columns: 30rem 1fr;
+  /* grid-template-columns: 30rem 1fr; */
   height: 100vh;
 }
 
@@ -128,4 +128,33 @@ body {
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
+}
+
+.btn--primary {
+  padding: 1.6rem 3.2rem;
+  border-radius: 9px;
+
+  background-color: inherit;
+  border: none;
+
+  font-size: 1.4rem;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px,
+    rgba(0, 0, 0, 0.06) 0px 1px 2px 0px;
+
+  transition: transform 0.3s;
+
+  cursor: pointer;
+}
+
+.btn--primary:hover,
+.btn--primary:active {
+  transform: scale(1.05);
+  background-color: #e9edfb;
+  /* color: white; */
+}
+
+.btn--primary:focus {
+  transform: scale(1.05);
+  background-color: #e9edfb;
+  outline: rgba(0, 0, 0, 0.1) solid;
 }
