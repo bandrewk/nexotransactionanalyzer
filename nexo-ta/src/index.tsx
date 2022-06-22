@@ -17,7 +17,7 @@ root.render(
         <Route path="/" element={<App />} />
 
         {/* Platform */}
-        <Route path="/platform" element={<Platform />} />
+        <Route path="/platform/*" element={<Platform />} />
 
         {/* Fallback route */}
         <Route
