@@ -1,6 +1,9 @@
 import classes from "./Sidebar.module.css";
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+
   return (
     <>
       <aside className={classes.sidebar}>
@@ -9,12 +12,22 @@ const Sidebar = () => {
           <ul>
             <p>Menu</p>
             <li>
-              <button className={classes["sidebar-item"]}>
+              <button
+                onClick={() => {
+                  navigate("/home");
+                }}
+                className={classes["sidebar-item"]}
+              >
                 <i className="ph-house-line-light"></i>Home
               </button>
             </li>
             <li>
-              <button className={classes["sidebar-item"]}>
+              <button
+                onClick={() => {
+                  navigate("/overview");
+                }}
+                className={classes["sidebar-item"]}
+              >
                 <i className="ph-gauge-light"></i>Overview
               </button>
             </li>
