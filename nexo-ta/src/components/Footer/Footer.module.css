@@ -1,0 +1,13 @@
+.footer p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.footer p span {
+  display: inline-block;
+  font-weight: 500;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+  color: #091741;
+  /* margin-bottom: 1rem; */
+}
