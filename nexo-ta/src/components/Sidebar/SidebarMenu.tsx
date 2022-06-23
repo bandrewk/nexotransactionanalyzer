@@ -43,11 +43,11 @@ const SidebarMenu = () => {
           icon={<FloppyDisk weight="light" size={24} />}
           linkTo="#save"
         />
-        <SidebarMenuItem
+        {/* <SidebarMenuItem
           icon={<Trash weight="light" size={24} />}
           title="Delete"
           linkTo="#delete"
-        />
+        /> */}
         <SidebarMenuItem
           icon={<SignOut weight="light" size={24} />}
           title="Exit"

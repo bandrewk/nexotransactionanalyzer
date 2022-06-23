@@ -1,10 +1,7 @@
 import classes from "./Sidebar.module.css";
-import { Link, useNavigate } from "react-router-dom";
 import SidebarMenu from "./SidebarMenu";
 
 const Sidebar = () => {
-  const navigate = useNavigate();
-
   return (
     <>
       <aside className={classes.sidebar}>
