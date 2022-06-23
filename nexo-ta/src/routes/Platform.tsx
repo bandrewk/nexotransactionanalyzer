@@ -20,9 +20,8 @@ const Platform = () => {
             <Route path="/coinlist" element={<Coinlist />} />
             <Route path="/transactions" element={<Transactions />} />
 
-            {/* 404 Handling
             <Route path="/" element={<Navigate to="/platform/home" />} />
-            <Route path="*" element={<Navigate to="/oops" />} /> */}
+            <Route path="*" element={<Navigate to="/oops" />} />
           </Routes>
         </main>
         <Footer />

@@ -12,34 +12,6 @@
 }
 
 /**********************************/
-/* Upload area */
-/**********************************/
-.content-upload-area {
-  width: 80%;
-  height: 18rem;
-  border: 2px dashed rgba(0, 0, 0, 0.1);
-
-  margin: 0rem auto;
-  margin-top: 2.4rem;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 11px;
-}
-
-.content-upload-area--btns {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  gap: 3.2rem;
-
-  margin: 2.4rem 0;
-  margin-bottom: 9.6rem;
-}
-/**********************************/
 /* Content */
 /**********************************/
 .content-area {
