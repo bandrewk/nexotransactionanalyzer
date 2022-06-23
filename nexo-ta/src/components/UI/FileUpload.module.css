@@ -1,0 +1,39 @@
+.fileUpload input[type="file"] {
+  display: none;
+}
+
+/**********************************/
+/* Upload area */
+/**********************************/
+.content-upload-area {
+  width: 80%;
+  height: 18rem;
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+
+  margin: 0rem auto;
+  margin-top: 2.4rem;
+  margin-bottom: 9.6rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  transition: all 0.3s;
+}
+
+.drag-Active {
+  background-color: #e9edfb;
+}
+
+.loaded {
+  border: none;
+}
+
+.loaded label span {
+  color: #1e4dd8;
+  font-weight: 500;
+}

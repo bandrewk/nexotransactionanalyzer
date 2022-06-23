@@ -1,6 +1,8 @@
 import React from "react";
 import classes from "./App.module.css";
 import { Link } from "react-router-dom";
+import Footer from "../components/Footer/Footer";
+import FileUpload from "../components/UI/FileUpload";
 
 function App() {
   return (
@@ -19,16 +21,19 @@ function App() {
           {/*<!-- Main content --> */}
           <main className={classes.main}>
             {/* Upload section */}
+
+            <FileUpload />
+            {/* 
             <section className="section-upload">
               <p className="subheading">Upload</p>
               <div className={classes["content-upload-area"]}>
-                <p>Drop your transactions CSV here</p>
+                <p>Drop your transactions CSV here or</p>
+                <FileUpload />
               </div>
               <div className={classes["content-upload-area--btns"]}>
-                <button className="btn--primary subheading">Choose file</button>
-                <button className="btn--primary subheading">Upload</button>
+                <button className="btn--primary subheading">Start</button>
               </div>
-            </section>
+            </section> */}
 
             {/* Wallet warning */}
 
@@ -99,6 +104,9 @@ function App() {
           <Link to={"/platform"} className="btn--primary subheading">
             SKIP
           </Link>
+          <br />
+          <br />
+          <Footer />
         </div>
       </div>
     </>
