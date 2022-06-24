@@ -1,14 +1,18 @@
 import classes from "./FileUpload.module.css";
 
 import { useState, DragEvent } from "react";
+import { X } from "phosphor-react";
 
 const FileUpload = () => {
   const [file, setFile] = useState<File | null>();
   const [highlightArea, setHighlightArea] = useState<boolean>(false);
   const [fileSelected, setFileSelected] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
 
   /* Load file via button */
   const OnFileChangeHandler = (event: React.ChangeEvent) => {
+    setError(null);
+
     const target = event.target as HTMLInputElement;
     const uploadedFile: File = (target.files as FileList)[0];
 
@@ -22,15 +26,19 @@ const FileUpload = () => {
         setFileSelected(true);
       } else {
         // Error, file is wrong type
+        setError(Error("Uploaded file is of wrong type."));
       }
     } else {
       // Error, file is null
+
+      setError(Error("File upload failed."));
     }
   };
 
   /* Load file via drag'n'drop */
   const OnDropHandler = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setError(null);
 
     if (e.dataTransfer.items) {
       if (e.dataTransfer.items[0].kind === "file") {
@@ -46,9 +54,13 @@ const FileUpload = () => {
 
           setFileSelected(true);
         } else {
-          // Error
+          setError(Error("Uploaded file is of wrong type."));
         }
+      } else {
+        setError(Error("Uploaded file is of wrong type."));
       }
+    } else {
+      setError(Error("File upload failed."));
     }
 
     setHighlightArea(false);
@@ -72,6 +84,14 @@ const FileUpload = () => {
     setHighlightArea(false);
   };
 
+  /* Remove selected file */
+  const OnRemoveFileHandler = () => {
+    setFile(null);
+    setHighlightArea(false);
+    setFileSelected(false);
+    setError(null);
+  };
+
   if (fileSelected) {
     return (
       <>
@@ -80,7 +100,10 @@ const FileUpload = () => {
             className={`${classes["content-upload-area"]} ${classes.loaded}`}
           >
             <label>
-              Loaded file <span>{file?.name}</span>
+              Loaded file<span>{file?.name}</span>{" "}
+              <button onClick={OnRemoveFileHandler}>
+                <X size={24} weight="light" color="red" />
+              </button>
             </label>
             <button className="btn--primary subheading">Start</button>
           </div>
@@ -105,7 +128,6 @@ const FileUpload = () => {
           onDragLeave={OnDragLeaveHandler}
         >
           <p>Drop your transactions CSV here or</p>
-
           <label
             htmlFor="fileInput"
             className={`btn--primary subheading ${classes.fileUpload}`}
@@ -118,6 +140,7 @@ const FileUpload = () => {
             />
             Choose File
           </label>
+          {error && <p className={classes.errorMessage}>{error.message}</p>}
         </div>
       </section>
     </>
