@@ -96,6 +96,7 @@ const FileUpload = () => {
     return (
       <>
         <section className="section-upload">
+          <p className="subheading">Upload</p>
           <div
             className={`${classes["content-upload-area"]} ${classes.loaded}`}
           >
