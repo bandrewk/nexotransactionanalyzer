@@ -1,14 +1,18 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+// File header
+// ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Details', 'Outstanding Loan', 'Date / Time']
 export type Transaction = {
   id: string;
   type: string;
-  currency: string;
-  amount: number;
+  inputCurrency: string;
+  inputAmount: number;
+  outputCurrency: string;
+  outputAmount: number;
   usdEquivalent: number;
   details: string;
   outstandingLoan: number;
-  dateTime: Date;
+  dateTime: string;
 };
 
 const transactionSlice = createSlice({

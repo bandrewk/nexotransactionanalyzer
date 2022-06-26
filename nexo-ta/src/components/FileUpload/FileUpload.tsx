@@ -2,12 +2,75 @@ import classes from "./FileUpload.module.css";
 
 import { useState, DragEvent } from "react";
 import { X } from "phosphor-react";
+import { useAppDispatch, useAppSelector } from "../../hooks";
+import { addTransaction } from "../../reducers/transactionReducer";
 
 const FileUpload = () => {
   const [file, setFile] = useState<File | null>();
   const [highlightArea, setHighlightArea] = useState<boolean>(false);
   const [fileSelected, setFileSelected] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+
+  const transactions = useAppSelector((state) => state.transactions);
+  const dispatch = useAppDispatch();
+
+  const processFile = (content: String) => {
+    try {
+      const data = content.split("\n");
+      const headers = data[0].split(",");
+
+      // Check headers
+      if (headers.length != 10) {
+        throw new Error(`Headers mismatch. Expected 10, got ${headers.length}`);
+      }
+
+      // Go through data line by line
+      // Y → → → X (EOL)
+      // ↓ → → → X
+      // ↓ → → → X
+      // (EOF)
+      for (let y = 0; y < data.length - 1; y++) {
+        let rowData = data[y].split(",");
+
+        // Construct a single transaction
+        type TransactionImport = {
+          [key: string]: string;
+        };
+
+        let transaction: TransactionImport = {};
+
+        // Grab all data
+        for (let x = 0; x < rowData.length; x++) {
+          transaction[headers[x].trim()] = rowData[x].trim();
+        }
+
+        // Empty line check
+        if (transaction.Transaction === "") break;
+
+        // ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Details', 'Outstanding Loan', 'Date / Time']
+        dispatch(
+          addTransaction({
+            id: transaction.Transaction,
+            type: transaction.Type,
+            inputCurrency: transaction["Input Currency"],
+            inputAmount: parseFloat(transaction["Input Amount"]),
+            outputCurrency: transaction["Output Currency"],
+            outputAmount: parseFloat(transaction["Output Amount"]),
+            usdEquivalent: parseFloat(
+              transaction["USD Equivalent"].substring(1)
+            ),
+            details: transaction.Details,
+            outstandingLoan: parseFloat(
+              transaction["Outstanding Loan"].substring(1)
+            ),
+            dateTime: transaction["Date / Time"],
+          })
+        );
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   /* Load file via button */
   const OnFileChangeHandler = (event: React.ChangeEvent) => {
@@ -18,12 +81,10 @@ const FileUpload = () => {
 
     if (uploadedFile) {
       if (uploadedFile.name.includes(".csv")) {
-        console.log("File is of type csv!");
-
-        console.log(uploadedFile.name);
-
         setFile(uploadedFile);
         setFileSelected(true);
+
+        uploadedFile.text().then((content) => processFile(content));
       } else {
         // Error, file is wrong type
         setError(Error("Uploaded file is of wrong type."));
@@ -45,14 +106,10 @@ const FileUpload = () => {
         const uploadedFile = e.dataTransfer.items[0].getAsFile();
 
         if (uploadedFile?.name.includes(".csv")) {
-          console.log("File is of type csv!");
-
-          console.log(uploadedFile?.name);
-          console.log(uploadedFile);
-
           setFile(e.dataTransfer.items[0].getAsFile());
-
           setFileSelected(true);
+
+          uploadedFile.text().then((content) => processFile(content));
         } else {
           setError(Error("Uploaded file is of wrong type."));
         }
