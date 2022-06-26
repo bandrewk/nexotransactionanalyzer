@@ -2,32 +2,9 @@ import React, { useEffect } from "react";
 import classes from "./App.module.css";
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer/Footer";
-import FileUpload from "../components/UI/FileUpload";
-import { useAppSelector, useAppDispatch } from "../hooks";
-import { addTransaction } from "../reducers/transactionReducer";
+import FileUpload from "../components/FileUpload/FileUpload";
 
 function App() {
-  const transactions = useAppSelector((state) => state.transactions);
-  const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    dispatch(
-      addTransaction({
-        id: `id`,
-        type: "test",
-        currency: "LINK",
-        amount: 1,
-        usdEquivalent: 1,
-        details: "Dummy transaction",
-        outstandingLoan: 0,
-        dateTime: new Date(),
-      })
-    );
-    console.log(transactions);
-  }, []);
-
-  console.log(transactions);
-
   return (
     <>
       <div className={`${classes["content-area"]} hide-scrollbar`}>
