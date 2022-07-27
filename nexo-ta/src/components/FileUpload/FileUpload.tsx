@@ -29,7 +29,7 @@ const FileUpload = () => {
       // ↓ → → → X
       // ↓ → → → X
       // (EOF)
-      for (let y = 0; y < data.length - 1; y++) {
+      for (let y = 1; y < data.length - 1; y++) {
         let rowData = data[y].split(",");
 
         // Construct a single transaction
