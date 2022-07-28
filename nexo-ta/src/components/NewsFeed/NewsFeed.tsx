@@ -36,6 +36,7 @@ const NewsFeed = () => {
                   } via ${data.feed.title}`}
                   image={item.enclosure.link}
                   url={item.link}
+                  key={Math.random()}
                 />
               )
             );
