@@ -2,12 +2,14 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import transactionSlice from "../reducers/transactionReducer";
+import currenciesSlice from "../reducers/currenciesReducer";
 
 // ...
 
 export const store = configureStore({
   reducer: {
     transactions: transactionSlice.reducer,
+    currencies: currenciesSlice.reducer,
     // posts: postsReducer,
     // comments: commentsReducer,
     // users: usersReducer,
