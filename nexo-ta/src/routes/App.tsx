@@ -4,7 +4,11 @@ import { Link } from "react-router-dom";
 import Footer from "../components/Footer/Footer";
 import FileUpload from "../components/FileUpload/FileUpload";
 
+import { initFirebase } from "../firebase";
+
 function App() {
+  initFirebase();
+
   return (
     <>
       <div className={`${classes["content-area"]} hide-scrollbar`}>
