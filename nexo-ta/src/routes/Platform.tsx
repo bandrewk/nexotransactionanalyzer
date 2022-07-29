@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Footer from "../components/Footer/Footer";
 import Coinlist from "../components/Platform/Coinlist";
@@ -10,8 +10,13 @@ import ContentArea from "../components/UI/Layout/ContentArea";
 import classes from "./Platform.module.css";
 import { collection, getDocs } from "firebase/firestore";
 import { storage } from "../firebase";
-import { useAppDispatch } from "../hooks";
-import { addCurrency, Currency } from "../reducers/currenciesReducer";
+import { useAppDispatch, useAppSelector } from "../hooks";
+import {
+  addAmount,
+  addCurrency,
+  Currency,
+} from "../reducers/currenciesReducer";
+import { TransactionType } from "../reducers/transactionReducer";
 
 const Platform = () => {
   /****************************************************************
@@ -19,11 +24,11 @@ const Platform = () => {
    ***************************************************************/
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState("Initializing");
-
   const dispatch = useAppDispatch();
 
-  const LoadCurrencies = async () => {
-    setStatus("Loading available currencies..");
+  // Load currencies from firebase
+  const LoadCurrencies = useCallback(async () => {
+    setStatus("Loading available currencies");
     const querySnapshot = await getDocs(collection(storage, "currencies"));
 
     querySnapshot.forEach((doc) => {
@@ -41,26 +46,63 @@ const Platform = () => {
     });
 
     setStatus("Loaded currencies!");
-  };
+  }, []);
+
+  // Go trough transactions and calculate coin amounts
+  const transactions = useAppSelector((state) => state.transactions);
+  const currencies = useAppSelector((state) => state.currencies);
+
+  const CountCurrencies = useCallback(async () => {
+    setStatus("Counting currencies");
+
+    // Give it some time to update ui..
+    await Timeout(1000);
+
+    for (let t of transactions) {
+      if (t.details.search(`pending`) >= 0) {
+        // Transaction is pending
+        return;
+      }
+
+      // When counting currencies ignore fixed terms  (deposits and withdraws) as the depot value stays the same
+      if (
+        t.type !== TransactionType.LOCKINGTERMDEPOSIT && // Internal transaction
+        t.type !== TransactionType.UNLOCKINGTERMDEPOSIT && // Internal transaction
+        t.type !== TransactionType.EXCHANGETOWITHDRAW && //FiatX to Fiat
+        t.type !== TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
+      ) {
+        dispatch(
+          addAmount({
+            inputAmount: t.inputAmount,
+            inputCurrency: t.inputCurrency,
+            outputAmount: t.outputAmount,
+            outputCurrency: t.outputCurrency,
+          })
+        );
+      }
+    }
+
+    setStatus("Counting complete!");
+  }, []);
 
   // Simulate loading
-  const Timeout = async () => {
-    return new Promise((resolve) => setTimeout(resolve, 1000));
+  const Timeout = async (ms: number) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   };
 
+  /* Start loading and processing transactions */
   useEffect(() => {
-    const Load = async () => {
+    const load = async () => {
       await LoadCurrencies();
-
-      await Timeout();
+      await Timeout(1000);
+      await CountCurrencies();
+      await Timeout(1000);
 
       setIsLoading(false);
     };
 
-    Load();
+    load();
   }, []);
-
-  /* Start loading and processing transactions */
 
   if (isLoading) {
     return (
