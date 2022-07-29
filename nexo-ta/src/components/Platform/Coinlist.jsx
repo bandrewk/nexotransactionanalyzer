@@ -5,33 +5,58 @@ const Coinlist = () => {
   return (
     <>
       <HeadingPrimary text="Coinlist" />
-      <p>
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Atque eligendi
-        architecto, ab qui nam maiores pariatur deleniti aut molestias sint
-        nesciunt porro tempora minima nisi voluptas harum exercitationem dicta
-        consectetur blanditiis quasi neque repellendus. Molestias quibusdam
-        modi, voluptates mollitia magnam quaerat quae nihil pariatur corrupti
-        inventore magni tempora repudiandae minima reiciendis qui dolorem soluta
-        placeat laborum eveniet! Natus quae aspernatur eveniet quis laudantium
-        debitis atque ex officiis asperiores hic. Placeat recusandae repudiandae
-        velit quo nobis rerum expedita ea architecto illum! Iste ducimus ex
-        facere, qui rerum quia, nostrum totam temporibus quis maiores inventore
-        fugiat velit assumenda. Dicta velit quibusdam voluptatem!
-      </p>
+      <p>Your portfolio at a glance!</p>
       <br />
-      <p>
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Atque eligendi
-        architecto, ab qui nam maiores pariatur deleniti aut molestias sint
-        nesciunt porro tempora minima nisi voluptas harum exercitationem dicta
-        consectetur blanditiis quasi neque repellendus. Molestias quibusdam
-        modi, voluptates mollitia magnam quaerat quae nihil pariatur corrupti
-        inventore magni tempora repudiandae minima reiciendis qui dolorem soluta
-        placeat laborum eveniet! Natus quae aspernatur eveniet quis laudantium
-        debitis atque ex officiis asperiores hic. Placeat recusandae repudiandae
-        velit quo nobis rerum expedita ea architecto illum! Iste ducimus ex
-        facere, qui rerum quia, nostrum totam temporibus quis maiores inventore
-        fugiat velit assumenda. Dicta velit quibusdam voluptatem!
-      </p>
+      <div className={classes["coinlist-container"]}>
+        <div className={classes["coinlist-item"]}>
+          <div className={classes["coinlist-content"]}>
+            <img
+              src="http://static.nexo-ta.com/currencies/eth.svg"
+              alt="ETH Icon"
+            />
+            <div>
+              <h2>ETH</h2>
+              <p>4.6566454</p>
+            </div>
+          </div>
+        </div>
+        <div className={classes["coinlist-item"]}>
+          <div className={classes["coinlist-content"]}>
+            <img
+              src="http://static.nexo-ta.com/currencies/btc.svg"
+              alt="ETH Icon"
+            />
+            <div>
+              <h2>BTC</h2>
+              <p>4.6566454</p>
+            </div>
+          </div>
+        </div>
+        <div className={classes["coinlist-item"]}>
+          <div className={classes["coinlist-content"]}>
+            <img
+              src="http://static.nexo-ta.com/currencies/link.svg"
+              alt="link Icon"
+            />
+            <div>
+              <h2>ETH</h2>
+              <p>4.6566454</p>
+            </div>
+          </div>
+        </div>
+        <div className={classes["coinlist-item"]}>
+          <div className={classes["coinlist-content"]}>
+            <img
+              src="http://static.nexo-ta.com/currencies/eur.svg"
+              alt="EUR Icon"
+            />
+            <div>
+              <h2>EUR</h2>
+              <p>4.6566454</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 };
