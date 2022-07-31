@@ -1,7 +1,7 @@
 import HeadingPrimary from "../UI/Text/HeadingPrimary";
-import classes from "./Home.module.css";
+// import classes from "./Home.module.css";
 
-import NewsFeed from "../NewsFeed/NewsFeed";
+import NewsFeed from "../NewsFeed";
 
 const Home = () => {
   return (

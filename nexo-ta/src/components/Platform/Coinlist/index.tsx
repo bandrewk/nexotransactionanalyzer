@@ -1,8 +1,11 @@
 import HeadingPrimary from "../../UI/Text/HeadingPrimary";
 import classes from "./index.module.css";
 import CoinlistItem from "./CoinlistItem";
+// import { useAppSelector } from "../../../hooks";
 
 const Coinlist = () => {
+  // const currencies = useAppSelector((state) => state.currencies);
+
   return (
     <>
       <HeadingPrimary text="Coinlist" />

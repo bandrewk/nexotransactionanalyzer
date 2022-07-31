@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import classes from "./NewsFeed.module.css";
+// import classes from "./index.module.css";
 import NewsFeedItem from "./NewsFeedItem";
 
 const NewsFeed = () => {
