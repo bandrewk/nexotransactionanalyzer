@@ -1,20 +1,23 @@
 import classes from "./CoinlistItem.module.css";
 
 type CoinlistItemProps = {
-  currency: string;
+  symbol: string;
   amount: number;
+  supported: boolean;
 };
 
-const CoinlistItem = ({ currency, amount }: CoinlistItemProps) => {
+const CoinlistItem = ({ symbol, amount, supported }: CoinlistItemProps) => {
   return (
     <div className={classes["coinlist-item"]}>
       <div className={classes["coinlist-content"]}>
         <img
-          src={`http://static.nexo-ta.com/currencies/${currency.toLocaleLowerCase()}.svg`}
-          alt={`${currency} Icon`}
+          src={`http://static.nexo-ta.com/currencies/${
+            supported ? symbol.toLocaleLowerCase() : "generic"
+          }.svg`}
+          alt={`${symbol} Icon`}
         />
         <div>
-          <h2>{currency.toUpperCase()}</h2>
+          <h2>{symbol.toUpperCase()}</h2>
           <p>{amount}</p>
         </div>
       </div>

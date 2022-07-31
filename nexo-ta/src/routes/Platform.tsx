@@ -40,6 +40,7 @@ const Platform = () => {
         coingeckoId: doc.data()["coingecko-id"],
         symbol: doc.data().symbol,
         type: doc.data().type,
+        supported: true,
       };
 
       dispatch(addCurrency(c));

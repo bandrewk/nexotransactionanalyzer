@@ -6,6 +6,7 @@ export type Currency = {
   type: string;
   amount: number;
   coingeckoId: string;
+  supported: boolean;
 };
 
 const currenciesSlice = createSlice({
@@ -55,6 +56,17 @@ const currenciesSlice = createSlice({
         const currency = action.payload.outputCurrency;
         const amount = action.payload.outputAmount;
 
+        if (!isValid(currency)) {
+          console.log(`(!) Adding unknown currency: ${currency}`);
+          state.push({
+            name: `Unknown ${Math.random().toFixed(2)}`,
+            amount: 0,
+            coingeckoId: `unknown`,
+            symbol: currency,
+            type: `unknown`,
+            supported: false,
+          });
+        }
         if (isValid(currency)) {
           // Add amount to currency
           const index = state.findIndex((item) => item.symbol === currency);
@@ -68,27 +80,71 @@ const currenciesSlice = createSlice({
         // Pair transaction (Swap, purchase, etc.)
         console.log(`**Pair transaction`);
 
-        if (
-          isValid(action.payload.outputCurrency && action.payload.inputCurrency)
-        ) {
-          // 1. Process input currency
-          let index = state.findIndex(
-            (item) => item.symbol === action.payload.inputCurrency
-          );
-          state[index].amount += action.payload.inputAmount;
+        const outputCurrency = action.payload.outputCurrency;
+        const inputCurrency = action.payload.inputCurrency;
+
+        if (outputCurrency === "")
+          if (!isValid(outputCurrency) && outputCurrency !== "") {
+            console.log(
+              `(!) Adding unknown currency in pair transaction (output): ${outputCurrency} (${action.payload.outputAmount})`
+            );
+            state.push({
+              name: `Unknown ${Math.random().toFixed(2)}`,
+              amount: 0,
+              coingeckoId: `unknown`,
+              symbol: outputCurrency,
+              type: `unknown`,
+              supported: false,
+            });
+          }
+
+        if (!isValid(inputCurrency)) {
           console.log(
-            `(Input)${action.payload.inputCurrency}: ${action.payload.inputAmount}`
+            `(!) Adding unknown currency in pair transaction (input): ${inputCurrency} (${action.payload.inputAmount})`
+          );
+          state.push({
+            name: `Unknown ${Math.random().toFixed(2)}`,
+            amount: 0,
+            coingeckoId: `unknown`,
+            symbol: inputCurrency,
+            type: `unknown`,
+            supported: false,
+          });
+        }
+
+        if (isValid(outputCurrency) && isValid(inputCurrency)) {
+          console.log(state);
+
+          // 1. Find currencies
+          const indexA = state.findIndex(
+            (item) => item.symbol === inputCurrency
           );
 
-          // 2. Process output currency
+          const indexB = state.findIndex(
+            (item) => item.symbol === outputCurrency
+          );
 
-          index = state.findIndex(
-            (item) => item.symbol === action.payload.outputCurrency
-          );
-          state[index].amount += action.payload.outputAmount;
-          console.log(
-            `(Output)${action.payload.outputCurrency}: ${action.payload.outputAmount}`
-          );
+          if (indexA >= 0 && indexB >= 0) {
+            // 2. Process input currency
+            state[indexA].amount += action.payload.inputAmount;
+            console.log(
+              `(Input)${inputCurrency}: ${action.payload.inputAmount}`
+            );
+
+            // 3. Process output currency
+            state[indexB].amount += action.payload.outputAmount;
+            console.log(
+              `(Output)${outputCurrency}: ${action.payload.outputAmount}`
+            );
+          } else {
+            console.log(
+              `(!) Could not locate one or more currencies of pair transaction.`
+            );
+            console.log(
+              `(!) indexA: ${indexA} (${inputCurrency}), indexB: ${indexB} (${outputCurrency})`
+            );
+            console.log(JSON.stringify(state));
+          }
         } else {
           console.log(`One or more currencies of pair not supported.`);
         }
