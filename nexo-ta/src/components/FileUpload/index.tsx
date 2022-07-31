@@ -1,8 +1,8 @@
-import classes from "./FileUpload.module.css";
+import classes from "./index.module.css";
 
 import { useState, DragEvent } from "react";
 import { X } from "phosphor-react";
-import { useAppDispatch, useAppSelector } from "../../hooks";
+import { useAppDispatch } from "../../hooks";
 import { addTransaction } from "../../reducers/transactionReducer";
 
 const FileUpload = () => {
@@ -11,7 +11,7 @@ const FileUpload = () => {
   const [fileSelected, setFileSelected] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const transactions = useAppSelector((state) => state.transactions);
+  // const transactions = useAppSelector((state) => state.transactions);
   const dispatch = useAppDispatch();
 
   const processFile = (content: String) => {
@@ -20,7 +20,7 @@ const FileUpload = () => {
       const headers = data[0].split(",");
 
       // Check headers
-      if (headers.length != 10) {
+      if (headers.length !== 10) {
         throw new Error(`Headers mismatch. Expected 10, got ${headers.length}`);
       }
 

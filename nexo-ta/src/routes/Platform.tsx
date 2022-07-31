@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import Footer from "../components/Footer/Footer";
+import Footer from "../components/Footer";
 import Coinlist from "../components/Platform/Coinlist";
 import Home from "../components/Platform/Home";
 import Overview from "../components/Platform/Overview";
@@ -46,11 +46,11 @@ const Platform = () => {
     });
 
     setStatus("Loaded currencies!");
-  }, []);
+  }, [dispatch]);
 
   // Go trough transactions and calculate coin amounts
   const transactions = useAppSelector((state) => state.transactions);
-  const currencies = useAppSelector((state) => state.currencies);
+  // const currencies = useAppSelector((state) => state.currencies);
 
   const CountCurrencies = useCallback(async () => {
     setStatus("Counting currencies");
@@ -83,7 +83,7 @@ const Platform = () => {
     }
 
     setStatus("Counting complete!");
-  }, []);
+  }, [dispatch, transactions]);
 
   // Simulate loading
   const Timeout = async (ms: number) => {
@@ -102,7 +102,7 @@ const Platform = () => {
     };
 
     load();
-  }, []);
+  }, [CountCurrencies, LoadCurrencies]);
 
   if (isLoading) {
     return (

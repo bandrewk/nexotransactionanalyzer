@@ -1,8 +1,7 @@
-import React, { useEffect } from "react";
 import classes from "./App.module.css";
 import { Link } from "react-router-dom";
-import Footer from "../components/Footer/Footer";
-import FileUpload from "../components/FileUpload/FileUpload";
+import Footer from "../components/Footer";
+import FileUpload from "../components/FileUpload";
 
 import { initFirebase } from "../firebase";
 
