@@ -1,7 +1,7 @@
 import HeadingPrimary from "../UI/Text/HeadingPrimary";
 import classes from "./Transactions.module.css";
-import { Grid } from "gridjs";
-import { useRef, useEffect, useState, useCallback } from "react";
+import { Grid, UserConfig } from "gridjs";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useAppSelector } from "../../hooks";
 
 import "gridjs/dist/theme/mermaid.min.css";
@@ -9,7 +9,7 @@ import "gridjs/dist/theme/mermaid.min.css";
 const Transactions = () => {
   const transactions = useAppSelector((state) => state.transactions);
 
-  const wrapperRef = useRef(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   // User settings
   const [hideTransactionId, setHideTransactionId] = useState(true);
@@ -83,21 +83,31 @@ const Transactions = () => {
           );
         });
       },
-    };
-  });
-  const grid = new Grid(getGridConfig());
+    } as UserConfig;
+  }, [
+    hideOutstandingLoan,
+    hideTransactionId,
+    hideTransactionTime,
+    transactions,
+  ]);
+
+  const grid = useMemo(() => new Grid(getGridConfig()), [getGridConfig]);
 
   useEffect(() => {
-    // Remove GridJs error that html element is not empty
-    wrapperRef.current.innerHTML = "";
+    if (wrapperRef && wrapperRef.current) {
+      // Remove GridJs error that html element is not empty
+      wrapperRef.current.innerHTML = "";
 
-    // Render grid
-    grid.render(wrapperRef.current);
+      // Render grid
+      grid.render(wrapperRef.current);
+    } else {
+      console.log(`Transactions wrapper for GridJS is null, unable to render!`);
+    }
   });
 
   useEffect(() => {
     grid.updateConfig(getGridConfig()).forceRender();
-  }, [hideTransactionId, hideOutstandingLoan, hideTransactionTime]);
+  }, [getGridConfig, grid]);
 
   return (
     <>
