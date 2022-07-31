@@ -1,4 +1,4 @@
-import classes from "./Sidebar.module.css";
+import classes from "./index.module.css";
 import SidebarMenu from "./SidebarMenu";
 
 const Sidebar = () => {

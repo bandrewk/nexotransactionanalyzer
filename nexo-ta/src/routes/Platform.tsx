@@ -5,7 +5,7 @@ import Coinlist from "../components/Platform/Coinlist";
 import Home from "../components/Platform/Home";
 import Overview from "../components/Platform/Overview";
 import Transactions from "../components/Platform/Transactions";
-import Sidebar from "../components/Sidebar/Sidebar";
+import Sidebar from "../components/Sidebar";
 import ContentArea from "../components/UI/Layout/ContentArea";
 import classes from "./Platform.module.css";
 import { collection, getDocs } from "firebase/firestore";
