@@ -18,7 +18,7 @@ const CoinlistItem = ({ symbol, amount, supported }: CoinlistItemProps) => {
         />
         <div>
           <h2>{symbol.toUpperCase()}</h2>
-          <p>{amount}</p>
+          <p>{amount.toFixed(8)}</p>
         </div>
       </div>
     </div>
