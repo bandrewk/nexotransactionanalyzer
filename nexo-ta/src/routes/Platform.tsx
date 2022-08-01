@@ -13,7 +13,7 @@ import { storage } from "../firebase";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   addAmount,
-  addCurrency,
+  addCurrencies,
   Currency,
 } from "../reducers/currenciesReducer";
 import { TransactionType } from "../reducers/transactionReducer";
@@ -31,20 +31,20 @@ const Platform = () => {
     setStatus("Loading available currencies");
     const querySnapshot = await getDocs(collection(storage, "currencies"));
 
-    querySnapshot.forEach((doc) => {
-      console.log(doc.id, " => ", doc.data().symbol);
-
-      let c: Currency = {
-        name: doc.id,
-        amount: 0,
-        coingeckoId: doc.data()["coingecko-id"],
-        symbol: doc.data().symbol,
-        type: doc.data().type,
-        supported: true,
-      };
-
-      dispatch(addCurrency(c));
-    });
+    dispatch(
+      addCurrencies(
+        querySnapshot.docs.map((doc) => {
+          return {
+            name: doc.id,
+            amount: 0,
+            coingeckoId: doc.data()["coingecko-id"],
+            symbol: doc.data().symbol,
+            type: doc.data().type,
+            supported: true,
+          };
+        })
+      )
+    );
 
     setStatus("Loaded currencies!");
   }, [dispatch]);
@@ -59,27 +59,27 @@ const Platform = () => {
     // Give it some time to update ui..
     await Timeout(1000);
 
-    for (let t of transactions) {
-      if (t.details.search(`pending`) >= 0) {
-        // Transaction is pending
-        return;
-      }
+    // Reverse timeline (csv is NEW -> OLD but we want OLD -> NEW)
+    const rev = [...transactions].reverse();
+
+    for (let t of rev) {
+      // Transaction is pending, skip iteration
+      if (t.details.includes(`pending`)) continue;
+
+      // Transaction got rejected , skip iteration
+      if (t.details.includes(`rejected`)) continue;
 
       // When counting currencies ignore fixed terms  (deposits and withdraws) as the depot value stays the same
       if (
         t.type !== TransactionType.LOCKINGTERMDEPOSIT && // Internal transaction
         t.type !== TransactionType.UNLOCKINGTERMDEPOSIT && // Internal transaction
         t.type !== TransactionType.EXCHANGETOWITHDRAW && //FiatX to Fiat
-        t.type !== TransactionType.EXCHANGEDEPOSITEDON // Fiat to FiatX
+        t.type !== TransactionType.EXCHANGEDEPOSITEDON && // Fiat to FiatX
+        t.type !== TransactionType.TRANSFERIN && // Credit to savings wallet
+        t.type !== TransactionType.TRANSFEROUT && // Savings wallet to credit wallet
+        t.type !== TransactionType.CREDITCARDSTATUS
       ) {
-        dispatch(
-          addAmount({
-            inputAmount: t.inputAmount,
-            inputCurrency: t.inputCurrency,
-            outputAmount: t.outputAmount,
-            outputCurrency: t.outputCurrency,
-          })
-        );
+        dispatch(addAmount({ t }));
       }
     }
 
