@@ -1,3 +1,4 @@
+import { BatteryWarning, Warning } from "phosphor-react";
 import classes from "./CoinlistItem.module.css";
 
 type CoinlistItemProps = {
@@ -9,6 +10,9 @@ type CoinlistItemProps = {
 const CoinlistItem = ({ symbol, amount, supported }: CoinlistItemProps) => {
   return (
     <div className={classes["coinlist-item"]}>
+      {!supported && (
+        <BatteryWarning size={32} className={classes["coinlist-warning"]} />
+      )}
       <div className={classes["coinlist-content"]}>
         <img
           src={`http://static.nexo-ta.com/currencies/${
