@@ -44,7 +44,7 @@ const Coinlist = () => {
       <br />
       <br />
       <div className={classes.inputLabel}>
-        <BatteryWarning size={24} color={"red"} />= Not suppored
+        <BatteryWarning size={24} color={"red"} />= Not supported
       </div>
     </>
   );
