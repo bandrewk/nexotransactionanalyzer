@@ -11,6 +11,7 @@
   color: inherit;
   transition: transform 0.4s;
   height: 8rem;
+  position: relative;
 }
 
 .coinlist-content {
@@ -30,4 +31,14 @@
 }
 .coinlist-content div h2 {
   color: #091741;
+}
+
+.coinlist-warning {
+  position: absolute;
+  top: 0rem;
+  right: 0rem;
+  color: red;
+  border-radius: 50px;
+  height: 2.4rem;
+  width: 2.4rem;
 }
