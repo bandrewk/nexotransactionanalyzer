@@ -3,6 +3,7 @@ import classes from "./index.module.css";
 import CoinlistItem from "./CoinlistItem";
 import { useAppSelector } from "../../../hooks";
 import { useState } from "react";
+import { BatteryWarning } from "phosphor-react";
 
 const Coinlist = () => {
   const currencies = useAppSelector((state) => state.currencies);
@@ -14,7 +15,6 @@ const Coinlist = () => {
       <HeadingPrimary text="Coinlist" />
       <p>Your portfolio at a glance!</p>
       <br />
-
       <div className={classes.settings}>
         <label className={classes.inputLabel}>
           <input
@@ -25,7 +25,6 @@ const Coinlist = () => {
           Hide small balances
         </label>
       </div>
-
       <div className={classes["coinlist-container"]}>
         {currencies.map((cur) => {
           if (hideSmallBalances) {
@@ -41,6 +40,11 @@ const Coinlist = () => {
             />
           );
         })}
+      </div>
+      <br />
+      <br />
+      <div className={classes.inputLabel}>
+        <BatteryWarning size={24} color={"red"} />= Not suppored
       </div>
     </>
   );
