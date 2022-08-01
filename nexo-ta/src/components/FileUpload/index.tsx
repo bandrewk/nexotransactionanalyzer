@@ -3,7 +3,10 @@ import classes from "./index.module.css";
 import { useState, DragEvent } from "react";
 import { X } from "phosphor-react";
 import { useAppDispatch } from "../../hooks";
-import { addTransaction } from "../../reducers/transactionReducer";
+import {
+  addTransaction,
+  TransactionType,
+} from "../../reducers/transactionReducer";
 
 const FileUpload = () => {
   const [file, setFile] = useState<File | null>();
@@ -23,6 +26,10 @@ const FileUpload = () => {
       if (headers.length !== 10) {
         throw new Error(`Headers mismatch. Expected 10, got ${headers.length}`);
       }
+
+      console.log(
+        "Warning: Fixing transactions of type REPAYMENT and LIQUIDATION while importing. This could leave small balances of FIAT in your portfolio."
+      );
 
       // Go through data line by line
       // Y → → → X (EOL)
@@ -47,14 +54,42 @@ const FileUpload = () => {
         // Empty line check
         if (transaction.Transaction === "") break;
 
+        const fixFiatX = (cur: string) => {
+          if (cur === "EURX") cur = "EUR";
+          if (cur === "GPBX") cur = "GPB";
+          if (cur === "USDX") cur = "USD";
+          return cur;
+        };
+
+        // Fix repayments
+        // Repayments are positive in the csv instead of negative.
+        if (transaction.Type === TransactionType.REPAYMENT) {
+          // Lets protect us from this firing back, if nexo decides to fix their csv one day..
+          if (parseFloat(transaction["Input Amount"]) > 0)
+            transaction["Input Amount"] = (-transaction[
+              "Input Amount"
+            ]).toString();
+        }
+
+        // Fix liquidations
+        // There`s no way around this. This will fire back some day.
+        // We also get rounding errors from this, as the USD Eq. is only 2 decimals instead of 8
+        if (transaction.Type === TransactionType.LIQUIDATION) {
+          transaction["Output Currency"] = "USD";
+          transaction["Output Amount"] =
+            transaction["USD Equivalent"].substring(1);
+        }
+
+        // Headers:
         // ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Details', 'Outstanding Loan', 'Date / Time']
+
         dispatch(
           addTransaction({
             id: transaction.Transaction,
             type: transaction.Type,
-            inputCurrency: transaction["Input Currency"],
+            inputCurrency: fixFiatX(transaction["Input Currency"]),
             inputAmount: parseFloat(transaction["Input Amount"]),
-            outputCurrency: transaction["Output Currency"],
+            outputCurrency: fixFiatX(transaction["Output Currency"]),
             outputAmount: parseFloat(transaction["Output Amount"]),
             usdEquivalent: parseFloat(
               transaction["USD Equivalent"].substring(1)
