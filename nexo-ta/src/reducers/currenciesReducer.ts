@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { Transaction } from "./transactionReducer";
 
 export type Currency = {
   name: string;
@@ -9,149 +10,129 @@ export type Currency = {
   supported: boolean;
 };
 
+const addCurrency = (state: Currency[], currency: Currency) => {
+  let symbol = currency.symbol;
+
+  if (state.some((item) => item.symbol === symbol)) {
+    // Currency is already available
+    // console.log(`Currency ${symbol} is already available.`);
+    return null;
+  } else {
+    // console.log(`Added currency ${currency.symbol}.`);
+    return currency;
+  }
+};
+
 const currenciesSlice = createSlice({
   name: "currencies",
   initialState: [] as Currency[],
   reducers: {
     /****************************************************************
-     * ADD CURRENCY
-     * Adds a currency to the supported list
+     * ADD CURRENCIES
      ***************************************************************/
-    addCurrency(state, action: PayloadAction<Currency>) {
-      if (state.some((item) => item.symbol === action.payload.symbol)) {
-        // Currency is already available
-        console.log(`Currency ${action.payload.symbol} is already available.`);
-      } else {
-        // Add currency
-        state.push(action.payload);
-        console.log(`Added currency ${action.payload.symbol}.`);
-      }
+    addCurrencies(state, action: PayloadAction<Currency[]>) {
+      action.payload.forEach((currency) => {
+        const ret = addCurrency(state, currency);
+
+        if (ret) state.push(ret);
+      });
     },
 
     /****************************************************************
      * ADD AMOUNT
      * Add +/- n amount of coins to the specified currencies
      ***************************************************************/
-    addAmount(
-      state,
-      action: PayloadAction<{
-        inputAmount: number;
-        inputCurrency: string;
-        outputAmount: number;
-        outputCurrency: string;
-      }>
-    ) {
+    addAmount(state, action: PayloadAction<{ t: Transaction }>) {
       // Little helper for verifying the currency
       const isValid = (currency: string) => {
         if (state.some((item) => item.symbol === currency)) return true;
         else return false;
       };
 
-      // Single transaction (Deposit, earn, etc.)
+      const AddUnsupportedCurrency = (symbol: string) => {
+        const ret = addCurrency(state, {
+          name: `Unknown ${Math.random().toFixed(2)}`,
+          amount: Number(0),
+          coingeckoId: `unknown`,
+          symbol: symbol,
+          type: `unknown`,
+          supported: false,
+        });
+        if (ret) state.push(ret);
+      };
+
+      const GetIndex = (symbol: string) => {
+        return state.findIndex((item) => item.symbol === symbol);
+      };
+
+      const IsAlmostZero = (amount: number) => {
+        // if (amount > 0 && amount < 0.000001) return true;
+        return false;
+      };
+
+      const inputAmount = action.payload.t.inputAmount;
+      const inputCurrency = action.payload.t.inputCurrency;
+      const outputAmount = action.payload.t.outputAmount;
+      const outputCurrency = action.payload.t.outputCurrency;
+
+      // console.log(`Input: ${inputAmount}, Output: ${outputAmount}`);
+
+      // 1. Single transaction
       if (
-        action.payload.inputAmount === action.payload.outputAmount &&
-        action.payload.inputCurrency === action.payload.outputCurrency
+        inputCurrency === outputCurrency ||
+        (inputCurrency.length > 1 && outputCurrency === "")
       ) {
-        console.log(`**Single transaction`);
-        const currency = action.payload.outputCurrency;
-        const amount = action.payload.outputAmount;
+        // Make sure currency is available, if not, add it.
+        if (!isValid(inputCurrency)) AddUnsupportedCurrency(inputCurrency);
 
-        if (!isValid(currency)) {
-          console.log(`(!) Adding unknown currency: ${currency}`);
-          state.push({
-            name: `Unknown ${Math.random().toFixed(2)}`,
-            amount: 0,
-            coingeckoId: `unknown`,
-            symbol: currency,
-            type: `unknown`,
-            supported: false,
-          });
-        }
-        if (isValid(currency)) {
-          // Add amount to currency
-          const index = state.findIndex((item) => item.symbol === currency);
-          state[index].amount += amount;
+        // 1.1. Find index
+        const index = GetIndex(inputCurrency);
 
-          console.log(`${currency}: ${state[index].amount}`);
+        // 1.2. Update amount
+        if (index >= 0) {
+          state[index].amount += inputAmount;
+          if (IsAlmostZero(state[index].amount)) state[index].amount = 0;
         } else {
-          console.log(`Currency ${currency} not supported!`);
-        }
-      } else {
-        // Pair transaction (Swap, purchase, etc.)
-        console.log(`**Pair transaction`);
-
-        const outputCurrency = action.payload.outputCurrency;
-        const inputCurrency = action.payload.inputCurrency;
-
-        if (outputCurrency === "")
-          if (!isValid(outputCurrency) && outputCurrency !== "") {
-            console.log(
-              `(!) Adding unknown currency in pair transaction (output): ${outputCurrency} (${action.payload.outputAmount})`
-            );
-            state.push({
-              name: `Unknown ${Math.random().toFixed(2)}`,
-              amount: 0,
-              coingeckoId: `unknown`,
-              symbol: outputCurrency,
-              type: `unknown`,
-              supported: false,
-            });
-          }
-
-        if (!isValid(inputCurrency)) {
           console.log(
-            `(!) Adding unknown currency in pair transaction (input): ${inputCurrency} (${action.payload.inputAmount})`
+            `Unable to find currency index for ${inputCurrency} (${JSON.stringify(
+              action.payload.t
+            )})`
           );
-          state.push({
-            name: `Unknown ${Math.random().toFixed(2)}`,
-            amount: 0,
-            coingeckoId: `unknown`,
-            symbol: inputCurrency,
-            type: `unknown`,
-            supported: false,
-          });
+          console.log(JSON.stringify(state));
         }
 
-        if (isValid(outputCurrency) && isValid(inputCurrency)) {
-          console.log(state);
+        // Exit !
+        return;
+      }
 
-          // 1. Find currencies
-          const indexA = state.findIndex(
-            (item) => item.symbol === inputCurrency
-          );
+      // 2. Pair transaction
+      if (!isValid(inputCurrency)) AddUnsupportedCurrency(inputCurrency);
+      if (!isValid(outputCurrency)) AddUnsupportedCurrency(outputCurrency);
 
-          const indexB = state.findIndex(
-            (item) => item.symbol === outputCurrency
-          );
+      // 2.1. Find indexes
+      const indexInput = GetIndex(inputCurrency);
+      const indexOuput = GetIndex(outputCurrency);
 
-          if (indexA >= 0 && indexB >= 0) {
-            // 2. Process input currency
-            state[indexA].amount += action.payload.inputAmount;
-            console.log(
-              `(Input)${inputCurrency}: ${action.payload.inputAmount}`
-            );
+      // 2.2. Update amounts
+      if (indexInput >= 0 && indexOuput >= 0) {
+        state[indexInput].amount += inputAmount;
+        state[indexOuput].amount += outputAmount;
 
-            // 3. Process output currency
-            state[indexB].amount += action.payload.outputAmount;
-            console.log(
-              `(Output)${outputCurrency}: ${action.payload.outputAmount}`
-            );
-          } else {
-            console.log(
-              `(!) Could not locate one or more currencies of pair transaction.`
-            );
-            console.log(
-              `(!) indexA: ${indexA} (${inputCurrency}), indexB: ${indexB} (${outputCurrency})`
-            );
-            console.log(JSON.stringify(state));
-          }
-        } else {
-          console.log(`One or more currencies of pair not supported.`);
-        }
+        if (IsAlmostZero(state[indexInput].amount))
+          state[indexInput].amount = 0;
+        if (IsAlmostZero(state[indexOuput].amount))
+          state[indexOuput].amount = 0;
+      } else {
+        console.log(
+          `Unable to find currency index for ${inputCurrency} or ${outputCurrency} (${JSON.stringify(
+            action.payload.t
+          )})`
+        );
+        console.log(JSON.stringify(state));
       }
     },
   },
 });
 
-export const { addCurrency, addAmount } = currenciesSlice.actions;
+export const { addAmount, addCurrencies } = currenciesSlice.actions;
 export default currenciesSlice;
