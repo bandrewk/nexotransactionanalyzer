@@ -7,6 +7,17 @@ export const TransactionType = {
   WITHDRAWAL: `Withdrawal`,
   EXCHANGE: `Exchange`,
 
+  // Wallet transfers
+  TRANSFERIN: `TransferIn`, // Credit to savings wallet
+  TRANSFEROUT: `TransferOut`, // Savings wallet to credit wallet
+
+  // Credit card
+  CREDITCARDSTATUS: `CreditCardStatus`, // This one is weird, input = the value of the output in usd, output = origin currency (i.e. EUR) (informative only)
+
+  // LOAN
+  LIQUIDATION: `Liquidation`, // Broken for sure. Output = Input. Output should be the USD value not the same as input. (Liquidation currency -> Repayment USD)
+  REPAYMENT: `Repayment`, // Weird one, repayment but as a positive value. should be negative ?!! Ouput value is always USD with an amount of 0 for some reason
+
   // Cashback
   EXCHANGECASHBACK: `Exchange Cashback`,
 
