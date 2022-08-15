@@ -31,9 +31,11 @@ const CoinlistItem = ({
           <p className={classes["coinlist-content-amount"]}>
             {amount.toFixed(8)}
           </p>
-          <p className={classes["coinlist-content-usd"]}>
-            {usdEquivalent.toFixed(2)} $
-          </p>
+          {supported && (
+            <p className={classes["coinlist-content-usd"]}>
+              {usdEquivalent.toFixed(2)} $
+            </p>
+          )}
         </div>
       </div>
     </div>
