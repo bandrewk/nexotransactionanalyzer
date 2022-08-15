@@ -37,6 +37,7 @@ const Coinlist = () => {
               amount={cur.amount}
               key={Math.random()}
               supported={cur.supported}
+              usdEquivalent={cur.usdEquivalent}
             />
           );
         })}

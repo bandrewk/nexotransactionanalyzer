@@ -21,6 +21,7 @@
   gap: 2rem;
   margin-left: 2rem;
   margin-right: 2rem;
+  position: relative;
 }
 .coinlist-content img {
   height: 65%;
@@ -31,6 +32,17 @@
 }
 .coinlist-content div h2 {
   color: #091741;
+  letter-spacing: 1px;
+}
+
+.coinlist-content-amount {
+  font-weight: 500;
+}
+
+.coinlist-content-usd {
+  position: absolute;
+  right: 5px;
+  font-size: 1.4rem;
 }
 
 .coinlist-warning {
