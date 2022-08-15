@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { COINBASE_API_STRING } from "../config";
 import { Transaction } from "./transactionReducer";
 
 export type Currency = {
@@ -6,6 +7,7 @@ export type Currency = {
   symbol: string;
   type: string;
   amount: number;
+  usdEquivalent: number;
   coingeckoId: string;
   supported: boolean;
 };
@@ -53,6 +55,7 @@ const currenciesSlice = createSlice({
         const ret = addCurrency(state, {
           name: `Unknown ${Math.random().toFixed(2)}`,
           amount: Number(0),
+          usdEquivalent: Number(0),
           coingeckoId: `unknown`,
           symbol: symbol,
           type: `unknown`,
@@ -131,8 +134,49 @@ const currenciesSlice = createSlice({
         console.log(JSON.stringify(state));
       }
     },
+    setUSDEquivalent(state, action: PayloadAction<{ c: string; a: number }[]>) {
+      const isValid = (coingeckoId: string) => {
+        if (
+          state.some(
+            (item) =>
+              item.coingeckoId.toLocaleUpperCase() ===
+              coingeckoId.toLocaleUpperCase()
+          )
+        )
+          return true;
+        else return false;
+      };
+
+      const GetIndex = (coingeckoId: string) => {
+        return state.findIndex((item) => item.coingeckoId === coingeckoId);
+      };
+
+      action.payload.forEach((item) => {
+        // Make sure currency is available
+        if (isValid(item.c)) {
+          // 1.1. Find index
+          const index = GetIndex(item.c);
+
+          // 1.2. Update amount
+          if (index >= 0) {
+            state[index].usdEquivalent = state[index].amount * item.a;
+          } else {
+            console.log(
+              `Unable to find currency index for ${item.a} (${JSON.stringify(
+                action.payload
+              )})`
+            );
+            console.log(JSON.stringify(state));
+          }
+        }
+      });
+    },
   },
 });
 
-export const { addAmount, addCurrencies } = currenciesSlice.actions;
+export const { addAmount, addCurrencies, setUSDEquivalent } =
+  currenciesSlice.actions;
 export default currenciesSlice;
+function dispatch(arg0: { payload: { c: string; a: number }; type: string }) {
+  throw new Error("Function not implemented.");
+}
