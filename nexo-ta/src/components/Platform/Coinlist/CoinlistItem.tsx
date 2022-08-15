@@ -5,9 +5,15 @@ type CoinlistItemProps = {
   symbol: string;
   amount: number;
   supported: boolean;
+  usdEquivalent: number;
 };
 
-const CoinlistItem = ({ symbol, amount, supported }: CoinlistItemProps) => {
+const CoinlistItem = ({
+  symbol,
+  amount,
+  supported,
+  usdEquivalent,
+}: CoinlistItemProps) => {
   return (
     <div className={classes["coinlist-item"]}>
       {!supported && (
@@ -22,7 +28,12 @@ const CoinlistItem = ({ symbol, amount, supported }: CoinlistItemProps) => {
         />
         <div>
           <h2>{symbol.toUpperCase()}</h2>
-          <p>{amount.toFixed(8)}</p>
+          <p className={classes["coinlist-content-amount"]}>
+            {amount.toFixed(8)}
+          </p>
+          <p className={classes["coinlist-content-usd"]}>
+            {usdEquivalent.toFixed(2)} $
+          </p>
         </div>
       </div>
     </div>
