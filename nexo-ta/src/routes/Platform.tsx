@@ -14,19 +14,19 @@ import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   addAmount,
   addCurrencies,
-  Currency,
+  setUSDEquivalent,
 } from "../reducers/currenciesReducer";
 import { TransactionType } from "../reducers/transactionReducer";
+import { COINGECKO_API_SIMPLE_PRICE, PRICEFEED_PULL_RATE } from "../config";
 
 const Platform = () => {
-  /****************************************************************
-   * LOADING
-   ***************************************************************/
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState("Initializing");
   const dispatch = useAppDispatch();
 
-  // Load currencies from firebase
+  /****************************************************************
+   * Load currencies from firebase
+   ***************************************************************/
   const LoadCurrencies = useCallback(async () => {
     setStatus("Loading available currencies");
     const querySnapshot = await getDocs(collection(storage, "currencies"));
@@ -37,6 +37,7 @@ const Platform = () => {
           return {
             name: doc.id,
             amount: 0,
+            usdEquivalent: 0,
             coingeckoId: doc.data()["coingecko-id"],
             symbol: doc.data().symbol,
             type: doc.data().type,
@@ -49,12 +50,13 @@ const Platform = () => {
     setStatus("Loaded currencies!");
   }, [dispatch]);
 
+  /****************************************************************
+   * Count loaded currencies (from the csv file)
+   ***************************************************************/
   // Go trough transactions and calculate coin amounts
   const transactions = useAppSelector((state) => state.transactions);
-  // const currencies = useAppSelector((state) => state.currencies);
-
   const CountCurrencies = useCallback(async () => {
-    setStatus("Counting currencies");
+    setStatus("Counting coins");
 
     // Give it some time to update ui..
     await Timeout(1000);
@@ -86,11 +88,59 @@ const Platform = () => {
     setStatus("Counting complete!");
   }, [dispatch, transactions]);
 
-  // Simulate loading
+  /****************************************************************
+   * Delayer (Simulate loading time)
+   ***************************************************************/
   const Timeout = async (ms: number) => {
     return new Promise((resolve) => setTimeout(resolve, ms));
   };
 
+  /****************************************************************
+   * Load price data
+   ***************************************************************/
+  const currencies = useAppSelector((state) => state.currencies);
+
+  const RefreshPriceFeed = useCallback(async () => {
+    // 1. Gather currencies
+    let ids: string[] = [];
+
+    currencies.forEach((e) => {
+      if (e.supported) {
+        if (e.coingeckoId !== "") ids.push(e.coingeckoId);
+      }
+    });
+
+    // 2. Fetch
+    if (ids.length > 0) {
+      fetch(COINGECKO_API_SIMPLE_PRICE(ids))
+        .then((response) => response.json())
+        .then((data) => {
+          // console.log(data);
+
+          // 2.1. Map data
+          try {
+            const usdData = ids.map((item) => {
+              return { c: item, a: parseFloat(data[item].usd) };
+            });
+
+            dispatch(setUSDEquivalent(usdData));
+          } catch (error) {
+            console.log("Pricefeed failed! ", error);
+          }
+        });
+    }
+  }, [currencies, dispatch]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      RefreshPriceFeed();
+    }, PRICEFEED_PULL_RATE);
+    return () => clearInterval(interval);
+  }, [RefreshPriceFeed]);
+
+  /****************************************************************
+   * Loading queue
+   ***************************************************************/
   /* Start loading and processing transactions */
   useEffect(() => {
     const load = async () => {
@@ -105,6 +155,9 @@ const Platform = () => {
     load();
   }, [CountCurrencies, LoadCurrencies]);
 
+  /****************************************************************
+   * Loading UI
+   ***************************************************************/
   if (isLoading) {
     return (
       <div className={classes["loading-container"]}>
@@ -119,7 +172,7 @@ const Platform = () => {
   }
 
   /****************************************************************
-   * LOADING IS COMPLETE
+   * Platform UI
    ***************************************************************/
   return (
     <div className={classes.platform}>
