@@ -20,6 +20,7 @@ import { useAppSelector } from "../../hooks";
 const Overview = () => {
   const currencies = useAppSelector((state) => state.currencies);
   const statistics = useAppSelector((state) => state.statistics);
+  const platform = useAppSelector((state) => state.platform);
 
   let portfolioValue = 0;
 
@@ -46,35 +47,39 @@ const Overview = () => {
       {/****************************************************************
        * Portfolio value
        ***************************************************************/}
-      {portfolioDistribution && portfolioDistribution.length && (
-        <div className={classes["chart-row"]}>
-          <h2>Portfolio value</h2>
+      {portfolioDistribution &&
+        portfolioDistribution.length &&
+        platform.isPriceFeedOk && (
+          <div className={classes["chart-row"]}>
+            <h2>Portfolio value</h2>
 
-          <div className={classes["chart-row--section1"]}>
-            <p>{portfolioValue.toFixed(2)}$</p>
+            <div className={classes["chart-row--section1"]}>
+              <p>{portfolioValue.toFixed(2)}$</p>
 
-            <ResponsiveContainer width="100%" height={250}>
-              <RadarChart
-                cx="50%"
-                cy="50%"
-                outerRadius="80%"
-                data={portfolioDistribution}
-              >
-                <PolarGrid />
-                <PolarAngleAxis dataKey="name" />
-                <PolarRadiusAxis />
-                <Radar
-                  name="Portfolio"
-                  dataKey="USD"
-                  stroke="#8884d8"
-                  fill="#8884d8"
-                  fillOpacity={0.6}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="80%"
+                  data={portfolioDistribution}
+                >
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="name" />
+                  <PolarRadiusAxis />
+                  <Radar
+                    name="Portfolio"
+                    dataKey="USD"
+                    stroke="#8884d8"
+                    fill="#8884d8"
+                    fillOpacity={0.6}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+      {!platform.isPriceFeedOk && <p>Waiting for pricefeed...</p>}
 
       {/****************************************************************
        * Earned interest graph
