@@ -18,6 +18,7 @@ import {
 } from "../reducers/currenciesReducer";
 import { TransactionType } from "../reducers/transactionReducer";
 import { COINGECKO_API_SIMPLE_PRICE, PRICEFEED_PULL_RATE } from "../config";
+import { InterestData, setInterestData } from "../reducers/statisticsReducer";
 
 const Platform = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +56,7 @@ const Platform = () => {
    ***************************************************************/
   // Go trough transactions and calculate coin amounts
   const transactions = useAppSelector((state) => state.transactions);
+
   const CountCurrencies = useCallback(async () => {
     setStatus("Counting coins");
 
@@ -63,6 +65,8 @@ const Platform = () => {
 
     // Reverse timeline (csv is NEW -> OLD but we want OLD -> NEW)
     const rev = [...transactions].reverse();
+
+    let interestData = new Map<string, number>();
 
     for (let t of rev) {
       // Transaction is pending, skip iteration
@@ -83,7 +87,35 @@ const Platform = () => {
       ) {
         dispatch(addAmount({ t }));
       }
+
+      // Gather interest data (per day basis)
+      if (t.type === TransactionType.INTEREST) {
+        const date = t.dateTime.substring(0, 10);
+
+        if (interestData.get(date)) {
+          interestData.set(
+            date,
+            (interestData.get(date) ?? 0) + t.usdEquivalent
+          );
+        } else {
+          interestData.set(date, t.usdEquivalent);
+        }
+      }
     }
+
+    const tmpDates = [...interestData.keys()];
+    const tmpValues = [...interestData.values()];
+
+    let interestDataConv: InterestData[] = [];
+
+    tmpDates.forEach((item, index) => {
+      interestDataConv.push({
+        date: tmpDates[index],
+        value: tmpValues[index],
+      });
+    });
+
+    dispatch(setInterestData(interestDataConv));
 
     setStatus("Counting complete!");
   }, [dispatch, transactions]);
