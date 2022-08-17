@@ -18,7 +18,12 @@ import {
 } from "../reducers/currenciesReducer";
 import { TransactionType } from "../reducers/transactionReducer";
 import { COINGECKO_API_SIMPLE_PRICE, PRICEFEED_PULL_RATE } from "../config";
-import { InterestData, setInterestData } from "../reducers/statisticsReducer";
+import {
+  DateValueArray,
+  DepositsWithdrawalsArray,
+  setDepositAndWithdrawalData,
+  setInterestData,
+} from "../reducers/statisticsReducer";
 
 const Platform = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +57,106 @@ const Platform = () => {
   }, [dispatch]);
 
   /****************************************************************
+   * Helper function to convert Map object to DateValueArray
+   ***************************************************************/
+  const ConvertMapToArray = (MapO: Map<string, number>) => {
+    const tmpDates = [...MapO.keys()];
+    const tmpValues = [...MapO.values()];
+
+    let convertedData: DateValueArray[] = [];
+
+    tmpDates.forEach((item, index) => {
+      convertedData.push({
+        date: tmpDates[index],
+        value: tmpValues[index],
+      });
+    });
+
+    return convertedData;
+  };
+
+  /****************************************************************
+   * Helper function to convert 2 Map objects to DepositsWithdrawalsArray
+   ***************************************************************/
+  const ConvertDepositsWithdrawals = useCallback(
+    (deposits: Map<string, number>, withdrawals: Map<string, number>) => {
+      // 1. Convert both maps to object arrays
+      let dep: DepositsWithdrawalsArray[] = ConvertMapToArray(deposits).map(
+        (item) => {
+          return { date: item.date, withdrawal: 0, deposit: item.value };
+        }
+      );
+
+      // 1.1. Second array gets an extra flag for later use
+      let wth = ConvertMapToArray(withdrawals).map((item) => {
+        return {
+          date: item.date,
+          withdrawal: item.value,
+          deposit: 0,
+          found: false,
+        };
+      });
+
+      // 2. Serach for matching dates, if found, mark the found items
+      for (let index = 0; index < dep.length; index++) {
+        for (let x = 0; x < wth.length; x++) {
+          const withdrawal = wth[x];
+
+          if (dep[index].date === withdrawal.date) {
+            dep[index].withdrawal = withdrawal.withdrawal;
+            wth[x].found = true;
+          }
+        }
+      }
+
+      // 3. Get an array of the items that we didn`t find in the last step
+      const arr = wth
+        .filter((item) => !item.found)
+        .map((item) => {
+          return {
+            date: item.date,
+            withdrawal: item.withdrawal,
+            deposit: 0,
+          };
+        });
+
+      // 4. Add the items that we found in step 3 to our data array
+      if (arr.length) {
+        arr.forEach((item) => {
+          if (item) {
+            dep.push({
+              date: item.date,
+              withdrawal: item.withdrawal,
+              deposit: 0,
+            });
+          }
+        });
+      }
+
+      // 5. Sort transactions by date
+      dep.sort(function (x, y) {
+        if (x && y) {
+          const a = new Date(x.date);
+          const b = new Date(y.date);
+
+          if (a > b) {
+            return 1;
+          }
+
+          if (a < b) {
+            return -1;
+          }
+        }
+        return 0;
+      });
+
+      // 6. Dispatch data
+      dispatch(setDepositAndWithdrawalData(dep));
+    },
+    [dispatch]
+  );
+
+  /****************************************************************
    * Count loaded currencies (from the csv file)
    ***************************************************************/
   // Go trough transactions and calculate coin amounts
@@ -66,7 +171,10 @@ const Platform = () => {
     // Reverse timeline (csv is NEW -> OLD but we want OLD -> NEW)
     const rev = [...transactions].reverse();
 
+    // Statistics data maps
     let interestData = new Map<string, number>();
+    let withdrawData = new Map<string, number>();
+    let depositData = new Map<string, number>();
 
     for (let t of rev) {
       // Transaction is pending, skip iteration
@@ -88,10 +196,13 @@ const Platform = () => {
         dispatch(addAmount({ t }));
       }
 
+      /****************************************************************
+       * Statistics logic
+       ***************************************************************/
+      const date = t.dateTime.substring(0, 10);
+
       // Gather interest data (per day basis)
       if (t.type === TransactionType.INTEREST) {
-        const date = t.dateTime.substring(0, 10);
-
         if (interestData.get(date)) {
           interestData.set(
             date,
@@ -101,24 +212,39 @@ const Platform = () => {
           interestData.set(date, t.usdEquivalent);
         }
       }
+
+      // Collect deposits
+      if (
+        t.type === TransactionType.DEPOSIT ||
+        t.type === TransactionType.DEPOSITTOEXCHANGE
+      ) {
+        if (depositData.get(date)) {
+          // There is alrady an entry for that day
+          depositData.set(date, (depositData.get(date) ?? 0) + t.usdEquivalent);
+        } else depositData.set(date, t.usdEquivalent);
+      }
+
+      // Collect withdrawals
+      if (
+        t.type === TransactionType.WITHDRAWAL ||
+        t.type === TransactionType.WITHDRAWEXCHANGED
+      ) {
+        if (withdrawData.get(date)) {
+          // There is alrady an entry for that day
+          withdrawData.set(
+            date,
+            (withdrawData.get(date) ?? 0) + -t.usdEquivalent
+          );
+        } else withdrawData.set(date, -t.usdEquivalent);
+      }
     }
 
-    const tmpDates = [...interestData.keys()];
-    const tmpValues = [...interestData.values()];
-
-    let interestDataConv: InterestData[] = [];
-
-    tmpDates.forEach((item, index) => {
-      interestDataConv.push({
-        date: tmpDates[index],
-        value: tmpValues[index],
-      });
-    });
-
-    dispatch(setInterestData(interestDataConv));
+    // Dispatch data
+    dispatch(setInterestData(ConvertMapToArray(interestData)));
+    ConvertDepositsWithdrawals(depositData, withdrawData);
 
     setStatus("Counting complete!");
-  }, [dispatch, transactions]);
+  }, [dispatch, transactions, ConvertDepositsWithdrawals]);
 
   /****************************************************************
    * Delayer (Simulate loading time)
