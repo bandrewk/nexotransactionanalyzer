@@ -1,0 +1,24 @@
+.chart-row--section1 p {
+  font-size: 3.8rem;
+  letter-spacing: 5px;
+  font-weight: 800;
+  justify-self: center;
+  align-self: center;
+}
+
+.chart-row--section1 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.chart-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 3.2rem;
+}
+
+.chart-row h2 {
+  color: #091741;
+  letter-spacing: 1px;
+}
