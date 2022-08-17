@@ -3,12 +3,10 @@ import classes from "./Overview.module.css";
 import {
   ResponsiveContainer,
   Tooltip,
-  BarChart,
   CartesianGrid,
   XAxis,
   YAxis,
   Legend,
-  Bar,
   RadarChart,
   PolarGrid,
   PolarRadiusAxis,
@@ -91,7 +89,7 @@ const Overview = () => {
               height={300}
               data={statistics.interestData}
               margin={{
-                top: 5,
+                top: 10,
                 right: 30,
                 left: 20,
                 bottom: 5,
@@ -107,21 +105,81 @@ const Overview = () => {
                 ]}
                 padding={{ left: 20, right: 20 }}
               />
-              <YAxis />
+              <YAxis unit={`$`} />
               <Tooltip />
               <Legend />
 
               <Line
                 type="monotone"
+                name="Earned interest"
                 dataKey="value"
                 stroke="#82ca9d"
                 dot={false}
                 strokeWidth={2}
+                unit={`$`}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
+
+      {/****************************************************************
+       * Deposits and withdrawals graph
+       ***************************************************************/}
+
+      {statistics.depositAndWithdrawalData &&
+        statistics.depositAndWithdrawalData.length && (
+          <div className={classes["chart-row"]}>
+            <h2>Deposits and Withdrawls</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart
+                width={500}
+                height={300}
+                data={statistics.depositAndWithdrawalData}
+                margin={{
+                  top: 10,
+                  right: 30,
+                  left: 20,
+                  bottom: 5,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  ticks={[
+                    statistics.depositAndWithdrawalData[0].date,
+                    statistics.depositAndWithdrawalData[
+                      statistics.depositAndWithdrawalData.length - 1
+                    ].date,
+                  ]}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis unit={`$`} />
+                <Tooltip />
+                <Legend />
+
+                <Line
+                  type="monotone"
+                  name="Deposits"
+                  dataKey="deposit"
+                  stroke="#82ca9d"
+                  dot={false}
+                  strokeWidth={2}
+                  unit={`$`}
+                />
+                <Line
+                  type="monotone"
+                  name="Withdrawals"
+                  dataKey="withdrawal"
+                  stroke="#8884d8"
+                  dot={false}
+                  strokeWidth={2}
+                  unit={`$`}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
     </>
   );
 };
