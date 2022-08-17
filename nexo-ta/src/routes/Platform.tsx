@@ -24,11 +24,12 @@ import {
   setDepositAndWithdrawalData,
   setInterestData,
 } from "../reducers/statisticsReducer";
+import { setIsLoading, setPriceFeedOk } from "../reducers/platformReducer";
 
 const Platform = () => {
-  const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState("Initializing");
   const dispatch = useAppDispatch();
+  const platform = useAppSelector((state) => state.platform);
 
   /****************************************************************
    * Load currencies from firebase
@@ -282,8 +283,10 @@ const Platform = () => {
             });
 
             dispatch(setUSDEquivalent(usdData));
+            dispatch(setPriceFeedOk(true));
           } catch (error) {
             console.log("Pricefeed failed! ", error);
+            dispatch(setPriceFeedOk(false));
           }
         });
     }
@@ -307,7 +310,7 @@ const Platform = () => {
       await CountCurrencies();
       await Timeout(1000);
 
-      setIsLoading(false);
+      dispatch(setIsLoading(false));
     };
 
     load();
@@ -316,7 +319,7 @@ const Platform = () => {
   /****************************************************************
    * Loading UI
    ***************************************************************/
-  if (isLoading) {
+  if (platform.isLoading) {
     return (
       <div className={classes["loading-container"]}>
         <div className={classes["loading-item"]}>

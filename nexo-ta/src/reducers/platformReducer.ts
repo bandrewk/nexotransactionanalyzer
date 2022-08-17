@@ -2,12 +2,12 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export type PlatformState = {
   isLoading: boolean;
-  hasError: Error | null;
+  hasError: Error | null; // not yet in use
   isPriceFeedOk: boolean;
 };
 
 const initialState: PlatformState = {
-  isLoading: false,
+  isLoading: true,
   hasError: null,
   isPriceFeedOk: false,
 };
@@ -28,5 +28,5 @@ const platformSlice = createSlice({
   },
 });
 
-export const { setIsLoading } = platformSlice.actions;
+export const { setIsLoading, setError, setPriceFeedOk } = platformSlice.actions;
 export default platformSlice;
