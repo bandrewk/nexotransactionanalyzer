@@ -1,12 +1,23 @@
 import classes from "./App.module.css";
-import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
 import FileUpload from "../components/FileUpload";
+import { useNavigate } from "react-router-dom";
 
 import { initFirebase } from "../firebase";
+import { useCallback } from "react";
 
 function App() {
   initFirebase();
+  const navigate = useNavigate();
+
+  const FileUploadHandler = useCallback((success: boolean) => {
+    console.log(`Fileupload Handler`, success);
+    if (success) {
+      navigate("/platform");
+    } else {
+      alert("Invalid .csv file. Please refresh and try again.");
+    }
+  }, []);
 
   return (
     <>
@@ -25,7 +36,7 @@ function App() {
           <main className={classes.main}>
             {/* Upload section */}
 
-            <FileUpload />
+            <FileUpload callback={FileUploadHandler} />
 
             {/* Wallet warning */}
 
@@ -92,11 +103,6 @@ function App() {
               </div>
             </section>
           </main>
-          <Link to={"/platform"} className="btn--primary subheading">
-            SKIP
-          </Link>
-          <br />
-          <br />
           <Footer />
         </div>
       </div>

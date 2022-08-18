@@ -8,7 +8,11 @@ import {
   TransactionType,
 } from "../../reducers/transactionReducer";
 
-const FileUpload = () => {
+type FileUploadProps = {
+  callback: (success: boolean) => void;
+};
+
+const FileUpload = ({ callback }: FileUploadProps) => {
   const [file, setFile] = useState<File | null>();
   const [highlightArea, setHighlightArea] = useState<boolean>(false);
   const [fileSelected, setFileSelected] = useState<boolean>(false);
@@ -102,7 +106,10 @@ const FileUpload = () => {
           })
         );
       }
+
+      callback(true);
     } catch (error) {
+      callback(false);
       console.log(error);
     }
   };
