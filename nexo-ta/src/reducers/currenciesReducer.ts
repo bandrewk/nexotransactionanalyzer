@@ -1,5 +1,4 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { COINBASE_API_STRING } from "../config";
 import { Transaction } from "./transactionReducer";
 
 export type Currency = {
@@ -177,6 +176,3 @@ const currenciesSlice = createSlice({
 export const { addAmount, addCurrencies, setUSDEquivalent } =
   currenciesSlice.actions;
 export default currenciesSlice;
-function dispatch(arg0: { payload: { c: string; a: number }; type: string }) {
-  throw new Error("Function not implemented.");
-}
