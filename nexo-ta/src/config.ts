@@ -18,4 +18,7 @@ export const COINGECKO_API_SIMPLE_PRICE = (id: string[]) => {
   return url;
 };
 
+//Refresh news  every n seconds (ms)
+export const NEWSFEED_PULL_RATE = 300000; // 5min
+
 export const VERSION = `1`;
