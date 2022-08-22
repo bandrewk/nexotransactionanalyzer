@@ -205,7 +205,7 @@ const FileUpload = ({ callback }: FileUploadProps) => {
                 <X size={24} weight="light" color="red" />
               </button>
             </label>
-            <button className="btn--primary subheading">Start</button>
+            {/* <button className="btn--primary subheading">Start</button> */}
           </div>
         </section>
       </>
