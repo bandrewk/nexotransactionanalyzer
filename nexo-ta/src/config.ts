@@ -17,3 +17,5 @@ export const COINGECKO_API_SIMPLE_PRICE = (id: string[]) => {
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${currencies}&vs_currencies=usd`;
   return url;
 };
+
+export const VERSION = `1`;

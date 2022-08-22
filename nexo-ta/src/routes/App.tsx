@@ -4,20 +4,46 @@ import FileUpload from "../components/FileUpload";
 import { useNavigate } from "react-router-dom";
 
 import { initFirebase } from "../firebase";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
+import { CHECKDATA } from "../localStorageIO";
+import { VERSION } from "../config";
 
 function App() {
   initFirebase();
   const navigate = useNavigate();
 
-  const FileUploadHandler = useCallback((success: boolean) => {
-    console.log(`Fileupload Handler`, success);
-    if (success) {
-      navigate("/platform");
-    } else {
-      alert("Invalid .csv file. Please refresh and try again.");
+  // File upload callback
+  const FileUploadHandler = useCallback(
+    (success: boolean) => {
+      if (success) {
+        navigate("/platform");
+      } else {
+        alert("Invalid .csv file. Please refresh and try again.");
+      }
+    },
+    [navigate]
+  );
+
+  // Search for data in local storage
+  useEffect(() => {
+    if (localStorage.getItem(CHECKDATA)) {
+      console.log(`Found saved data.. navigating to platform`);
+
+      // Check compatible verison
+      const ver = localStorage.getItem(`VERSION`);
+      if (ver && ver === VERSION) {
+        // Compatible, go to platform
+        navigate(`/platform`);
+      } else {
+        // Mismatch
+        console.log(
+          `Version mismatch! Clearing saved data. Please re-upload your transactions.`
+        );
+        localStorage.clear();
+        window.location.href = "/";
+      }
     }
-  }, []);
+  }, [navigate]);
 
   return (
     <>
