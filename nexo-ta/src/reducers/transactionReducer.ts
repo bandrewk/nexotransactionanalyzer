@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { loadState } from "../localStorageIO";
 
 export const TransactionType = {
   // Basic types
@@ -55,7 +56,7 @@ export type Transaction = {
 
 const transactionSlice = createSlice({
   name: "transactions",
-  initialState: [] as Transaction[],
+  initialState: loadState(`transactions`, [] as Transaction[]) as Transaction[],
   reducers: {
     addTransaction(state, action: PayloadAction<Transaction>) {
       state.push(action.payload);

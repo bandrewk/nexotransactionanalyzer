@@ -7,10 +7,30 @@ import {
   HouseLine,
   ListChecks,
   SignOut,
-  Trash,
 } from "phosphor-react";
+import { useAppSelector } from "../../hooks";
+import { CHECKDATA, saveState, STATE } from "../../localStorageIO";
 
 const SidebarMenu = () => {
+  const transactions = useAppSelector((state) => state.transactions);
+
+  const saveDataHandler = () => {
+    // Save data in local storage
+    // Only save the transactions from the .csv file, everything else will be reconstructed automatically.
+    saveState(STATE.TRANSACTIONS, transactions);
+
+    localStorage.setItem(CHECKDATA, `true`);
+    localStorage.setItem(`VERSION`, `1`);
+
+    alert(`Data successfully saved!`);
+  };
+
+  const eraseDataHandler = () => {
+    // Delete data in local storage and return to homepage
+    localStorage.clear();
+    window.location.href = "/";
+  };
+
   return (
     <div className={classes["sidebar-list"]}>
       <ul>
@@ -42,16 +62,13 @@ const SidebarMenu = () => {
           title="Save"
           icon={<FloppyDisk weight="light" size={24} />}
           linkTo="#save"
+          callback={saveDataHandler.bind(this)}
         />
-        {/* <SidebarMenuItem
-          icon={<Trash weight="light" size={24} />}
-          title="Delete"
-          linkTo="#delete"
-        /> */}
         <SidebarMenuItem
           icon={<SignOut weight="light" size={24} />}
           title="Exit"
           linkTo="/"
+          callback={eraseDataHandler.bind(this)}
         />
       </ul>
     </div>
