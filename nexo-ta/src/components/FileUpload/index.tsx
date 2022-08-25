@@ -60,7 +60,7 @@ const FileUpload = ({ callback }: FileUploadProps) => {
 
         const fixFiatX = (cur: string) => {
           if (cur === "EURX") cur = "EUR";
-          if (cur === "GPBX") cur = "GPB";
+          if (cur === "GBPX") cur = "GBP";
           if (cur === "USDX") cur = "USD";
           return cur;
         };
