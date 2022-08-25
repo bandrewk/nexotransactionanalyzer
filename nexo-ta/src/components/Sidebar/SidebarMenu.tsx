@@ -10,9 +10,20 @@ import {
 } from "phosphor-react";
 import { useAppSelector } from "../../hooks";
 import { CHECKDATA, saveState, STATE } from "../../localStorageIO";
+import { useEffect, useState } from "react";
 
 const SidebarMenu = () => {
   const transactions = useAppSelector((state) => state.transactions);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  // Hide save button if data is already saved
+  useEffect(() => {
+    const check = localStorage.getItem(`HasDataSaved`);
+
+    if (check) {
+      setHasSaved(true);
+    }
+  }, [setHasSaved]);
 
   const saveDataHandler = () => {
     // Save data in local storage
@@ -23,12 +34,18 @@ const SidebarMenu = () => {
     localStorage.setItem(`VERSION`, `1`);
 
     alert(`Data successfully saved!`);
+
+    // Hide save button
+    setHasSaved(true);
   };
 
   const eraseDataHandler = () => {
     // Delete data in local storage and return to homepage
     localStorage.clear();
     window.location.href = "/";
+
+    // Show save button
+    setHasSaved(false);
   };
 
   return (
@@ -58,12 +75,14 @@ const SidebarMenu = () => {
       </ul>
       <ul>
         <p>Actions</p>
-        <SidebarMenuItem
-          title="Save"
-          icon={<FloppyDisk weight="light" size={24} />}
-          linkTo="#save"
-          callback={saveDataHandler.bind(this)}
-        />
+        {!hasSaved && (
+          <SidebarMenuItem
+            title="Save"
+            icon={<FloppyDisk weight="light" size={24} />}
+            linkTo="#save"
+            callback={saveDataHandler.bind(this)}
+          />
+        )}
         <SidebarMenuItem
           icon={<SignOut weight="light" size={24} />}
           title="Exit"
