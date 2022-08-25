@@ -101,7 +101,7 @@ const Transactions = () => {
   ]);
 
   const TXLinkage = (type: string, currency: string, details: string) => {
-    // For some reason only desposits have an tx id attached..
+    // Only crypto deposits have an TX id attached
     if (type !== TransactionType.DEPOSIT) return details;
 
     // Ethereum / ERC default
