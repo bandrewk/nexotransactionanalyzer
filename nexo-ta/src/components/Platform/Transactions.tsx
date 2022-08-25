@@ -1,10 +1,11 @@
 import HeadingPrimary from "../UI/Text/HeadingPrimary";
 import classes from "./Transactions.module.css";
-import { Grid, UserConfig } from "gridjs";
+import { Grid, html, UserConfig } from "gridjs";
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useAppSelector } from "../../hooks";
 
 import "gridjs/dist/theme/mermaid.min.css";
+import { TransactionType } from "../../reducers/transactionReducer";
 
 const Transactions = () => {
   const transactions = useAppSelector((state) => state.transactions);
@@ -26,7 +27,15 @@ const Transactions = () => {
         "Output",
         "Output Amount",
         "USD Equiv.",
-        "Details",
+        {
+          name: "Details",
+
+          // Enable HTML formatter for cell (needed for tx linking)
+          // We alter the data later on
+          formatter(cell, row, column) {
+            return html(`${cell?.toString()}`);
+          },
+        },
         { name: "Outstanding Loan", hidden: hideOutstandingLoan },
 
         `${hideTransactionTime ? "Date" : "Date / Time"}`,
@@ -74,7 +83,7 @@ const Transactions = () => {
                   x.outputCurrency,
                   x.outputAmount,
                   x.usdEquivalent,
-                  x.details.slice(1, -1), // Remove quotation marks
+                  TXLinkage(x.type, x.inputCurrency, x.details.slice(1, -1)), // Remove quotation marks and tx link
                   x.outstandingLoan,
                   hideTransactionTime ? x.dateTime.slice(0, 10) : x.dateTime, // Remove time?
                 ])
@@ -90,6 +99,81 @@ const Transactions = () => {
     hideTransactionTime,
     transactions,
   ]);
+
+  const TXLinkage = (type: string, currency: string, details: string) => {
+    // For some reason only desposits have an tx id attached..
+    if (type !== TransactionType.DEPOSIT) return details;
+
+    // Ethereum / ERC default
+    let explorer = "https://etherscan.io/tx/";
+
+    // Alter explorer for everything else
+    switch (currency) {
+      case "BTC":
+        explorer = `https://www.blockchain.com/btc/tx/`;
+
+        break;
+      case "XRP":
+        explorer = `https://xrpscan.com/tx/`;
+
+        break;
+      case "DOGE":
+        explorer = `https://blockchair.com/dogecoin/transaction/`;
+
+        break;
+      case "BCH":
+        explorer = `https://blockchair.com/bitcoin-cash/transaction/`;
+
+        break;
+      case "LTC":
+        explorer = `https://blockchair.com/litecoin/transaction/`;
+
+        break;
+      case "EOS":
+        explorer = `https://bloks.io/transaction/`;
+
+        break;
+      case "BNB":
+        explorer = `https://binance.mintscan.io/txs/`;
+
+        break;
+      case "XLM":
+        explorer = `https://stellarchain.io/tx/`;
+
+        break;
+      case "TRX":
+        explorer = `https://tronscan.org/#/transaction/`;
+
+        break;
+      case "ADA":
+        explorer = `https://explorer.cardano.org/de/transaction?id=`;
+
+        break;
+      case "DOT":
+        explorer = `https://polkascan.io/polkadot/transaction/`;
+
+        break;
+      case "KSM":
+        explorer = `https://polkascan.io/kusama/transaction/`;
+
+        break;
+      case "MATIC":
+        explorer = `https://polygonscan.com/tx/`;
+
+        break;
+      case "NEAR":
+        explorer = `https://explorer.near.org/transactions/`;
+
+        break;
+    }
+
+    const tx = details.substr(details.search(`/`) + 1, details.length).trim();
+
+    const detailshtml =
+      details.substr(0, details.search(`/`) + 2) +
+      `<a href="${explorer}${tx}" target="_blank" rel="noopener noreferrer">${tx}</a>`;
+    return detailshtml;
+  };
 
   const grid = useMemo(() => new Grid(getGridConfig()), [getGridConfig]);
 
