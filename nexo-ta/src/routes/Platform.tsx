@@ -15,16 +15,25 @@ import {
   addAmount,
   addCurrencies,
   setUSDEquivalent,
+  setUSDEquivalentSingle,
 } from "../reducers/currenciesReducer";
 import { TransactionType } from "../reducers/transactionReducer";
-import { COINGECKO_API_SIMPLE_PRICE, PRICEFEED_PULL_RATE } from "../config";
+import {
+  COINGECKO_API_SIMPLE_PRICE,
+  ECB_API_EUR,
+  PRICEFEED_PULL_RATE,
+} from "../config";
 import {
   DateValueArray,
   DepositsWithdrawalsArray,
   setDepositAndWithdrawalData,
   setInterestData,
 } from "../reducers/statisticsReducer";
-import { setIsLoading, setPriceFeedOk } from "../reducers/platformReducer";
+import {
+  setFiatPriceFeedOk,
+  setIsLoading,
+  setPriceFeedOk,
+} from "../reducers/platformReducer";
 
 const Platform = () => {
   const [status, setStatus] = useState("Initializing");
@@ -263,13 +272,34 @@ const Platform = () => {
     // 1. Gather currencies
     let ids: string[] = [];
 
+    let hasGBP = false;
+    let hasEUR = false;
+
+    // 1.1. Grab a list of currencies to request
+    //      + Filter out fiat and unsupported entries
     currencies.forEach((e) => {
       if (e.supported) {
         if (e.coingeckoId !== "") ids.push(e.coingeckoId);
+
+        // While wer're here, work on fiat..
+        // USD is easy enough.. 1USD = 1USD
+        if (e.symbol === "USD") {
+          dispatch(setUSDEquivalentSingle({ c: `USD`, a: 1 }));
+        }
+
+        // Check for EUR
+        if (e.symbol === "EUR") {
+          hasEUR = true;
+        }
+
+        // Check for GBP
+        if (e.symbol === "GBP") {
+          hasGBP = true;
+        }
       }
     });
 
-    // 2. Fetch
+    // 2. Fetch crypto price data
     if (ids.length > 0) {
       fetch(COINGECKO_API_SIMPLE_PRICE(ids))
         .then((response) => response.json())
@@ -287,6 +317,35 @@ const Platform = () => {
           } catch (error) {
             console.log("Pricefeed failed! ", error);
             dispatch(setPriceFeedOk(false));
+          }
+        });
+    }
+
+    // Actually.. we could exit here if we already have FIAT data. It's not as volatile as crypto.
+
+    // 3. Fetch EUR data
+
+    // 3.1. Get date of yesterday (last dataset is yesterday)
+    let start = new Date();
+    start.setDate(start.getDate() - 1);
+    const dateStr = start.toISOString().split("T")[0];
+
+    // 3.2. Fetch data from ecb
+    if (hasEUR) {
+      fetch(ECB_API_EUR(dateStr, dateStr))
+        .then((respone) => {
+          return respone.json();
+        })
+        .then((data) => {
+          try {
+            const exchangeRatio =
+              data.dataSets[0].series["0:0:0:0:0"].observations[0][0];
+
+            dispatch(setUSDEquivalentSingle({ c: "EUR", a: exchangeRatio }));
+            dispatch(setFiatPriceFeedOk(true));
+          } catch (err) {
+            console.log(`hasEur`, err);
+            dispatch(setFiatPriceFeedOk(false));
           }
         });
     }
@@ -314,7 +373,7 @@ const Platform = () => {
     };
 
     load();
-  }, [CountCurrencies, LoadCurrencies]);
+  }, [CountCurrencies, LoadCurrencies, dispatch]);
 
   /****************************************************************
    * Loading UI
