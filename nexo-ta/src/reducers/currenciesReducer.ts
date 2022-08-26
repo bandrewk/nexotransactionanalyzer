@@ -133,6 +133,13 @@ const currenciesSlice = createSlice({
         console.log(JSON.stringify(state));
       }
     },
+
+    /****************************************************************
+     * USD Equivalent (array)
+     * A = Exchange course to USD
+     * C = Currency symbol
+     * Will calculate: Amount * payload.a
+     ***************************************************************/
     setUSDEquivalent(state, action: PayloadAction<{ c: string; a: number }[]>) {
       const isValid = (coingeckoId: string) => {
         if (
@@ -170,9 +177,39 @@ const currenciesSlice = createSlice({
         }
       });
     },
+
+    /****************************************************************
+     * USD Equivalent (single)
+     * A = Exchange course to USD
+     * C = Currency symbol
+     * Will calculate: Amount * payload.a
+     ***************************************************************/
+    setUSDEquivalentSingle(
+      state,
+      action: PayloadAction<{ c: string; a: number }>
+    ) {
+      const GetIndex = (symbol: string) => {
+        return state.findIndex((item) => item.symbol === symbol);
+      };
+
+      const index = GetIndex(action.payload.c);
+
+      if (index >= 0) {
+        state[index].usdEquivalent = state[index].amount * action.payload.a;
+      } else {
+        console.log(
+          `setUSDEquivalentSingle: Currency not found`,
+          action.payload.c
+        );
+      }
+    },
   },
 });
 
-export const { addAmount, addCurrencies, setUSDEquivalent } =
-  currenciesSlice.actions;
+export const {
+  addAmount,
+  addCurrencies,
+  setUSDEquivalent,
+  setUSDEquivalentSingle,
+} = currenciesSlice.actions;
 export default currenciesSlice;

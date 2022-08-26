@@ -18,6 +18,14 @@ export const COINGECKO_API_SIMPLE_PRICE = (id: string[]) => {
   return url;
 };
 
+// Get ECB API for EUR.
+// Date format: 2009-05-31
+export const ECB_API_EUR = (startDate: string, endDate: string) => {
+  //https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=2009-05-01&endPeriod=2009-05-31&detail=dataonly&format=jsondata
+  const api = `https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?startPeriod=${startDate}&endPeriod=${endDate}&detail=dataonly&format=jsondata`;
+  return api;
+};
+
 //Refresh news  every n seconds (ms)
 export const NEWSFEED_PULL_RATE = 300000; // 5min
 
