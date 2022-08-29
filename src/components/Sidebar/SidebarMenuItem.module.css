@@ -1,0 +1,32 @@
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  font-size: 2rem;
+  letter-spacing: 1px;
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition: all 0.3s;
+
+  background: none;
+  border: none;
+
+  color: inherit;
+}
+
+.sidebar-item:hover,
+.sidebar-item:focus {
+  color: #1e4dd8;
+  transform: scale(1.05);
+  border: none;
+  outline: none;
+}
+
+.sidebar-item:hover i,
+.sidebar-item:focus i {
+  transform: scale(1.05);
+  outline: none;
+}

@@ -1,0 +1,27 @@
+.sidebar-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3.2rem;
+
+  list-style: none;
+}
+
+.sidebar-list ul:first-child {
+  margin-bottom: 10rem;
+}
+
+.sidebar-list i {
+  color: #122e82;
+}
+
+.sidebar-list p {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  font-size: 1rem;
+
+  opacity: 0.8;
+  color: #1e4dd8;
+
+  margin-bottom: -1.5rem;
+}

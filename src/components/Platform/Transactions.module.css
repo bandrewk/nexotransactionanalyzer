@@ -1,0 +1,15 @@
+.inputLabel {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.settings {
+  display: flex;
+  gap: 3rem;
+  margin-bottom: 2rem;
+}
+
+.settings p {
+  font-weight: 600;
+}
