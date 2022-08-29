@@ -9,9 +9,8 @@ const Home = () => {
       <HeadingPrimary text="Home" />
       <p>Welcome back!</p>
       <br />
-      Lorem ipsum dolor sit amet consectetur adipisicing elit. Accusamus
-      repellat vero, a dolorem fugiat ut omnis sed explicabo neque perferendis
-      obcaecati in saepe soluta, incidunt ipsum velit accusantium. Labore, quis.
+      Have a peek at the latest crypto industry news or go ahead and explore
+      your portfolio.
       <br />
       <br />
       <br />
