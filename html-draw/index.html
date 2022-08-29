@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./general.css" />
+    <link rel="stylesheet" href="./start.css" />
+    <link rel="stylesheet" href="./queries.css" />
+  </head>
+
+  <body>
+    <!-- Content area -->
+    <div class="content-area hide-scrollbar">
+      <!-- Content -->
+      <div class="content">
+        <!-- Heading -->
+        <header class="header">
+          <h1 class="heading-primary">nexo-ta.com</h1>
+          <p class="subheading">
+            An analytical tool for the nexo.io lending plattform.
+          </p>
+        </header>
+        <!-- Main content -->
+        <main class="main">
+          <p class="subheading">Upload</p>
+          <div class="content-upload-area">
+            <p>Drop your transactions CSV here</p>
+          </div>
+          <div class="content-upload-area--btns">
+            <button class="btn--primary subheading">Choose file</button>
+            <button class="btn--primary subheading">Upload</button>
+          </div>
+
+          <section class="section-wallet-warning">
+            <p class="subheading">Friendly warning</p>
+            <p class="section-wallet-warning--text">
+              Do not share your nexo.io login or any wallet details. This app
+              only uses the exported transactions .csv file.
+            </p>
+          </section>
+
+          <section class="features-section">
+            <p class="subheading">Features</p>
+            <div class="features--lists">
+              <ul class="features--list card">
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span>Historic portfolio value graph generation</span>
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span>Transaction tracking</span>
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span
+                    >Transaction linkage to blockchain explorer (TX
+                    linkage)</span
+                  >
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span>Overview and graph generation</span>
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i><span>Open source</span>
+                </li>
+              </ul>
+              <ul class="features--list card">
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span>Coinlist, including earned in-kind</span>
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span
+                    >Portfolio value determination using exchange APIs</span
+                  >
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i><span>Referral Bonus</span>
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i
+                  ><span>Pending transactions</span>
+                </li>
+                <li class="features-list--item">
+                  <i class="ph-check-light"></i><span>...and more to come</span>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>Version 1.0.1.</p>
+        <p>
+          Currency exchange data is provided by Coingecko, Coinbase and the
+          European Central Bank (EUROSYSTEM).
+        </p>
+
+        <p>
+          This website is distributed in the hope that it will be useful, but
+          WITHOUT ANY WARRANTY; without even the implied warranty of
+          MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+          General Public License for more details.
+        </p>
+        <p><span>Notice of Non-Affiliation and Disclaimer</span></p>
+        <p>
+          We are not affiliated, associated, authorized, endorsed by, or in any
+          way officially connected with Nexo Financial LLC, or any of its
+          subsidiaries or its affiliates. The official Nexo Financial LLC
+          website can be found at https://www.nexo.io. The name NEXO as well as
+          related names, marks, emblems and images are registered trademarks of
+          their respective owners.
+        </p>
+      </footer>
+    </div>
+
+    <script src="https://unpkg.com/phosphor-icons"></script>
+  </body>
+</html>

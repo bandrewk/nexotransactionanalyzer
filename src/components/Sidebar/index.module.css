@@ -1,0 +1,28 @@
+/**********************************/
+/* Sidebar */
+/**********************************/
+
+.sidebar {
+  display: flex;
+  padding: 4.8rem 6.4rem;
+
+  flex-direction: column;
+  align-items: center;
+
+  justify-content: space-between;
+  border-right: 2px dashed rgba(0, 0, 0, 0.075);
+}
+
+.sidebar-logo {
+  overflow: visible;
+  font-size: 2.6rem;
+  font-weight: 600;
+  color: #091741;
+  transition: all 0.3s;
+
+  cursor: pointer;
+}
+
+.sidebar-logo:hover {
+  text-shadow: 0 0 30px rgba(30, 77, 216, 0.3);
+}
