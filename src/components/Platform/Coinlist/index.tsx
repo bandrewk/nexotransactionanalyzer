@@ -26,21 +26,25 @@ const Coinlist = () => {
         </label>
       </div>
       <div className={classes["coinlist-container"]}>
-        {currencies.map((cur) => {
-          if (hideSmallBalances) {
-            if (cur.amount >= 0 && cur.amount < 0.1) return;
-            if (cur.amount < 0 && cur.amount > -0.1) return;
-          }
-          return (
-            <CoinlistItem
-              symbol={cur.symbol}
-              amount={cur.amount}
-              key={Math.random()}
-              supported={cur.supported}
-              usdEquivalent={cur.usdEquivalent}
-            />
-          );
-        })}
+        {currencies
+          .filter((cur) => {
+            if (hideSmallBalances) {
+              if (cur.amount >= 0 && cur.amount < 0.1) return false;
+              if (cur.amount < 0 && cur.amount > -0.1) return false;
+            }
+            return true;
+          })
+          .map((cur) => {
+            return (
+              <CoinlistItem
+                symbol={cur.symbol}
+                amount={cur.amount}
+                key={Math.random()}
+                supported={cur.supported}
+                usdEquivalent={cur.usdEquivalent}
+              />
+            );
+          })}
       </div>
       <br />
       <br />
