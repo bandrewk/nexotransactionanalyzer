@@ -22,7 +22,7 @@ const NewsFeedItem = ({
       target="_blank"
       className={classes["news-card"]}
     >
-      <img src={image} />
+      <img src={image} alt="for the news article" />
       <div>
         <p className={classes["news-card--heading"]}>{title}</p>
         <p className={classes["news-card--text"]}>{content}</p>

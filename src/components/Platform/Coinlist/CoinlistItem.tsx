@@ -1,4 +1,4 @@
-import { BatteryWarning, Warning } from "phosphor-react";
+import { BatteryWarning } from "phosphor-react";
 import classes from "./CoinlistItem.module.css";
 
 type CoinlistItemProps = {
