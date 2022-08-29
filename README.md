@@ -15,7 +15,7 @@ npm install
 npm start
 ```
 
-Create a `firebase.tsx` file in `./src/` with the following contents:
+Edit the `firebase.tsx` file in `./src/`:
 
 ```
 import { getAnalytics } from "firebase/analytics";
