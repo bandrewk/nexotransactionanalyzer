@@ -325,13 +325,27 @@ const Platform = () => {
 
     // 3. Fetch EUR data
 
-    // 3.1. Get date of yesterday (last dataset is yesterday)
-    let start = new Date();
-    start.setDate(start.getDate() - 1);
-    const dateStr = start.toISOString().split("T")[0];
+    // 3.1. Get date of yesterday (last dataset is usually yesterday)
+    let yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // We get valid data only from Monday - Friday
+    function isBusinessDay(date: Date) {
+      const day = date.getDay();
+      if (day === 0 || day === 6) {
+        // Exclude sunday and saturday
+        return false;
+      }
+      return true;
+    }
+
+    while (!isBusinessDay(yesterday)) {
+      yesterday.setDate(yesterday.getDate() - 1);
+    }
 
     // 3.2. Fetch data from ecb
     if (hasEUR) {
+      const dateStr = yesterday.toISOString().split("T")[0];
       fetch(ECB_API_EUR(dateStr, dateStr))
         .then((respone) => {
           return respone.json();
@@ -344,9 +358,36 @@ const Platform = () => {
             dispatch(setUSDEquivalentSingle({ c: "EUR", a: exchangeRatio }));
             dispatch(setFiatPriceFeedOk(true));
           } catch (err) {
-            console.log(`hasEur`, err);
+            console.log(`EUR fetch, data extraction failed.`, err);
             dispatch(setFiatPriceFeedOk(false));
           }
+        })
+        .catch((err) => {
+          console.log(`Failed to fetch data from ECB.`);
+          console.log(err);
+          dispatch(setFiatPriceFeedOk(false));
+        });
+    }
+
+    if (hasGBP) {
+      fetch(`https://api.frankfurter.app/latest?from=GBP`)
+        .then((response) => {
+          return response.json();
+        })
+        .then((data) => {
+          try {
+            const exchangeRatio = data.rates.USD;
+            dispatch(setUSDEquivalentSingle({ c: "GBP", a: exchangeRatio }));
+            dispatch(setFiatPriceFeedOk(true));
+          } catch (err) {
+            console.log(`GBP fetch, data extraction failed.`, err);
+            dispatch(setFiatPriceFeedOk(false));
+          }
+        })
+        .catch((err) => {
+          console.log(`Failed to fetch gbp data.`);
+          console.log(err);
+          dispatch(setFiatPriceFeedOk(false));
         });
     }
   }, [currencies, dispatch]);
