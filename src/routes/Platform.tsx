@@ -393,6 +393,7 @@ const Platform = () => {
   }, [currencies, dispatch]);
 
   useEffect(() => {
+    RefreshPriceFeed();
     const interval = setInterval(() => {
       RefreshPriceFeed();
     }, PRICEFEED_PULL_RATE);
