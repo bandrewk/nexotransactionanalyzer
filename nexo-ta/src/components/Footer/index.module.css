@@ -11,3 +11,11 @@
   color: #091741;
   /* margin-bottom: 1rem; */
 }
+
+.footer a {
+  text-decoration: none;
+  color: #1e4dd8;
+  line-height: 1.6;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
