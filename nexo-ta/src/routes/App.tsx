@@ -81,10 +81,6 @@ function App() {
                 <ul className={`${classes["features--list"]} card`}>
                   <li className={classes["features-list--item"]}>
                     <i className="ph-check-light"></i>
-                    <span>Historic portfolio value graph generation</span>
-                  </li>
-                  <li className={classes["features-list--item"]}>
-                    <i className="ph-check-light"></i>
                     <span>Transaction tracking</span>
                   </li>
                   <li className={classes["features-list--item"]}>
@@ -101,12 +97,14 @@ function App() {
                     <i className="ph-check-light"></i>
                     <span>Open source</span>
                   </li>
+                  <li className={classes["features-list--item"]}>
+                    <i className="ph-hourglass-medium-light"></i>
+                    <s>
+                      <span>Historic portfolio value graph generation</span>
+                    </s>
+                  </li>
                 </ul>
                 <ul className={`${classes["features--list"]} card`}>
-                  <li className={classes["features-list--item"]}>
-                    <i className="ph-check-light"></i>
-                    <span>Coinlist, including earned in-kind</span>
-                  </li>
                   <li className={classes["features-list--item"]}>
                     <i className="ph-check-light"></i>
                     <span>
@@ -124,6 +122,12 @@ function App() {
                   <li className={classes["features-list--item"]}>
                     <i className="ph-check-light"></i>
                     <span>...and more to come</span>
+                  </li>
+                  <li className={classes["features-list--item"]}>
+                    <i className="ph-hourglass-medium-light"></i>
+                    <span>
+                      Coinlist, <s>including earned in-kind</s>
+                    </span>
                   </li>
                 </ul>
               </div>
