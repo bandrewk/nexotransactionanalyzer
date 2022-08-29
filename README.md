@@ -1,62 +1,60 @@
-# Getting Started with Create React App
+﻿# nexo-ta.com
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Web analyzer app for the Nexo.io crypto platform. Upload and analyze your exported transaction `.csv` files.
 
-## Available Scripts
+Version >= 2.0 is using Typescript and React.
 
-In the project directory, you can run:
+## Build
 
-### `npm start`
+If you'd like to host the app in your own environment here's how:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```
+git clone https://github.com/bandrewk/nexotransactionanalyzer
+cd nexotransactionanalyzer
+npm install
+npm start
+```
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Create a `firebase.tsx` file in `./src/` with the following contents:
 
-### `npm test`
+```
+import { getAnalytics } from "firebase/analytics";
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+const firebaseConfig = {
+  apiKey: "<Your data>",
+  authDomain: "<Your data>",
+  projectId: "<Your data>",
+  storageBucket: "<Your data>",
+  messagingSenderId: "<Your data>",
+  appId: "<Your data>",
+  measurementId: "<Your data>",
+};
 
-### `npm run build`
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+export const analytics = getAnalytics(app);
+export const storage = getFirestore(app);
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+// Dummy to get firebase executed
+export const initFirebase = () => {
+  console.log(`Initializing firebase..`);
+};
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+You`ll need to create a database that contains all available currencies like this:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+![Firebase database layout](https://static.nexo-ta.com/database.png)
 
-### `npm run eject`
+I will try to supply an importable database in the future or switch to some more shareable type.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Support development
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+ETH: 0x6aa9da4a0f149a140f6813cbd84e1ee2df05e76e  
+BTC: bc1q5sl35at30wtftl4je7p0pwwxhwtekfe23602tj  
+RVN: RCJ92C29iZimha5H4Lw3GwKQQNiCMdd5dh
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## Deprecated versions
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## TX Linkage
-
-Transaction linkage supports the following currencies:
-
-- NEAR
-- MATIC
-- KSM
-- DOT
-- ADA
-- TRX
-- XLM
-- BNB
-- EOS
-- LTC
-- BCH
-- DOGE
-- XRP
-- BTC
-- ETH
-
-To add more see the `TXLinkage` function in `Transactions.tsx`.
+V1: [v1.nexo-ta.com](https://v1.nexo-ta.com/)
