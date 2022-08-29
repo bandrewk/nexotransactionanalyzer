@@ -3,10 +3,17 @@ import classes from "./index.module.css";
 const Footer = () => {
   return (
     <footer className={classes.footer}>
-      <p>Version 1.0.1.</p>
+      <p>Version 2.0.</p>
+      <a
+        href="https://github.com/bandrewk/nexotransactionanalyzer"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Support this project @ Github
+      </a>
       <p>
-        Currency exchange data is provided by Coingecko, Coinbase and the
-        European Central Bank (EUROSYSTEM).
+        Currency exchange data is provided by Coingecko and the European Central
+        Bank (EUROSYSTEM).
       </p>
 
       <p>
