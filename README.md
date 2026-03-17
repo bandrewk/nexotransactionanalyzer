@@ -1,7 +1,7 @@
 [![Node.js CI](https://github.com/bandrewk/nexotransactionanalyzer/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/bandrewk/nexotransactionanalyzer/actions/workflows/node.js.yml)
 # nexo-ta.com
 
-Web analyzer app for the Nexo.io crypto platform. Upload and analyze your exported transaction `.csv` files.
+Web analyzer app for the Nexo.com crypto platform. Upload and analyze your exported transaction `.csv` files.
 
 Version >= 2.0 is using Typescript and React.
 
