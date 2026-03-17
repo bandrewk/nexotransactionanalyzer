@@ -3,7 +3,7 @@ import classes from "./index.module.css";
 const Footer = () => {
   return (
     <footer className={classes.footer}>
-      <p>Version 2.0.</p>
+      <p>Version 3.0-preview. &copy; 2021&ndash;2026 bandrewk</p>
       <a
         href="https://github.com/bandrewk/nexotransactionanalyzer"
         target="_blank"
@@ -12,8 +12,7 @@ const Footer = () => {
         Support this project @ Github
       </a>
       <p>
-        Currency exchange data is provided by Coingecko and the European Central
-        Bank (EUROSYSTEM).
+        Currency exchange data is provided by CoinGecko and frankfurter.app.
       </p>
 
       <p>
@@ -29,7 +28,7 @@ const Footer = () => {
         We are not affiliated, associated, authorized, endorsed by, or in any
         way officially connected with Nexo Financial LLC, or any of its
         subsidiaries or its affiliates. The official Nexo Financial LLC website
-        can be found at https://www.nexo.io. The name NEXO as well as related
+        can be found at https://www.nexo.com. The name NEXO as well as related
         names, marks, emblems and images are registered trademarks of their
         respective owners.
       </p>

@@ -52,7 +52,7 @@ function App() {
           <header className={classes.header}>
             <h1 className="heading-primary margin-bottom--xl">nexo-ta.com</h1>
             <p className="subheading">
-              An analytical tool for the nexo.io lending plattform.
+              An analytical tool for the nexo.com lending platform.
             </p>
           </header>
 
@@ -62,12 +62,22 @@ function App() {
 
             <FileUpload callback={FileUploadHandler} />
 
+            {/* Privacy notice */}
+
+            <section className={classes["section-wallet-warning"]}>
+              <p className="subheading">Privacy</p>
+              <p className={classes["section-wallet-warning--text"]}>
+                Your data never leaves your browser. All CSV processing happens
+                locally on your device, no transaction data is sent to any server.
+              </p>
+            </section>
+
             {/* Wallet warning */}
 
             <section className={classes["section-wallet-warning"]}>
               <p className="subheading">Friendly warning</p>
               <p className={classes["section-wallet-warning--text"]}>
-                Do not share your nexo.io login or any wallet details. This app
+                Do not share your nexo.com login or any wallet details. This app
                 only uses the exported transactions .csv file.
               </p>
             </section>
