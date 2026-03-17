@@ -14,7 +14,7 @@ const Transactions = () => {
 
   // User settings
   const [hideTransactionId, setHideTransactionId] = useState(true);
-  const [hideOutstandingLoan, setHideOutstandingLoan] = useState(true);
+  const [hideFee, setHideFee] = useState(true);
   const [hideTransactionTime, setHideTransactionTime] = useState(true);
 
   const getGridConfig = useCallback(() => {
@@ -36,7 +36,7 @@ const Transactions = () => {
             return html(`${cell?.toString()}`);
           },
         },
-        { name: "Outstanding Loan", hidden: hideOutstandingLoan },
+        { name: "Fee", hidden: hideFee },
 
         `${hideTransactionTime ? "Date" : "Date / Time"}`,
       ],
@@ -84,7 +84,7 @@ const Transactions = () => {
                   x.outputAmount,
                   x.usdEquivalent,
                   TXLinkage(x.type, x.inputCurrency, x.details.slice(1, -1)), // Remove quotation marks and tx link
-                  x.outstandingLoan,
+                  x.fee,
                   hideTransactionTime ? x.dateTime.slice(0, 10) : x.dateTime, // Remove time?
                 ])
               ),
@@ -94,7 +94,7 @@ const Transactions = () => {
       },
     } as UserConfig;
   }, [
-    hideOutstandingLoan,
+    hideFee,
     hideTransactionId,
     hideTransactionTime,
     transactions,
@@ -219,10 +219,10 @@ const Transactions = () => {
         <label className={classes.inputLabel}>
           <input
             type="checkbox"
-            checked={!hideOutstandingLoan}
-            onChange={setHideOutstandingLoan.bind(null, !hideOutstandingLoan)}
+            checked={!hideFee}
+            onChange={setHideFee.bind(null, !hideFee)}
           />
-          Outstanding Loan
+          Fee
         </label>
 
         <label className={classes.inputLabel}>

@@ -3,13 +3,11 @@ import Footer from "../components/Footer";
 import FileUpload from "../components/FileUpload";
 import { useNavigate } from "react-router-dom";
 
-import { initFirebase } from "../firebase";
 import { useCallback, useEffect } from "react";
 import { CHECKDATA } from "../localStorageIO";
 import { VERSION } from "../config";
 
 function App() {
-  initFirebase();
   const navigate = useNavigate();
 
   // File upload callback

@@ -82,7 +82,8 @@ const currenciesSlice = createSlice({
       // 1. Single transaction
       if (
         inputCurrency === outputCurrency ||
-        (inputCurrency.length > 1 && outputCurrency === "")
+        (inputCurrency.length > 1 && outputCurrency === "") ||
+        outputCurrency === "-"
       ) {
         // Make sure currency is available, if not, add it.
         if (!isValid(inputCurrency)) AddUnsupportedCurrency(inputCurrency);

@@ -27,8 +27,8 @@ const FileUpload = ({ callback }: FileUploadProps) => {
       const headers = data[0].split(",");
 
       // Check headers
-      if (headers.length !== 10) {
-        throw new Error(`Headers mismatch. Expected 10, got ${headers.length}`);
+      if (headers.length !== 12) {
+        throw new Error(`Headers mismatch. Expected 12, got ${headers.length}`);
       }
 
       console.log(
@@ -85,7 +85,7 @@ const FileUpload = ({ callback }: FileUploadProps) => {
         }
 
         // Headers:
-        // ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Details', 'Outstanding Loan', 'Date / Time']
+        // ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Fee', 'Fee Currency', 'Details', 'Date / Time (UTC)', 'normalizedDisplayDetails']
 
         dispatch(
           addTransaction({
@@ -98,11 +98,10 @@ const FileUpload = ({ callback }: FileUploadProps) => {
             usdEquivalent: parseFloat(
               transaction["USD Equivalent"].substring(1)
             ),
+            fee: transaction["Fee"],
+            feeCurrency: transaction["Fee Currency"],
             details: transaction.Details,
-            outstandingLoan: parseFloat(
-              transaction["Outstanding Loan"].substring(1)
-            ),
-            dateTime: transaction["Date / Time"],
+            dateTime: transaction["Date / Time (UTC)"],
           })
         );
       }
