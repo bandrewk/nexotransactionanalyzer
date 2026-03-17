@@ -31,7 +31,9 @@ No external services required. Currency metadata is bundled locally in `src/curr
 ## Support development
 
 ETH: 0x6aa9da4a0f149a140f6813cbd84e1ee2df05e76e
+
 BTC: bc1q5sl35at30wtftl4je7p0pwwxhwtekfe23602tj
+
 RVN: RCJ92C29iZimha5H4Lw3GwKQQNiCMdd5dh
 
 ## Deprecated versions
