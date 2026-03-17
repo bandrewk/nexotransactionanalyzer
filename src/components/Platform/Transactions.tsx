@@ -101,8 +101,9 @@ const Transactions = () => {
   ]);
 
   const TXLinkage = (type: string, currency: string, details: string) => {
-    // Only crypto deposits have an TX id attached
-    if (type !== TransactionType.DEPOSIT) return details;
+    // Only crypto deposits have a TX id attached
+    if (type !== TransactionType.DEPOSIT && type !== TransactionType.TOPUPCRYPTO)
+      return details;
 
     // Ethereum / ERC default
     let explorer = "https://etherscan.io/tx/";
@@ -163,6 +164,30 @@ const Transactions = () => {
         break;
       case "NEAR":
         explorer = `https://explorer.near.org/transactions/`;
+
+        break;
+      case "SOL":
+        explorer = `https://solscan.io/tx/`;
+
+        break;
+      case "AVAX":
+        explorer = `https://snowtrace.io/tx/`;
+
+        break;
+      case "FIL":
+        explorer = `https://filfox.info/en/message/`;
+
+        break;
+      case "ATOM":
+        explorer = `https://www.mintscan.io/cosmos/tx/`;
+
+        break;
+      case "TON":
+        explorer = `https://tonscan.org/tx/`;
+
+        break;
+      case "POL":
+        explorer = `https://polygonscan.com/tx/`;
 
         break;
     }
