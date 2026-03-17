@@ -8,8 +8,7 @@ import Transactions from "../components/Platform/Transactions";
 import Sidebar from "../components/Sidebar";
 import ContentArea from "../components/UI/Layout/ContentArea";
 import classes from "./Platform.module.css";
-import { collection, getDocs } from "firebase/firestore";
-import { storage } from "../firebase";
+import { currencyData } from "../currencyData";
 import { useAppDispatch, useAppSelector } from "../hooks";
 import {
   addAmount,
@@ -18,11 +17,7 @@ import {
   setUSDEquivalentSingle,
 } from "../reducers/currenciesReducer";
 import { TransactionType } from "../reducers/transactionReducer";
-import {
-  COINGECKO_API_SIMPLE_PRICE,
-  ECB_API_EUR,
-  PRICEFEED_PULL_RATE,
-} from "../config";
+import { COINGECKO_API_SIMPLE_PRICE, PRICEFEED_PULL_RATE } from "../config";
 import {
   DateValueArray,
   DepositsWithdrawalsArray,
@@ -41,28 +36,11 @@ const Platform = () => {
   const platform = useAppSelector((state) => state.platform);
 
   /****************************************************************
-   * Load currencies from firebase
+   * Load currencies from local data
    ***************************************************************/
   const LoadCurrencies = useCallback(async () => {
     setStatus("Loading available currencies");
-    const querySnapshot = await getDocs(collection(storage, "currencies"));
-
-    dispatch(
-      addCurrencies(
-        querySnapshot.docs.map((doc) => {
-          return {
-            name: doc.id,
-            amount: 0,
-            usdEquivalent: 0,
-            coingeckoId: doc.data()["coingecko-id"],
-            symbol: doc.data().symbol,
-            type: doc.data().type,
-            supported: true,
-          };
-        })
-      )
-    );
-
+    dispatch(addCurrencies(currencyData));
     setStatus("Loaded currencies!");
   }, [dispatch]);
 
@@ -201,7 +179,9 @@ const Platform = () => {
         t.type !== TransactionType.EXCHANGEDEPOSITEDON && // Fiat to FiatX
         t.type !== TransactionType.TRANSFERIN && // Credit to savings wallet
         t.type !== TransactionType.TRANSFEROUT && // Savings wallet to credit wallet
-        t.type !== TransactionType.CREDITCARDSTATUS
+        t.type !== TransactionType.CREDITCARDSTATUS &&
+        t.type !== TransactionType.REPAYMENT && // Counterpart to credit card purchases
+        t.type !== TransactionType.LIQUIDATION // Forced repayment
       ) {
         dispatch(addAmount({ t }));
       }
@@ -226,7 +206,8 @@ const Platform = () => {
       // Collect deposits
       if (
         t.type === TransactionType.DEPOSIT ||
-        t.type === TransactionType.DEPOSITTOEXCHANGE
+        t.type === TransactionType.DEPOSITTOEXCHANGE ||
+        t.type === TransactionType.TOPUPCRYPTO
       ) {
         if (depositData.get(date)) {
           // There is alrady an entry for that day
@@ -308,12 +289,16 @@ const Platform = () => {
 
           // 2.1. Map data
           try {
-            const usdData = ids.map((item) => {
-              return { c: item, a: parseFloat(data[item].usd) };
-            });
+            const usdData = ids
+              .filter((item) => data[item] && data[item].usd !== undefined)
+              .map((item) => {
+                return { c: item, a: parseFloat(data[item].usd) };
+              });
 
-            dispatch(setUSDEquivalent(usdData));
-            dispatch(setPriceFeedOk(true));
+            if (usdData.length > 0) {
+              dispatch(setUSDEquivalent(usdData));
+              dispatch(setPriceFeedOk(true));
+            }
           } catch (error) {
             console.log("Pricefeed failed! ", error);
             dispatch(setPriceFeedOk(false));
@@ -323,48 +308,22 @@ const Platform = () => {
 
     // Actually.. we could exit here if we already have FIAT data. It's not as volatile as crypto.
 
-    // 3. Fetch EUR data
-
-    // 3.1. Get date of yesterday (last dataset is usually yesterday)
-    let yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // We get valid data only from Monday - Friday
-    function isBusinessDay(date: Date) {
-      const day = date.getDay();
-      if (day === 0 || day === 6) {
-        // Exclude sunday and saturday
-        return false;
-      }
-      return true;
-    }
-
-    while (!isBusinessDay(yesterday)) {
-      yesterday.setDate(yesterday.getDate() - 1);
-    }
-
-    // 3.2. Fetch data from ecb
+    // 3. Fetch EUR data from frankfurter.app
     if (hasEUR) {
-      const dateStr = yesterday.toISOString().split("T")[0];
-      fetch(ECB_API_EUR(dateStr, dateStr))
-        .then((respone) => {
-          return respone.json();
-        })
+      fetch(`https://api.frankfurter.app/latest?from=EUR&to=USD`)
+        .then((response) => response.json())
         .then((data) => {
           try {
-            const exchangeRatio =
-              data.dataSets[0].series["0:0:0:0:0"].observations[0][0];
-
+            const exchangeRatio = data.rates.USD;
             dispatch(setUSDEquivalentSingle({ c: "EUR", a: exchangeRatio }));
             dispatch(setFiatPriceFeedOk(true));
           } catch (err) {
-            console.log(`EUR fetch, data extraction failed.`, err);
+            console.log(`EUR fetch failed.`, err);
             dispatch(setFiatPriceFeedOk(false));
           }
         })
         .catch((err) => {
-          console.log(`Failed to fetch data from ECB.`);
-          console.log(err);
+          console.log(`Failed to fetch EUR data.`, err);
           dispatch(setFiatPriceFeedOk(false));
         });
     }

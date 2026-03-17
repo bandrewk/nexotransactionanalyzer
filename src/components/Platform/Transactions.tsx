@@ -14,7 +14,7 @@ const Transactions = () => {
 
   // User settings
   const [hideTransactionId, setHideTransactionId] = useState(true);
-  const [hideOutstandingLoan, setHideOutstandingLoan] = useState(true);
+  const [hideFee, setHideFee] = useState(true);
   const [hideTransactionTime, setHideTransactionTime] = useState(true);
 
   const getGridConfig = useCallback(() => {
@@ -36,7 +36,7 @@ const Transactions = () => {
             return html(`${cell?.toString()}`);
           },
         },
-        { name: "Outstanding Loan", hidden: hideOutstandingLoan },
+        { name: "Fee", hidden: hideFee },
 
         `${hideTransactionTime ? "Date" : "Date / Time"}`,
       ],
@@ -84,7 +84,7 @@ const Transactions = () => {
                   x.outputAmount,
                   x.usdEquivalent,
                   TXLinkage(x.type, x.inputCurrency, x.details.slice(1, -1)), // Remove quotation marks and tx link
-                  x.outstandingLoan,
+                  x.fee,
                   hideTransactionTime ? x.dateTime.slice(0, 10) : x.dateTime, // Remove time?
                 ])
               ),
@@ -94,15 +94,16 @@ const Transactions = () => {
       },
     } as UserConfig;
   }, [
-    hideOutstandingLoan,
+    hideFee,
     hideTransactionId,
     hideTransactionTime,
     transactions,
   ]);
 
   const TXLinkage = (type: string, currency: string, details: string) => {
-    // Only crypto deposits have an TX id attached
-    if (type !== TransactionType.DEPOSIT) return details;
+    // Only crypto deposits have a TX id attached
+    if (type !== TransactionType.DEPOSIT && type !== TransactionType.TOPUPCRYPTO)
+      return details;
 
     // Ethereum / ERC default
     let explorer = "https://etherscan.io/tx/";
@@ -165,6 +166,30 @@ const Transactions = () => {
         explorer = `https://explorer.near.org/transactions/`;
 
         break;
+      case "SOL":
+        explorer = `https://solscan.io/tx/`;
+
+        break;
+      case "AVAX":
+        explorer = `https://snowtrace.io/tx/`;
+
+        break;
+      case "FIL":
+        explorer = `https://filfox.info/en/message/`;
+
+        break;
+      case "ATOM":
+        explorer = `https://www.mintscan.io/cosmos/tx/`;
+
+        break;
+      case "TON":
+        explorer = `https://tonscan.org/tx/`;
+
+        break;
+      case "POL":
+        explorer = `https://polygonscan.com/tx/`;
+
+        break;
     }
 
     const tx = details.substr(details.search(`/`) + 1, details.length).trim();
@@ -219,10 +244,10 @@ const Transactions = () => {
         <label className={classes.inputLabel}>
           <input
             type="checkbox"
-            checked={!hideOutstandingLoan}
-            onChange={setHideOutstandingLoan.bind(null, !hideOutstandingLoan)}
+            checked={!hideFee}
+            onChange={setHideFee.bind(null, !hideFee)}
           />
-          Outstanding Loan
+          Fee
         </label>
 
         <label className={classes.inputLabel}>

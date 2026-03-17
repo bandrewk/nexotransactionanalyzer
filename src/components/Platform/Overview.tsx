@@ -7,15 +7,19 @@ import {
   XAxis,
   YAxis,
   Legend,
-  RadarChart,
-  PolarGrid,
-  PolarRadiusAxis,
-  PolarAngleAxis,
-  Radar,
+  PieChart,
+  Pie,
+  Cell,
   LineChart,
   Line,
 } from "recharts";
 import { useAppSelector } from "../../hooks";
+
+const CHART_COLORS = [
+  "#4f46e5", "#7c3aed", "#2563eb", "#0891b2", "#059669",
+  "#d97706", "#dc2626", "#db2777", "#6366f1", "#14b8a6",
+  "#f59e0b", "#ef4444",
+];
 
 const Overview = () => {
   const currencies = useAppSelector((state) => state.currencies);
@@ -36,8 +40,9 @@ const Overview = () => {
       return true;
     })
     .map((item) => {
-      return { name: item.symbol, USD: item.usdEquivalent.toFixed(2) };
-    });
+      return { name: item.symbol, USD: parseFloat(item.usdEquivalent.toFixed(2)) };
+    })
+    .sort((a, b) => b.USD - a.USD);
 
   return (
     <>
@@ -48,7 +53,7 @@ const Overview = () => {
        * Portfolio value
        ***************************************************************/}
       {portfolioDistribution &&
-        portfolioDistribution.length &&
+        portfolioDistribution.length > 0 &&
         platform.isPriceFeedOk && (
           <div className={classes["chart-row"]}>
             <h2>Portfolio value</h2>
@@ -56,24 +61,43 @@ const Overview = () => {
             <div className={classes["chart-row--section1"]}>
               <p>{portfolioValue.toFixed(2)}$</p>
 
-              <ResponsiveContainer width="100%" height={250}>
-                <RadarChart
-                  cx="50%"
-                  cy="50%"
-                  outerRadius="80%"
-                  data={portfolioDistribution}
-                >
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="name" />
-                  <PolarRadiusAxis />
-                  <Radar
-                    name="Portfolio"
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={portfolioDistribution}
                     dataKey="USD"
-                    stroke="#8884d8"
-                    fill="#8884d8"
-                    fillOpacity={0.6}
+                    nameKey="name"
+                    cx="50%"
+                    cy="45%"
+                    outerRadius={110}
+                    innerRadius={55}
+                    paddingAngle={2}
+                    label={({ name, percent }) =>
+                      percent >= 0.03 ? `${name} ${(percent * 100).toFixed(1)}%` : ""
+                    }
+                    labelLine={false}
+                  >
+                    {portfolioDistribution.map((_entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => `$${value.toFixed(2)}`}
                   />
-                </RadarChart>
+                  <Legend
+                    formatter={(value, entry: any) => {
+                      const item = portfolioDistribution.find(
+                        (d) => d.name === value
+                      );
+                      return item
+                        ? `${value} ($${item.USD.toLocaleString()})`
+                        : value;
+                    }}
+                  />
+                </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -85,7 +109,7 @@ const Overview = () => {
        * Earned interest graph
        ***************************************************************/}
 
-      {statistics.interestData && statistics.interestData.length && (
+      {statistics.interestData && statistics.interestData.length > 0 && (
         <div className={classes["chart-row"]}>
           <h2>Earned interest</h2>
           <ResponsiveContainer width="100%" height={300}>
@@ -133,7 +157,7 @@ const Overview = () => {
        ***************************************************************/}
 
       {statistics.depositAndWithdrawalData &&
-        statistics.depositAndWithdrawalData.length && (
+        statistics.depositAndWithdrawalData.length > 0 && (
           <div className={classes["chart-row"]}>
             <h2>Deposits and Withdrawls</h2>
             <ResponsiveContainer width="100%" height={300}>

@@ -9,38 +9,48 @@ export const TransactionType = {
   EXCHANGE: `Exchange`,
 
   // Wallet transfers
-  TRANSFERIN: `TransferIn`, // Credit to savings wallet
-  TRANSFEROUT: `TransferOut`, // Savings wallet to credit wallet
+  TRANSFERIN: `Transfer In`, // Credit to savings wallet
+  TRANSFEROUT: `Transfer Out`, // Savings wallet to credit wallet
 
   // Credit card
-  CREDITCARDSTATUS: `CreditCardStatus`, // This one is weird, input = the value of the output in usd, output = origin currency (i.e. EUR) (informative only)
+  CREDITCARDSTATUS: `Nexo Card Purchase`,
 
   // LOAN
-  LIQUIDATION: `Liquidation`, // Broken for sure. Output = Input. Output should be the USD value not the same as input. (Liquidation currency -> Repayment USD)
-  REPAYMENT: `Repayment`, // Weird one, repayment but as a positive value. should be negative ?!! Ouput value is always USD with an amount of 0 for some reason
+  LIQUIDATION: `Liquidation`,
+  REPAYMENT: `Manual Repayment`,
 
   // Cashback
   EXCHANGECASHBACK: `Exchange Cashback`,
+  CASHBACK: `Cashback`,
 
   // Refs
-  REFERRALBONUS: `ReferralBonus`,
+  REFERRALBONUS: `Referral Bonus`,
 
   // Deposit Fiat
-  EXCHANGEDEPOSITEDON: `ExchangeDepositedOn`,
-  DEPOSITTOEXCHANGE: `DepositToExchange`,
+  EXCHANGEDEPOSITEDON: `Exchange Deposited On`,
+  DEPOSITTOEXCHANGE: `Deposit To Exchange`,
 
   // Widthdraw fiat
-  WITHDRAWEXCHANGED: `WithdrawExchanged`,
-  EXCHANGETOWITHDRAW: `ExchangeToWithdraw`,
+  WITHDRAWEXCHANGED: `Withdraw Exchanged`,
+  EXCHANGETOWITHDRAW: `Exchange To Withdraw`,
 
   // Fixed terms
-  LOCKINGTERMDEPOSIT: `LockingTermDeposit`,
-  FIXEDTERMINTEREST: `FixedTermInterest`,
-  UNLOCKINGTERMDEPOSIT: `UnlockingTermDeposit`,
+  LOCKINGTERMDEPOSIT: `Locking Term Deposit`,
+  FIXEDTERMINTEREST: `Fixed Term Interest`,
+  UNLOCKINGTERMDEPOSIT: `Unlocking Term Deposit`,
+
+  // Top up
+  TOPUPCRYPTO: `Top up Crypto`,
+
+  // Dividend
+  DIVIDEND: `Dividend`,
+
+  // Manual sell
+  MANUALSELLORDER: `Manual Sell Order`,
 };
 
 // File header
-// ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Details', 'Outstanding Loan', 'Date / Time']
+// ['Transaction', 'Type', 'Input Currency', 'Input Amount', 'Output Currency', 'Output Amount', 'USD Equivalent', 'Fee', 'Fee Currency', 'Details', 'Date / Time (UTC)', 'normalizedDisplayDetails']
 export type Transaction = {
   id: string;
   type: string;
@@ -49,8 +59,9 @@ export type Transaction = {
   outputCurrency: string;
   outputAmount: number;
   usdEquivalent: number;
+  fee: string;
+  feeCurrency: string;
   details: string;
-  outstandingLoan: number;
   dateTime: string;
 };
 
