@@ -289,12 +289,16 @@ const Platform = () => {
 
           // 2.1. Map data
           try {
-            const usdData = ids.map((item) => {
-              return { c: item, a: parseFloat(data[item].usd) };
-            });
+            const usdData = ids
+              .filter((item) => data[item] && data[item].usd !== undefined)
+              .map((item) => {
+                return { c: item, a: parseFloat(data[item].usd) };
+              });
 
-            dispatch(setUSDEquivalent(usdData));
-            dispatch(setPriceFeedOk(true));
+            if (usdData.length > 0) {
+              dispatch(setUSDEquivalent(usdData));
+              dispatch(setPriceFeedOk(true));
+            }
           } catch (error) {
             console.log("Pricefeed failed! ", error);
             dispatch(setPriceFeedOk(false));
