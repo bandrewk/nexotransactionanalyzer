@@ -12,6 +12,8 @@ import {
   Cell,
   LineChart,
   Line,
+  BarChart,
+  Bar,
 } from "recharts";
 import { useAppSelector } from "../../hooks";
 
@@ -20,6 +22,15 @@ const CHART_COLORS = [
   "#d97706", "#dc2626", "#db2777", "#6366f1", "#14b8a6",
   "#f59e0b", "#ef4444",
 ];
+
+const ChartPlaceholder = ({ title }: { title: string }) => (
+  <div className={classes["chart-row"]}>
+    <h2>{title}</h2>
+    <div className={classes["chart-placeholder"]}>
+      <p>Loading...</p>
+    </div>
+  </div>
+);
 
 const Overview = () => {
   const currencies = useAppSelector((state) => state.currencies);
@@ -106,60 +117,61 @@ const Overview = () => {
       {!platform.isPriceFeedOk && <p>Waiting for pricefeed...</p>}
 
       {/****************************************************************
-       * Earned interest graph
+       * Historic portfolio value graph
        ***************************************************************/}
 
-      {statistics.interestData && statistics.interestData.length > 0 && (
-        <div className={classes["chart-row"]}>
-          <h2>Earned interest</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart
-              width={500}
-              height={300}
-              data={statistics.interestData}
-              margin={{
-                top: 10,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="date"
-                ticks={[
-                  statistics.interestData[0].date,
-                  statistics.interestData[statistics.interestData.length - 1]
-                    .date,
-                ]}
-                padding={{ left: 20, right: 20 }}
-              />
-              <YAxis unit={`$`} />
-              <Tooltip />
-              <Legend />
-
-              <Line
-                type="monotone"
-                name="Earned interest"
-                dataKey="value"
-                stroke="#82ca9d"
-                dot={false}
-                strokeWidth={2}
-                unit={`$`}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {statistics.historicPortfolioData &&
+        statistics.historicPortfolioData.length > 0 ? (
+          <div className={classes["chart-row"]}>
+            <h2>Historic portfolio value</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart
+                width={500}
+                height={300}
+                data={statistics.historicPortfolioData}
+                margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  ticks={[
+                    statistics.historicPortfolioData[0].date,
+                    statistics.historicPortfolioData[
+                      statistics.historicPortfolioData.length - 1
+                    ].date,
+                  ]}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis unit="$" />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  name="Portfolio Value"
+                  dataKey="value"
+                  stroke="#4f46e5"
+                  dot={false}
+                  strokeWidth={2}
+                  unit="$"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p style={{ fontSize: "1.2rem", color: "#9ca3af", marginTop: "0.5rem" }}>
+              Historic values use daily close prices (CryptoCompare) and may differ slightly from real-time values.
+            </p>
+          </div>
+        ) : (
+          <ChartPlaceholder title="Historic portfolio value" />
+        )}
 
       {/****************************************************************
        * Deposits and withdrawals graph
        ***************************************************************/}
 
       {statistics.depositAndWithdrawalData &&
-        statistics.depositAndWithdrawalData.length > 0 && (
+        statistics.depositAndWithdrawalData.length > 0 ? (
           <div className={classes["chart-row"]}>
-            <h2>Deposits and Withdrawls</h2>
+            <h2>Deposits and Withdrawals</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart
                 width={500}
@@ -208,7 +220,121 @@ const Overview = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        ) : (
+          <ChartPlaceholder title="Deposits and Withdrawals" />
         )}
+
+      {/****************************************************************
+       * Earned interest graph
+       ***************************************************************/}
+
+      {statistics.interestData && statistics.interestData.length > 0 ? (
+        <div className={classes["chart-row"]}>
+          <h2>Earned interest</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              width={500}
+              height={300}
+              data={statistics.interestData}
+              margin={{
+                top: 10,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                ticks={[
+                  statistics.interestData[0].date,
+                  statistics.interestData[statistics.interestData.length - 1]
+                    .date,
+                ]}
+                padding={{ left: 20, right: 20 }}
+              />
+              <YAxis unit={`$`} />
+              <Tooltip />
+              <Legend />
+
+              <Line
+                type="monotone"
+                name="Earned interest"
+                dataKey="value"
+                stroke="#82ca9d"
+                dot={false}
+                strokeWidth={2}
+                unit={`$`}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <ChartPlaceholder title="Earned interest" />
+      )}
+
+      {/****************************************************************
+       * Interest breakdown: In-Kind vs In-NEXO
+       ***************************************************************/}
+
+      {statistics.earnedInterestBreakdown &&
+        statistics.earnedInterestBreakdown.length > 0 && (() => {
+          const filtered = statistics.earnedInterestBreakdown
+            .filter((e) => e.inKindUsd + e.inNexoUsd > 0.01)
+            .sort((a, b) => b.inKindUsd + b.inNexoUsd - (a.inKindUsd + a.inNexoUsd));
+          const totalInKindUsd = filtered.reduce((s, e) => s + e.inKindUsd, 0);
+          const totalInNexoUsd = filtered.reduce((s, e) => s + e.inNexoUsd, 0);
+
+          return (
+            <div className={classes["chart-row"]}>
+              <h2>Interest breakdown: In-Kind vs In-NEXO</h2>
+              <p>
+                Total in-kind: <strong>${totalInKindUsd.toFixed(2)}</strong>
+                {" | "}
+                Total in NEXO: <strong>${totalInNexoUsd.toFixed(2)}</strong>
+                {" | "}
+                Combined: <strong>${(totalInKindUsd + totalInNexoUsd).toFixed(2)}</strong>
+              </p>
+
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={filtered}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="currency" />
+                  <YAxis unit="$" />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Bar name="In-Kind" dataKey="inKindUsd" stackId="a" fill="#059669" />
+                  <Bar name="In NEXO" dataKey="inNexoUsd" stackId="a" fill="#2563eb" />
+                </BarChart>
+              </ResponsiveContainer>
+
+              <table className={classes["breakdown-table"]}>
+                <thead>
+                  <tr>
+                    <th>Currency</th>
+                    <th>In-Kind Amount</th>
+                    <th>In-Kind USD</th>
+                    <th>In NEXO Amount</th>
+                    <th>In NEXO USD</th>
+                    <th>Total USD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((e) => (
+                    <tr key={e.currency}>
+                      <td>{e.currency}</td>
+                      <td>{e.inKindAmount.toFixed(8)}</td>
+                      <td>${e.inKindUsd.toFixed(2)}</td>
+                      <td>{e.inNexoAmount > 0 ? e.inNexoAmount.toFixed(8) : "-"}</td>
+                      <td>{e.inNexoUsd > 0 ? `$${e.inNexoUsd.toFixed(2)}` : "-"}</td>
+                      <td>${(e.inKindUsd + e.inNexoUsd).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
     </>
   );
 };

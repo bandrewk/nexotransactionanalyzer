@@ -12,7 +12,7 @@ const Footer = () => {
         Support this project @ Github
       </a>
       <p>
-        Currency exchange data is provided by CoinGecko and frankfurter.app.
+        Currency exchange data is provided by CoinGecko, CryptoCompare, and frankfurter.app.
       </p>
 
       <p>

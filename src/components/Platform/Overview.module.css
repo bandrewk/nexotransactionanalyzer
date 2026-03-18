@@ -22,3 +22,43 @@
   color: #091741;
   letter-spacing: 1px;
 }
+
+.chart-placeholder {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  color: #9ca3af;
+  font-size: 1.4rem;
+}
+
+.breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.4rem;
+  margin-top: 1rem;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+  padding: 0.8rem 1.2rem;
+  text-align: right;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.breakdown-table th {
+  font-weight: 600;
+  color: #091741;
+}
+
+.breakdown-table td:first-child,
+.breakdown-table th:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
+.breakdown-table tbody tr:hover {
+  background-color: #f9fafb;
+}
