@@ -3,7 +3,7 @@ import classes from "./index.module.css";
 const Footer = () => {
   return (
     <footer className={classes.footer}>
-      <p>Version 3.0-preview. &copy; 2021&ndash;2026 bandrewk</p>
+      <p>Version 3.1-preview. &copy; 2021&ndash;2026 bandrewk</p>
       <a
         href="https://github.com/bandrewk/nexotransactionanalyzer"
         target="_blank"

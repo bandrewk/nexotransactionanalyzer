@@ -56,6 +56,20 @@ function App() {
             </p>
           </header>
 
+          <div style={{
+            display: "inline-block",
+            background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+            color: "#fff",
+            padding: "0.6rem 1.6rem",
+            borderRadius: "2rem",
+            fontSize: "1.3rem",
+            fontWeight: 600,
+            letterSpacing: "0.5px",
+            marginBottom: "2rem",
+          }}>
+            New: 2026 Preview Version
+          </div>
+
           {/*<!-- Main content --> */}
           <main className={classes.main}>
             {/* Upload section */}
@@ -127,11 +141,11 @@ function App() {
                   </li>
                   <li className={classes["features-list--item"]}>
                     <i className="ph-check-light"></i>
-                    <span>...and more to come</span>
+                    <span>Coinlist, including earned in-kind</span>
                   </li>
                   <li className={classes["features-list--item"]}>
                     <i className="ph-check-light"></i>
-                    <span>Coinlist, including earned in-kind</span>
+                    <span>Deposit and withdrawal history</span>
                   </li>
                 </ul>
               </div>

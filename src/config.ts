@@ -49,4 +49,4 @@ export const BOE_API_GBP = (date: string) => {
 //Refresh news  every n seconds (ms)
 export const NEWSFEED_PULL_RATE = 300000; // 5min
 
-export const VERSION = `3.0-preview`;
+export const VERSION = `3.1-preview`;
