@@ -1,4 +1,5 @@
 [![Node.js CI](https://github.com/bandrewk/nexotransactionanalyzer/actions/workflows/node.js.yml/badge.svg?branch=development)](https://github.com/bandrewk/nexotransactionanalyzer/actions/workflows/node.js.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 # nexo-ta.com
 
 Web analyzer app for the Nexo.com crypto platform. Upload and analyze your exported transaction `.csv` files.
