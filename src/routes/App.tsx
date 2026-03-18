@@ -50,8 +50,11 @@ function App() {
         <div className="content">
           {/* <!-- Heading --> */}
           <header className={classes.header}>
-            <h1 className="heading-primary margin-bottom--xl">nexo-ta.com</h1>
-            <p className="subheading">
+            <div style={{ display: "flex", alignItems: "center", gap: "1.6rem", flexWrap: "nowrap" }}>
+              <img src="/logo192.png" alt="nexo-ta.com logo" style={{ height: "5rem", flexShrink: 0 }} />
+              <h1 className="heading-primary" style={{ marginBottom: 0 }}>nexo-ta.com</h1>
+            </div>
+            <p className="subheading" style={{ marginTop: "-0.8rem", marginBottom: "5rem" }}>
               An analytical tool for the nexo.com lending platform.
             </p>
           </header>

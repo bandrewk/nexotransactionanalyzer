@@ -4,11 +4,12 @@
 
 .header {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .header p {
-  margin-bottom: 11.4rem;
+  margin-bottom: 0;
 }
 
 /**********************************/
