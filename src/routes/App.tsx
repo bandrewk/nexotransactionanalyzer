@@ -106,10 +106,8 @@ function App() {
                     <span>Open source</span>
                   </li>
                   <li className={classes["features-list--item"]}>
-                    <i className="ph-hourglass-medium-light"></i>
-                    <s>
-                      <span>Historic portfolio value graph generation</span>
-                    </s>
+                    <i className="ph-check-light"></i>
+                    <span>Historic portfolio value graph generation</span>
                   </li>
                 </ul>
                 <ul className={`${classes["features--list"]} card`}>
@@ -132,10 +130,8 @@ function App() {
                     <span>...and more to come</span>
                   </li>
                   <li className={classes["features-list--item"]}>
-                    <i className="ph-hourglass-medium-light"></i>
-                    <span>
-                      Coinlist, <s>including earned in-kind</s>
-                    </span>
+                    <i className="ph-check-light"></i>
+                    <span>Coinlist, including earned in-kind</span>
                   </li>
                 </ul>
               </div>

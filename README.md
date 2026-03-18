@@ -14,16 +14,18 @@ npm install
 npm start
 ```
 
-No external services required. Currency metadata is bundled locally in `src/currencyData.ts` and price data is fetched from CoinGecko and frankfurter.app at runtime.
+No external services required. Currency metadata is bundled locally in `src/currencyData.ts` and price data is fetched from CoinGecko, CryptoCompare, and frankfurter.app at runtime.
 
 ## Features
 
 - Transaction tracking and portfolio overview
-- Portfolio value determination using CoinGecko and frankfurter.app exchange APIs
+- Portfolio value determination using CoinGecko, CryptoCompare, and frankfurter.app exchange APIs
+- Historic portfolio value chart with real daily prices
 - Donut chart visualization of portfolio distribution
 - Coinlist with dust/residual balance separation
 - Transaction linkage to blockchain explorer (TX linkage)
 - Earned interest tracking with charts
+- Interest breakdown: In-Kind vs In-NEXO with stacked bar chart and table
 - Deposit/withdrawal history
 - Referral bonus tracking
 - Support for the latest Nexo CSV export format (12-column)

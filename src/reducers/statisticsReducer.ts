@@ -11,14 +11,26 @@ export type DepositsWithdrawalsArray = {
   withdrawal: number;
 };
 
+export type EarnedInterestBreakdown = {
+  currency: string;
+  inKindAmount: number;
+  inKindUsd: number;
+  inNexoAmount: number;
+  inNexoUsd: number;
+};
+
 export type StatisticsState = {
   interestData: DateValueArray[];
   depositAndWithdrawalData: DepositsWithdrawalsArray[];
+  historicPortfolioData: DateValueArray[];
+  earnedInterestBreakdown: EarnedInterestBreakdown[];
 };
 
 const initialState: StatisticsState = {
   interestData: [],
   depositAndWithdrawalData: [],
+  historicPortfolioData: [],
+  earnedInterestBreakdown: [],
 };
 
 const statisticsSlice = createSlice({
@@ -34,9 +46,22 @@ const statisticsSlice = createSlice({
     ) {
       state.depositAndWithdrawalData = action.payload;
     },
+    setHistoricPortfolioData(state, action: PayloadAction<DateValueArray[]>) {
+      state.historicPortfolioData = action.payload;
+    },
+    setEarnedInterestBreakdown(
+      state,
+      action: PayloadAction<EarnedInterestBreakdown[]>
+    ) {
+      state.earnedInterestBreakdown = action.payload;
+    },
   },
 });
 
-export const { setInterestData, setDepositAndWithdrawalData } =
-  statisticsSlice.actions;
+export const {
+  setInterestData,
+  setDepositAndWithdrawalData,
+  setHistoricPortfolioData,
+  setEarnedInterestBreakdown,
+} = statisticsSlice.actions;
 export default statisticsSlice;
