@@ -40,5 +40,5 @@ BTC: bc1q5sl35at30wtftl4je7p0pwwxhwtekfe23602tj
 RVN: RCJ92C29iZimha5H4Lw3GwKQQNiCMdd5dh
 
 ## Deprecated versions
-
+V2: [v2.nexo-ta.com](https://v2.nexo-ta.com/)
 V1: [v1.nexo-ta.com](https://v1.nexo-ta.com/)
