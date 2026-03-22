@@ -190,6 +190,22 @@ const FileUpload = ({ callback }: FileUploadProps) => {
     setError(null);
   };
 
+  /* Load demo file */
+  const OnDemoHandler = () => {
+    setError(null);
+    fetch("/nexo_demo_transactions.csv")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load demo file.");
+        return res.text();
+      })
+      .then((content) => {
+        setFileSelected(true);
+        setFile(null);
+        processFile(content);
+      })
+      .catch((err) => setError(err));
+  };
+
   if (fileSelected) {
     return (
       <>
@@ -240,6 +256,15 @@ const FileUpload = ({ callback }: FileUploadProps) => {
             Choose File
           </label>
           {error && <p className={classes.errorMessage}>{error.message}</p>}
+        </div>
+        <div className={classes["demo-section"]}>
+          <p>or</p>
+          <button
+            className={`btn--primary subheading ${classes.demoButton}`}
+            onClick={OnDemoHandler}
+          >
+            Try Demo
+          </button>
         </div>
       </section>
     </>
