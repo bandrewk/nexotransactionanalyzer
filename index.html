@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon_dark.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/favicon_white.png" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" href="/logo192_dark.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#091741" />
+    <meta name="description" content="Open Source transaction analyzer for the nexo.com platform." />
+    <title>Nexo Transaction Analyzer — nexo-ta.com</title>
+    <!-- Prevent flash of wrong theme -->
+    <script>
+      (function() {
+        var t = localStorage.getItem('theme');
+        var d = (t === 'dark') || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (d) document.documentElement.classList.add('dark');
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
