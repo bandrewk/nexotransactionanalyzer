@@ -1,29 +1,110 @@
-/* @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"); */
-@import "./components/UI/General.css";
+@import "tailwindcss";
 
-/* Reset */
-* {
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
+@custom-variant dark (&:where(.dark, .dark *));
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  /* Brand — electric blue on deep navy */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-soft: #3b82f620;
+  --color-accent-glow: #3b82f640;
+
+  --color-navy: #0a0f1e;
+  --color-navy-mid: #111832;
+
+  /* Light surfaces */
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f8fafc;
+  --color-surface-raised: #ffffff;
+
+  /* Dark surfaces */
+  --color-surface-dark: #0a0f1e;
+  --color-surface-dark-secondary: #111832;
+  --color-surface-dark-raised: #162040;
+
+  /* Borders */
+  --color-border-light: #e2e8f0;
+  --color-border-dark: #1e2a4a;
+
+  /* Greens / Reds for financial data */
+  --color-gain: #10b981;
+  --color-loss: #ef4444;
 }
 
+/* Base */
 html {
   font-size: 62.5%;
-  scroll-behavior: smooth;
 }
 
-.root {
-  font-family: "Inter", sans-serif;
+body {
+  font-family: var(--font-sans);
   font-size: 1.6rem;
   line-height: 1.6;
-  font-weight: 400;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  @apply bg-surface text-slate-800 dark:bg-surface-dark dark:text-slate-200;
+}
 
-  /* background-color: #fff; */
-  color: #333;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e2a4a;
+}
 
-  /* display: grid;
-  grid-template-columns: 30rem 1fr; */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
-  height: 100vh;
+/* Glass card */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Subtle noise overlay for depth */
+.noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Glow ring on focus */
+input:focus, button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
+}
+
+/* Stagger animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeInUp 0.5s ease-out both;
 }
