@@ -173,4 +173,14 @@ NXT003,Withdrawal,SOL,-1.00000000,SOL,1.00000000,$140.00,-,-,approved / SOL with
       expect(t.dateTime).toMatch(dateRegex);
     }
   });
+
+
+  it("parses detail fields with `,` as a value correctly; and not as a new column", () => {
+    const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),normalizedDisplayDetails
+NXT111,Nexo Card Purchase,BTC,-0.01000000,ETH,0.30000000,$800.00,0.00010000,BTC,"approved / lidl, berlin",2025-06-01 06:00:00,approved / Exchange BTC to ETH
+`;
+    const expectedValue = "approved / lidl, berlin";
+    const transactions = parseCSV(csv);
+    expect(transactions[0].details).toBe(expectedValue);
+  });
 });
