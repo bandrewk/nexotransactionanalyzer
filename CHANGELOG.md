@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1.0] - 2026-05-18
+
+### Fixed
+- CSV parser correctly handles commas inside quoted `Details` fields (e.g. `"approved / lidl, berlin"`) by migrating from a hand-rolled parser to papaparse. (#34, #35)
+- CSV parser accepts Nexo's current 11-column export schema. The hardcoded 12-column guard previously rejected exports after Nexo removed the `normalizedDisplayDetails` column in May 2026. Header-name validation against `meta.fields` replaces the count check and accepts both 11- and 12-column schemas. (#39, #46)
+- Live currency rates work again. Migrated the Frankfurter API from the deprecated `api.frankfurter.app` (now 301-redirects with CORS failures) to `api.frankfurter.dev/v1/`. (#40, #47)
+
+### Changed
+- Resolved 11 Dependabot advisories in dev-only toolchain (vite, postcss, lodash, picomatch, @babel/runtime, brace-expansion, ws). Runtime bundle unaffected. (#49)
+- Bumped dev dependencies: react/react-dom 19.2.4 → 19.2.6 (#45), autoprefixer 10.4.27 → 10.5.0 (#43), typescript-eslint 8.57.1 → 8.59.4 (#42).
+- Brand-neutral attribution: "frankfurter.dev" → "Frankfurter" in Footer and README.
+- Removed "Rebuilt from scratch" tagline from the landing-page banner.
+
+### Removed
+- Dead pre-React `html-draw/` mockup folder. (#48)
+
+### Internal
+- Two new regression tests for the papaparse migration: end-of-data sentinel break, and throw-on-malformed-row (no silent swallowing).
+- Three new regression tests for the column-count fix: 11-column schema accepted, whitespace-padded headers handled via `transformHeader: trim`, extra unknown columns ignored.
+
 ## [4.0.0] - 2026-03-22
 
 ### Complete Rebuild
