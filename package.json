@@ -18,7 +18,7 @@
     "@tanstack/react-table": "^8.21.3",
     "lucide-react": "^0.525.0",
     "papaparse": "^5.5.3",
-    "react": "^19.2.4",
+    "react": "^19.2.6",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
     "recharts": "^2.15.3",
