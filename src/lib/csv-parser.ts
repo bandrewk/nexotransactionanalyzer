@@ -43,47 +43,41 @@ export function parseCSV(content: string): Transaction[] {
     );
   }
 
-  const allData = parse<NexoHeaders>(content, {
-    header: lines.length > 1
-  }).data;
+  const allData = parse<NexoHeaders>(content, { header: true }).data;
   const transactions: Transaction[] = [];
 
-  allData.forEach((row, index) => {
-    try {
-      // Empty transaction ID means end of data
-      if (!row.Transaction) return;
+  for (const row of allData) {
+    // Empty transaction ID means end of data
+    if (!row.Transaction) break;
 
-      // Fix repayments: Nexo CSV has positive amounts instead of negative
-      if (row.Type === TransactionType.REPAYMENT) {
-        const amt = parseFloat(row["Input Amount"]);
-        if (amt > 0) {
-          row["Input Amount"] = (-amt).toString();
-        }
+    // Fix repayments: Nexo CSV has positive amounts instead of negative
+    if (row.Type === TransactionType.REPAYMENT) {
+      const amt = parseFloat(row["Input Amount"]);
+      if (amt > 0) {
+        row["Input Amount"] = (-amt).toString();
       }
-
-      // Fix liquidations: set output to USD equivalent
-      if (row.Type === TransactionType.LIQUIDATION) {
-        row["Output Currency"] = "USD";
-        row["Output Amount"] = row["USD Equivalent"].substring(1);
-      }
-
-      transactions.push({
-        id: row.Transaction,
-        type: row.Type,
-        inputCurrency: fixFiatX(row["Input Currency"]),
-        inputAmount: parseFloat(row["Input Amount"]),
-        outputCurrency: fixFiatX(row["Output Currency"]),
-        outputAmount: parseFloat(row["Output Amount"]),
-        usdEquivalent: parseFloat(row["USD Equivalent"].substring(1)),
-        fee: row.Fee,
-        feeCurrency: row["Fee Currency"],
-        details: row.Details,
-        dateTime: row["Date / Time (UTC)"],
-      });
-    } catch (e) {
-      console.error(e, ` - at row ${index}`);
     }
-  })
+
+    // Fix liquidations: set output to USD equivalent
+    if (row.Type === TransactionType.LIQUIDATION) {
+      row["Output Currency"] = "USD";
+      row["Output Amount"] = row["USD Equivalent"].substring(1);
+    }
+
+    transactions.push({
+      id: row.Transaction,
+      type: row.Type,
+      inputCurrency: fixFiatX(row["Input Currency"]),
+      inputAmount: parseFloat(row["Input Amount"]),
+      outputCurrency: fixFiatX(row["Output Currency"]),
+      outputAmount: parseFloat(row["Output Amount"]),
+      usdEquivalent: parseFloat(row["USD Equivalent"].substring(1)),
+      fee: row.Fee,
+      feeCurrency: row["Fee Currency"],
+      details: row.Details,
+      dateTime: row["Date / Time (UTC)"],
+    });
+  }
 
   return transactions;
 }
