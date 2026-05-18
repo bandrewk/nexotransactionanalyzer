@@ -14,7 +14,7 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 ## Features
 
 ### Portfolio Analytics
-- Real-time portfolio value via CoinGecko, CryptoCompare, and frankfurter.app
+- Real-time portfolio value via CoinGecko, CryptoCompare, and Frankfurter
 - Historic portfolio value chart with daily close prices
 - Portfolio distribution donut chart
 - Performance metrics: Net Invested, Interest Earned, Unrealized P/L
@@ -70,7 +70,7 @@ npm install
 npm run dev
 ```
 
-No external services required. Currency metadata is bundled locally in `src/data/currencies.ts` and price data is fetched from CoinGecko, CryptoCompare, and frankfurter.app at runtime.
+No external services required. Currency metadata is bundled locally in `src/data/currencies.ts` and price data is fetched from CoinGecko, CryptoCompare, and Frankfurter at runtime.
 
 ## Scripts
 

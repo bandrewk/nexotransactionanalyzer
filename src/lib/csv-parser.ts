@@ -1,7 +1,34 @@
+import { parse } from "papaparse";
 import type { Transaction } from "../types";
 import { TransactionType } from "../data/transaction-types";
 
-const EXPECTED_COLUMNS = 12;
+const REQUIRED_COLUMNS = [
+  "Transaction",
+  "Type",
+  "Input Currency",
+  "Input Amount",
+  "Output Currency",
+  "Output Amount",
+  "USD Equivalent",
+  "Fee",
+  "Fee Currency",
+  "Details",
+  "Date / Time (UTC)",
+] as const;
+
+type NexoHeaders = {
+  "Date / Time (UTC)": string;
+  "Details": string;
+  "Fee": string;
+  "Fee Currency": string;
+  "Input Amount": string;
+  "Input Currency": string;
+  "Output Amount": string;
+  "Output Currency": string;
+  "Transaction": string;
+  "Type": string;
+  "USD Equivalent": string;
+}
 
 function fixFiatX(cur: string): string {
   if (cur === "EURX") return "EUR";
@@ -15,32 +42,22 @@ function fixFiatX(cur: string): string {
  * Handles EURX/GBPX/USDX normalization, repayment sign flip, and liquidation output fix.
  */
 export function parseCSV(content: string): Transaction[] {
-  const lines = content.split("\n");
-  if (lines.length < 2) {
-    throw new Error("CSV file is empty or has no data rows.");
-  }
-
-  const headers = lines[0].split(",");
-  if (headers.length !== EXPECTED_COLUMNS) {
+  const result = parse<NexoHeaders>(content, {
+    header: true,
+    transformHeader: (h) => h.trim(),
+  });
+  const fields = result.meta.fields ?? [];
+  const missing = REQUIRED_COLUMNS.filter((c) => !fields.includes(c));
+  if (missing.length > 0) {
     throw new Error(
-      `Headers mismatch. Expected ${EXPECTED_COLUMNS}, got ${headers.length}`
+      `CSV is missing required column(s): ${missing.join(", ")}`
     );
   }
 
+  const allData = result.data;
   const transactions: Transaction[] = [];
 
-  for (let y = 1; y < lines.length; y++) {
-    const line = lines[y].trim();
-    if (!line) continue;
-
-    const rowData = line.split(",");
-
-    // Build key-value map from headers
-    const row: Record<string, string> = {};
-    for (let x = 0; x < rowData.length; x++) {
-      row[headers[x].trim()] = rowData[x].trim();
-    }
-
+  for (const row of allData) {
     // Empty transaction ID means end of data
     if (!row.Transaction) break;
 
