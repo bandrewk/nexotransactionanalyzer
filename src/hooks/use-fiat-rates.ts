@@ -17,14 +17,14 @@ export function useFiatRates() {
     const fetchRates = async () => {
       try {
         if (hasEUR) {
-          const res = await fetch("https://api.frankfurter.app/latest?from=EUR&to=USD");
+          const res = await fetch("https://api.frankfurter.dev/v1/latest?from=EUR&to=USD");
           if (res.ok) {
             const data = await res.json();
             updateFiatRate("EUR", data.rates.USD);
           }
         }
         if (hasGBP) {
-          const res = await fetch("https://api.frankfurter.app/latest?from=GBP&to=USD");
+          const res = await fetch("https://api.frankfurter.dev/v1/latest?from=GBP&to=USD");
           if (res.ok) {
             const data = await res.json();
             updateFiatRate("GBP", data.rates.USD);
