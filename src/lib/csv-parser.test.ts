@@ -173,4 +173,33 @@ NXT003,Withdrawal,SOL,-1.00000000,SOL,1.00000000,$140.00,-,-,approved / SOL with
       expect(t.dateTime).toMatch(dateRegex);
     }
   });
+
+
+  it("parses detail fields with `,` as a value correctly; and not as a new column", () => {
+    const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),normalizedDisplayDetails
+NXT111,Nexo Card Purchase,BTC,-0.01000000,ETH,0.30000000,$800.00,0.00010000,BTC,"approved / lidl, berlin",2025-06-01 06:00:00,approved / Exchange BTC to ETH
+`;
+    const expectedValue = "approved / lidl, berlin";
+    const transactions = parseCSV(csv);
+    expect(transactions[0].details).toBe(expectedValue);
+  });
+
+  it("stops processing at the first empty Transaction ID (end-of-data sentinel)", () => {
+    const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),normalizedDisplayDetails
+NXT001,Interest,BTC,0.00010000,BTC,0.00010000,$8.00,-,-,approved / BTC Interest,2025-06-01 06:00:00,approved / BTC Interest
+,,,,,,,,,,,
+NXT999,Interest,ETH,0.00500000,ETH,0.00500000,$15.00,-,-,approved / ETH Interest,2025-06-02 06:00:00,approved / ETH Interest
+`;
+    const transactions = parseCSV(csv);
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0].id).toBe("NXT001");
+  });
+
+  it("throws when a row is missing a required field (no silent swallowing)", () => {
+    // Row is missing the USD Equivalent and later columns — substring(1) on
+    // undefined would throw. Must propagate, not be swallowed.
+    const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),normalizedDisplayDetails
+NXT001,Interest,BTC,0.00010000,BTC,0.00010000`;
+    expect(() => parseCSV(csv)).toThrow();
+  });
 });

@@ -1,7 +1,23 @@
+import { parse } from "papaparse";
 import type { Transaction } from "../types";
 import { TransactionType } from "../data/transaction-types";
 
 const EXPECTED_COLUMNS = 12;
+
+type NexoHeaders = {
+  "Date / Time (UTC)": string;
+  "Details": string;
+  "Fee": string;
+  "Fee Currency": string;
+  "Input Amount": string;
+  "Input Currency": string;
+  "Output Amount": string;
+  "Output Currency": string;
+  "Transaction": string;
+  "Type": string;
+  "USD Equivalent": string;
+  "normalizedDisplayDetails": string;
+}
 
 function fixFiatX(cur: string): string {
   if (cur === "EURX") return "EUR";
@@ -27,20 +43,10 @@ export function parseCSV(content: string): Transaction[] {
     );
   }
 
+  const allData = parse<NexoHeaders>(content, { header: true }).data;
   const transactions: Transaction[] = [];
 
-  for (let y = 1; y < lines.length; y++) {
-    const line = lines[y].trim();
-    if (!line) continue;
-
-    const rowData = line.split(",");
-
-    // Build key-value map from headers
-    const row: Record<string, string> = {};
-    for (let x = 0; x < rowData.length; x++) {
-      row[headers[x].trim()] = rowData[x].trim();
-    }
-
+  for (const row of allData) {
     // Empty transaction ID means end of data
     if (!row.Transaction) break;
 
