@@ -65,9 +65,9 @@ NXTabc,Liquidation,BTC,-0.01000000,BTC,0.01000000,$800.00,-,-,approved / Liquida
     expect(transactions[0].outputAmount).toBe(800);
   });
 
-  it("rejects CSV with wrong number of columns", () => {
+  it("rejects CSV whose headers do not include required columns", () => {
     const csv = "A,B,C\n1,2,3\n";
-    expect(() => parseCSV(csv)).toThrow("Headers mismatch");
+    expect(() => parseCSV(csv)).toThrow(/missing required column/i);
   });
 
   it("skips empty lines", () => {
@@ -201,5 +201,33 @@ NXT999,Interest,ETH,0.00500000,ETH,0.00500000,$15.00,-,-,approved / ETH Interest
     const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),normalizedDisplayDetails
 NXT001,Interest,BTC,0.00010000,BTC,0.00010000`;
     expect(() => parseCSV(csv)).toThrow();
+  });
+
+  it("parses Nexo's current 11-column schema (no normalizedDisplayDetails)", () => {
+    const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)
+NXT001,Interest,BTC,0.00010000,BTC,0.00010000,$8.00,-,-,approved / BTC Interest,2025-06-01 06:00:00
+`;
+    const transactions = parseCSV(csv);
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0].id).toBe("NXT001");
+    expect(transactions[0].usdEquivalent).toBe(8);
+  });
+
+  it("accepts whitespace-padded header names (Excel round-trip)", () => {
+    const csv = ` Transaction , Type , Input Currency , Input Amount , Output Currency , Output Amount , USD Equivalent , Fee , Fee Currency , Details , Date / Time (UTC)
+NXT001,Interest,BTC,0.00010000,BTC,0.00010000,$8.00,-,-,approved / BTC Interest,2025-06-01 06:00:00
+`;
+    const transactions = parseCSV(csv);
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0].id).toBe("NXT001");
+  });
+
+  it("accepts CSV with extra unknown columns beyond the required 11", () => {
+    const csv = `Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),FutureColumn
+NXT001,Interest,BTC,0.00010000,BTC,0.00010000,$8.00,-,-,approved / BTC Interest,2025-06-01 06:00:00,ignored
+`;
+    const transactions = parseCSV(csv);
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0].id).toBe("NXT001");
   });
 });
