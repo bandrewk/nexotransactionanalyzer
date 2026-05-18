@@ -16,7 +16,7 @@
   "dependencies": {
     "@fontsource/inter": "^5.2.5",
     "@tanstack/react-table": "^8.21.3",
-    "lucide-react": "^0.525.0",
+    "lucide-react": "^1.16.0",
     "papaparse": "^5.5.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.6",
