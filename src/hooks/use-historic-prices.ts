@@ -69,7 +69,7 @@ export function useHistoricPrices() {
         }
       }
 
-      // Fiat: frankfurter.app
+      // Fiat: frankfurter.dev
       for (const symbol of fiatSymbols) {
         if (symbol === "USD") {
           const priceMap = new Map<string, number>();
@@ -78,7 +78,7 @@ export function useHistoricPrices() {
           continue;
         }
         try {
-          const url = `https://api.frankfurter.app/${startDate}..${endDate}?from=${symbol}&to=USD`;
+          const url = `https://api.frankfurter.dev/v1/${startDate}..${endDate}?from=${symbol}&to=USD`;
           const res = await fetch(url);
           if (!res.ok) continue;
           const data = await res.json();
