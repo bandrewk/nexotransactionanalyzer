@@ -119,7 +119,10 @@ export default function OverviewPage() {
   const unpricedSymbols = useAppStore((s) => s.unpricedSymbols);
   const partialCoverageSymbols = useAppStore((s) => s.partialCoverageSymbols);
   const [dateRange, setDateRange] = useState<DateRange>("ALL");
-  const [granularity, setGranularity] = useState<Granularity>("daily");
+  // Monthly by default: term payouts settle a whole accrual on one date, so the
+  // daily view is dominated by single maturities. Months absorb them without
+  // hiding anything, and the switch is right there for day-level detail.
+  const [granularity, setGranularity] = useState<Granularity>("monthly");
 
   const portfolioData = currencies
     .filter((c) => c.usdEquivalent > 0.01 && c.supported)
@@ -347,8 +350,8 @@ export default function OverviewPage() {
           title="Earned Interest"
           subtitle={
             granularity === "monthly"
-              ? "Interest earned in USD, per month. Term payouts settle a whole accrual on their maturity date — hide that series in the legend to read ordinary days."
-              : "Interest earned in USD, per day. Term payouts settle a whole accrual on their maturity date — hide that series in the legend to read ordinary days."
+              ? "Interest earned in USD, per month. Term deposits settle their whole accrual on the maturity date, drawn as separate bars."
+              : "Interest earned in USD, per day. Term deposits settle their whole accrual on one date — hide that series in the legend to read ordinary days."
           }
           action={<GranularitySelector value={granularity} onChange={setGranularity} />}
         >
