@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Coins, BarChart3 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import { formatUSD, formatPercent } from "../../lib/format";
+import { computePortfolioTotal } from "../../lib/portfolio";
+import { computeWeekPerformance } from "../../lib/performance";
 import NewsFeed from "./NewsFeed";
 
 export default function HomePage() {
@@ -10,38 +12,22 @@ export default function HomePage() {
   const statistics = useAppStore((s) => s.statistics);
   const isPriceFeedOk = useAppStore((s) => s.isPriceFeedOk);
 
-  const totalValue = currencies
-    .filter((c) => c.usdEquivalent > 0 && c.supported)
-    .reduce((sum, c) => sum + c.usdEquivalent, 0);
+  const { totalValue, excludedSymbols } = computePortfolioTotal(currencies);
 
   const totalTransactions = transactions.length;
   const uniqueCurrencies = new Set(currencies.filter((c) => Math.abs(c.amount) >= 0.001).map((c) => c.symbol)).size;
 
-  // 1W performance from historic portfolio data
-  const weekPerf = useMemo(() => {
-    const data = statistics.historicPortfolioData;
-    if (data.length < 2) return null;
-
-    const now = new Date();
-    const weekAgo = new Date(now);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const weekAgoStr = weekAgo.toISOString().substring(0, 10);
-
-    // Find closest data point to 1 week ago
-    let weekAgoValue: number | null = null;
-    for (let i = data.length - 1; i >= 0; i--) {
-      if (data[i].date <= weekAgoStr) {
-        weekAgoValue = data[i].value;
-        break;
-      }
-    }
-    if (weekAgoValue === null || weekAgoValue === 0) return null;
-
-    const currentValue = data[data.length - 1].value;
-    const change = currentValue - weekAgoValue;
-    const pct = (change / weekAgoValue) * 100;
-    return { change, pct };
-  }, [statistics.historicPortfolioData]);
+  // 1W performance from historic portfolio data. Null whenever the series
+  // cannot support the comparison — the tile then says so instead of
+  // presenting a meaningless zero as a result.
+  const weekPerf = useMemo(
+    () =>
+      computeWeekPerformance(
+        statistics.historicPortfolioData,
+        new Date().toISOString().substring(0, 10)
+      ),
+    [statistics.historicPortfolioData]
+  );
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-10rem)] gap-10 animate-in">
@@ -67,6 +53,11 @@ export default function HomePage() {
           <p className="text-[2.4rem] font-bold tracking-tight text-accent">
             {isPriceFeedOk ? formatUSD(totalValue) : "Loading..."}
           </p>
+          {isPriceFeedOk && excludedSymbols.length > 0 && (
+            <p role="status" className="text-[1.1rem] text-amber-600 dark:text-amber-400 mt-2">
+              Excludes {excludedSymbols.join(", ")} — no price available.
+            </p>
+          )}
         </div>
 
         {/* 1W Performance */}
