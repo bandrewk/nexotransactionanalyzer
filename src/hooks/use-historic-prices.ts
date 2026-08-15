@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useAppStore } from "../stores/app-store";
-import type { DateValueArray } from "../types";
+import {
+  fetchHistoricPrices,
+  fetchHistoricFiatRates,
+  buildPortfolioSeries,
+} from "../lib/price-oracle";
 
-const DELAY_MS = 300; // Delay between API calls to avoid rate limiting
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+const DUST_THRESHOLD = 0.001;
 
 export function useHistoricPrices() {
   const dailySnapshots = useAppStore((s) => s.dailySnapshots);
@@ -19,121 +19,42 @@ export function useHistoricPrices() {
     fetched.current = true;
 
     const compute = async () => {
-      // Find all crypto symbols with non-zero balances in snapshots
-      const allSymbols = new Set<string>();
+      // Every symbol ever held with a non-dust balance.
+      const held = new Set<string>();
       dailySnapshots.forEach((balances) => {
         balances.forEach((amount, symbol) => {
-          if (Math.abs(amount) >= 0.001) allSymbols.add(symbol);
+          if (Math.abs(amount) >= DUST_THRESHOLD) held.add(symbol);
         });
       });
 
       const dates = [...dailySnapshots.keys()].sort();
       if (dates.length === 0) return;
 
-      const startDate = dates[0];
-      const endDate = dates[dates.length - 1];
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const totalDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+      const heldCurrencies = [...held]
+        .map((symbol) => currencies.find((c) => c.symbol === symbol))
+        .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
-      // Fetch historic prices for each crypto symbol
-      const historicPrices = new Map<string, Map<string, number>>();
+      // Crypto goes to DefiLlama; fiat has no coingecko id and goes to Frankfurter.
+      const cryptoCoins = heldCurrencies
+        .filter((c) => c.type !== "fiat")
+        .map((c) => ({ symbol: c.symbol, coingeckoId: c.coingeckoId }));
+      const fiatSymbols = heldCurrencies.filter((c) => c.type === "fiat").map((c) => c.symbol);
 
-      const cryptoSymbols = [...allSymbols].filter((s) => {
-        const cur = currencies.find((c) => c.symbol === s);
-        return cur && cur.type === "crypto";
-      });
+      const start = dates[0];
+      const end = dates[dates.length - 1];
 
-      const fiatSymbols = [...allSymbols].filter((s) => {
-        const cur = currencies.find((c) => c.symbol === s);
-        return cur && cur.type === "fiat";
-      });
+      const [crypto, fiat] = await Promise.all([
+        fetchHistoricPrices(cryptoCoins, start, end),
+        fetchHistoricFiatRates(fiatSymbols, start, end),
+      ]);
 
-      // Crypto: CryptoCompare
-      for (const symbol of cryptoSymbols) {
-        try {
-          const toTs = Math.floor(end.getTime() / 1000);
-          const url = `https://min-api.cryptocompare.com/data/v2/histoday?fsym=${symbol}&tsym=USD&limit=${totalDays}&toTs=${toTs}`;
-          const res = await fetch(url);
-          if (!res.ok) continue;
-          const data = await res.json();
-          const priceMap = new Map<string, number>();
-          for (const entry of data.Data?.Data ?? []) {
-            const date = new Date(entry.time * 1000).toISOString().substring(0, 10);
-            priceMap.set(date, entry.close);
-          }
-          historicPrices.set(symbol, priceMap);
-          await sleep(DELAY_MS);
-        } catch {
-          // Skip failed fetches
-        }
-      }
+      const prices = crypto.prices;
+      fiat.prices.forEach((byDate, symbol) => prices.set(symbol, byDate));
 
-      // Fiat: frankfurter.dev
-      for (const symbol of fiatSymbols) {
-        if (symbol === "USD") {
-          const priceMap = new Map<string, number>();
-          for (const date of dates) priceMap.set(date, 1);
-          historicPrices.set("USD", priceMap);
-          continue;
-        }
-        try {
-          const url = `https://api.frankfurter.dev/v1/${startDate}..${endDate}?from=${symbol}&to=USD`;
-          const res = await fetch(url);
-          if (!res.ok) continue;
-          const data = await res.json();
-          const priceMap = new Map<string, number>();
-          for (const [date, rates] of Object.entries(data.rates ?? {})) {
-            priceMap.set(date, (rates as Record<string, number>).USD);
-          }
-          historicPrices.set(symbol, priceMap);
-        } catch {
-          // Skip
-        }
-      }
+      const unpricedSymbols = [...crypto.unpricedSymbols, ...fiat.unpricedSymbols].sort();
 
-      // Compute daily portfolio values
-      const portfolioValues: DateValueArray[] = [];
-      let lastBalances = new Map<string, number>();
-      const sampleInterval = Math.max(1, Math.floor(dates.length / 500));
-
-      for (let i = 0; i < dates.length; i++) {
-        const date = dates[i];
-        if (dailySnapshots.has(date)) {
-          lastBalances = dailySnapshots.get(date)!;
-        }
-
-        if (i % sampleInterval !== 0 && i !== dates.length - 1) continue;
-
-        let totalValue = 0;
-        lastBalances.forEach((amount, symbol) => {
-          if (Math.abs(amount) < 0.001) return;
-          const priceMap = historicPrices.get(symbol);
-          if (!priceMap) return;
-
-          let price = priceMap.get(date);
-          if (price === undefined) {
-            // Find nearest earlier price
-            const priceDates = [...priceMap.keys()].sort();
-            for (let j = priceDates.length - 1; j >= 0; j--) {
-              if (priceDates[j] <= date) {
-                price = priceMap.get(priceDates[j]);
-                break;
-              }
-            }
-          }
-          if (price !== undefined) {
-            totalValue += amount * price;
-          }
-        });
-
-        portfolioValues.push({
-          date,
-          value: parseFloat(totalValue.toFixed(2)),
-        });
-      }
-
-      setHistoricPortfolioData(portfolioValues);
+      const series = buildPortfolioSeries(dates, dailySnapshots, prices);
+      setHistoricPortfolioData(series, unpricedSymbols);
     };
 
     compute();
