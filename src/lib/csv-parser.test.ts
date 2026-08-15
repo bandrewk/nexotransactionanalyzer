@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { parseCSV } from "./csv-parser";
+import { TransactionType } from "../data/transaction-types";
 
 const demoCSV = readFileSync(
   resolve(__dirname, "../../public/nexo_demo_transactions.csv"),
@@ -229,5 +230,64 @@ NXT001,Interest,BTC,0.00010000,BTC,0.00010000,$8.00,-,-,approved / BTC Interest,
     const transactions = parseCSV(csv);
     expect(transactions).toHaveLength(1);
     expect(transactions[0].id).toBe("NXT001");
+  });
+});
+
+describe("Nexo export schema regression", () => {
+  const HEADER =
+    "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount," +
+    "USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)";
+
+  /** Build a synthetic row. All values are invented. */
+  const row = (id: string, type: string, cur = "BTC", amount = "1.00000000", usd = "$100.00") =>
+    `${id},${type},${cur},${amount},${cur},${amount},${usd},-,-,"approved / synthetic",2024-01-01 00:00:00`;
+
+  it("accepts the current 11-column schema", () => {
+    const csv = `${HEADER}\n${row("NXT0000001", "Interest")}\n`;
+    const transactions = parseCSV(csv);
+    expect(transactions).toHaveLength(1);
+    expect(transactions[0].type).toBe("Interest");
+    expect(transactions[0].usdEquivalent).toBe(100);
+  });
+
+  it("parses every transaction type the app knows about", () => {
+    const types = Object.values(TransactionType);
+    const rows = types.map((t, i) => row(`NXT${String(i).padStart(7, "0")}`, t));
+    const csv = `${HEADER}\n${rows.join("\n")}\n`;
+
+    const transactions = parseCSV(csv);
+
+    expect(transactions).toHaveLength(types.length);
+    for (const t of transactions) {
+      expect(Number.isNaN(t.usdEquivalent)).toBe(false);
+      expect(Number.isNaN(t.inputAmount)).toBe(false);
+      expect(Number.isNaN(t.outputAmount)).toBe(false);
+      expect(t.dateTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    }
+    expect(new Set(transactions.map((t) => t.type))).toEqual(new Set(types));
+  });
+
+  it("rejects a file that is missing a required column", () => {
+    const truncated = HEADER.replace(",Fee Currency", "");
+    const csv = `${truncated}\nNXT0000001,Interest,BTC,1.0,BTC,1.0,$100.00,-,"approved / synthetic",2024-01-01 00:00:00\n`;
+    expect(() => parseCSV(csv)).toThrow(/missing required column/i);
+  });
+
+  it("flips the sign on manual repayments", () => {
+    const csv = `${HEADER}\n${row("NXT0000001", TransactionType.REPAYMENT, "USDT", "50.00000000", "$50.00")}\n`;
+    const transactions = parseCSV(csv);
+    expect(transactions[0].inputAmount).toBe(-50);
+  });
+
+  it("rewrites liquidation output to the USD equivalent", () => {
+    const csv = `${HEADER}\n${row("NXT0000001", TransactionType.LIQUIDATION, "BTC", "0.50000000", "$250.00")}\n`;
+    const transactions = parseCSV(csv);
+    expect(transactions[0].outputCurrency).toBe("USD");
+    expect(transactions[0].outputAmount).toBe(250);
+  });
+
+  it("stops at the first row without a transaction id", () => {
+    const csv = `${HEADER}\n${row("NXT0000001", "Interest")}\n,,,,,,,,,,\n${row("NXT0000002", "Interest")}\n`;
+    expect(parseCSV(csv)).toHaveLength(1);
   });
 });
