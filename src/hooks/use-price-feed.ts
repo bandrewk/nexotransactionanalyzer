@@ -25,23 +25,38 @@ export function usePriceFeed() {
 
     const ids = cryptos.map((c) => c.coingeckoId);
 
-    /** CoinGecko first (primary source), DefiLlama as fallback when it rate-limits. */
+    /**
+     * CoinGecko first, DefiLlama for whatever it did not return.
+     * Filling per-id matters: a coin left unpriced would silently vanish from the
+     * portfolio total, since HomePage only sums currencies with usdEquivalent > 0.
+     */
     const fetchFromAnySource = async (): Promise<Map<string, number>> => {
+      const out = new Map<string, number>();
+
       try {
         const res = await fetch(buildCoinGeckoUrl(ids));
         if (!res.ok) throw new Error(`CoinGecko: ${res.status}`);
         const data = await res.json();
-        const out = new Map<string, number>();
         for (const id of ids) {
           const price = data[id]?.usd;
           if (typeof price === "number") out.set(id, price);
         }
-        if (out.size === 0) throw new Error("CoinGecko: empty response");
-        return out;
       } catch {
-        // CoinGecko 429s have no CORS headers, so this lands here as a rejection.
-        return fetchCurrentPrices(ids);
+        // CoinGecko 429s carry no CORS headers, so this lands here as a rejection.
       }
+
+      const missing = ids.filter((id) => !out.has(id));
+      if (missing.length === 0) return out;
+
+      try {
+        const fallback = await fetchCurrentPrices(missing);
+        fallback.forEach((price, id) => out.set(id, price));
+      } catch {
+        // Keep whatever CoinGecko did give us; only a total blackout backs off.
+        if (out.size === 0) throw new Error("no price source available");
+      }
+
+      return out;
     };
 
     const poll = async () => {
