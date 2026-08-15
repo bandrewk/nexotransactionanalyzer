@@ -5,6 +5,7 @@ import {
   planChunks,
   fetchHistoricPrices,
   fetchHistoricFiatRates,
+  fetchCurrentPrices,
   buildPortfolioSeries,
   DEFILLAMA_MAX_POINTS,
 } from "./price-oracle";
@@ -342,5 +343,41 @@ describe("fetchHistoricFiatRates", () => {
 
     expect(result.prices.has("EUR")).toBe(false);
     expect(result.unpricedSymbols).toEqual(["EUR"]);
+  });
+});
+
+describe("fetchCurrentPrices", () => {
+  it("maps coingecko:<id> response keys back to bare coingecko ids", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          coins: {
+            "coingecko:bitcoin": { price: 42000, symbol: "BTC" },
+          },
+        }),
+      })
+    );
+
+    const result = await fetchCurrentPrices(["bitcoin"]);
+
+    expect(result.get("bitcoin")).toBe(42000);
+  });
+
+  it("returns an empty map without calling fetch when given an empty id list", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchCurrentPrices([]);
+
+    expect(result.size).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when the response is not ok, rather than returning a partial or empty map", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+
+    await expect(fetchCurrentPrices(["bitcoin"])).rejects.toThrow();
   });
 });
