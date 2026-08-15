@@ -4,6 +4,7 @@ import { useAppStore } from "../../stores/app-store";
 import { formatUSD, formatPercent } from "../../lib/format";
 import { filterByDateRange, type DateRange } from "../../lib/date-filter";
 import { aggregateMonthly, totalInterest } from "../../lib/interest-series";
+import { computePortfolioTotal } from "../../lib/portfolio";
 import PortfolioChart from "./charts/PortfolioChart";
 import HistoricChart from "./charts/HistoricChart";
 import DepositsWithdrawalsChart from "./charts/DepositsWithdrawalsChart";
@@ -129,7 +130,7 @@ export default function OverviewPage() {
     .map((c) => ({ name: c.symbol, value: c.usdEquivalent }))
     .sort((a, b) => b.value - a.value);
 
-  const totalValue = portfolioData.reduce((sum, c) => sum + c.value, 0);
+  const { totalValue, excludedSymbols } = computePortfolioTotal(currencies, 0.01);
 
   // Performance metrics
   const totalDeposits = statistics.depositAndWithdrawalData.reduce((s, d) => s + d.deposit, 0);
@@ -248,21 +249,36 @@ export default function OverviewPage() {
               Unrealized P/L
             </span>
           </div>
-          <p className={`text-[2.2rem] font-bold tabular-nums tracking-tight ${
-            unrealizedPL >= 0 ? "text-emerald-400" : "text-red-400"
-          }`}>
-            {unrealizedPL >= 0 ? "+" : ""}{formatUSD(unrealizedPL)}
-          </p>
-          <p className={`text-[1.3rem] font-medium tabular-nums mt-0.5 ${
-            plPercent >= 0 ? "text-emerald-400/70" : "text-red-400/70"
-          }`}>
-            {plPercent >= 0 ? "+" : ""}{formatPercent(plPercent)}
-          </p>
+          {/* Gated on the price feed: without prices totalValue is 0, which would
+              render as a confident -100% total loss rather than "unknown". */}
+          {isPriceFeedOk ? (
+            <>
+              <p className={`text-[2.2rem] font-bold tabular-nums tracking-tight ${
+                unrealizedPL >= 0 ? "text-emerald-400" : "text-red-400"
+              }`}>
+                {unrealizedPL >= 0 ? "+" : ""}{formatUSD(unrealizedPL)}
+              </p>
+              <p className={`text-[1.3rem] font-medium tabular-nums mt-0.5 ${
+                plPercent >= 0 ? "text-emerald-400/70" : "text-red-400/70"
+              }`}>
+                {plPercent >= 0 ? "+" : ""}{formatPercent(plPercent)}
+              </p>
+              {excludedSymbols.length > 0 && (
+                <p role="status" className="text-[1.1rem] text-amber-600 dark:text-amber-400 mt-2">
+                  Excludes {excludedSymbols.join(", ")} — no price available.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-[2.2rem] font-bold tracking-tight text-slate-400">--</p>
+          )}
           <div className="flex gap-6 pt-3 mt-3 border-t border-slate-100/10 dark:border-white/[0.06]">
             <div>
               <p className="text-[1rem] text-slate-400 uppercase tracking-wide mb-0.5">Portfolio</p>
               <p className="text-[1.35rem] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
-                {formatUSD(totalValue)}
+                {/* Without the feed this would show only the fiat slice, which
+                    reads like a full portfolio value. */}
+                {isPriceFeedOk ? formatUSD(totalValue) : "--"}
               </p>
             </div>
             <div>

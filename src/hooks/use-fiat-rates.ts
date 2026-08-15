@@ -12,6 +12,13 @@ export function useFiatRates() {
   useEffect(() => {
     const hasEUR = currencies.some((c) => c.symbol === "EUR" && c.amount !== 0);
     const hasGBP = currencies.some((c) => c.symbol === "GBP" && c.amount !== 0);
+    const hasUSD = currencies.some((c) => c.symbol === "USD" && c.amount !== 0);
+
+    // USD is the unit of account, so it needs no lookup — but it does need to
+    // be set. Without this a USD balance keeps usdEquivalent 0 forever and is
+    // silently dropped from the portfolio total.
+    if (hasUSD) updateFiatRate("USD", 1);
+
     if (!hasEUR && !hasGBP) return;
 
     const fetchRates = async () => {
