@@ -9,6 +9,13 @@ const FRANKFURTER_BASE = "https://api.frankfurter.dev/v1";
 const DAY_SECONDS = 86400;
 const DUST_THRESHOLD = 0.001;
 
+/**
+ * How long a price may be carried forward before a day is treated as unpriced.
+ * Frankfurter publishes business days only, so weekend + holiday runs of up to
+ * 4 days are normal and must survive; beyond a week means real missing coverage.
+ */
+const MAX_CARRY_FORWARD_DAYS = 7;
+
 /** symbol -> (YYYY-MM-DD -> USD price) */
 export type PriceMap = Map<string, Map<string, number>>;
 
@@ -219,6 +226,11 @@ export function buildPortfolioSeries(
         let best: string | undefined;
         for (const d of byDate.keys()) {
           if (d <= date && (best === undefined || d > best)) best = d;
+        }
+        if (best !== undefined) {
+          const staleDays =
+            (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${best}T00:00:00Z`)) / (DAY_SECONDS * 1000);
+          if (staleDays > MAX_CARRY_FORWARD_DAYS) best = undefined;
         }
         price = best === undefined ? undefined : byDate.get(best);
       }

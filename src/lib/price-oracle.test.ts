@@ -26,12 +26,18 @@ describe("toDateKey", () => {
 });
 
 describe("buildChartUrl", () => {
-  it("prefixes ids, joins them, and never exceeds the span cap", () => {
+  it("prefixes ids, joins them, and includes the expected query params", () => {
     const url = buildChartUrl(["coingecko:bitcoin", "coingecko:nexo"], 1619136000, 500);
     expect(url).toContain("https://coins.llama.fi/chart/coingecko:bitcoin,coingecko:nexo");
     expect(url).toContain("start=1619136000");
     expect(url).toContain("span=500");
     expect(url).toContain("period=1d");
+  });
+
+  it("clamps span to the DefiLlama maximum", () => {
+    const url = buildChartUrl(["coingecko:bitcoin"], 1619136000, 600);
+    expect(url).toContain(`span=${DEFILLAMA_MAX_SPAN}`);
+    expect(url).not.toContain("span=600");
   });
 });
 
@@ -187,6 +193,31 @@ describe("buildPortfolioSeries", () => {
       ["BTC", new Map([["2024-01-01", 100]])],
     ]);
     const series = buildPortfolioSeries(["2024-01-01"], dust, prices);
+    expect(series).toEqual([{ date: "2024-01-01", value: 200 }]);
+  });
+
+  it("carries a price forward across a short gap", () => {
+    const prices: Map<string, Map<string, number>> = new Map([
+      ["BTC", new Map([["2024-01-01", 100]])],
+    ]);
+    const snaps = new Map<string, Map<string, number>>([
+      ["2024-01-01", new Map([["BTC", 2]])],
+      ["2024-01-05", new Map([["BTC", 2]])],
+    ]);
+    const series = buildPortfolioSeries(["2024-01-01", "2024-01-05"], snaps, prices);
+    expect(series).toHaveLength(2);
+    expect(series[1]).toEqual({ date: "2024-01-05", value: 200 });
+  });
+
+  it("drops a day when the newest available price is stale beyond the cap", () => {
+    const prices: Map<string, Map<string, number>> = new Map([
+      ["BTC", new Map([["2024-01-01", 100]])],
+    ]);
+    const snaps = new Map<string, Map<string, number>>([
+      ["2024-01-01", new Map([["BTC", 2]])],
+      ["2024-03-01", new Map([["BTC", 2]])],
+    ]);
+    const series = buildPortfolioSeries(["2024-01-01", "2024-03-01"], snaps, prices);
     expect(series).toEqual([{ date: "2024-01-01", value: 200 }]);
   });
 
