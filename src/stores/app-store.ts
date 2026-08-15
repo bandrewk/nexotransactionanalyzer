@@ -10,6 +10,8 @@ interface AppState {
   currencies: Currency[];
   statistics: StatisticsState;
   dailySnapshots: Map<string, Map<string, number>>;
+  /** Held symbols with no historic price coverage. Surfaced in the UI, never valued at 0. */
+  unpricedSymbols: string[];
 
   // Platform state
   isLoading: boolean;
@@ -22,7 +24,7 @@ interface AppState {
   loadFromStorage: () => boolean;
   updatePrices: (updates: { symbol: string; usdPrice: number }[]) => void;
   updateFiatRate: (symbol: string, rate: number) => void;
-  setHistoricPortfolioData: (data: { date: string; value: number }[]) => void;
+  setHistoricPortfolioData: (data: { date: string; value: number }[], unpricedSymbols?: string[]) => void;
   setPriceFeedOk: (ok: boolean) => void;
   setFiatPriceFeedOk: (ok: boolean) => void;
   save: () => void;
@@ -41,6 +43,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   currencies: [],
   statistics: emptyStatistics,
   dailySnapshots: new Map(),
+  unpricedSymbols: [],
   isLoading: false,
   isPriceFeedOk: false,
   isFiatPriceFeedOk: false,
@@ -61,6 +64,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         earnedInterestBreakdown: result.earnedInterestBreakdown,
       },
       dailySnapshots: result.dailySnapshots,
+      unpricedSymbols: [],
       isLoading: false,
       hasData: true,
     });
@@ -84,6 +88,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         earnedInterestBreakdown: result.earnedInterestBreakdown,
       },
       dailySnapshots: result.dailySnapshots,
+      unpricedSymbols: [],
       isLoading: false,
       hasData: true,
     });
@@ -117,9 +122,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  setHistoricPortfolioData: (data) => {
+  setHistoricPortfolioData: (data, unpricedSymbols = []) => {
     set((state) => ({
       statistics: { ...state.statistics, historicPortfolioData: data },
+      unpricedSymbols,
     }));
   },
 
@@ -138,6 +144,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currencies: [],
       statistics: emptyStatistics,
       dailySnapshots: new Map(),
+      unpricedSymbols: [],
       isLoading: false,
       isPriceFeedOk: false,
       isFiatPriceFeedOk: false,
