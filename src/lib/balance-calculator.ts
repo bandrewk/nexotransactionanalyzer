@@ -1,7 +1,7 @@
 import type {
   Transaction,
   Currency,
-  DateValueArray,
+  InterestPoint,
   DepositsWithdrawalsArray,
   EarnedInterestBreakdown,
 } from "../types";
@@ -10,7 +10,7 @@ import { currencyData } from "../data/currencies";
 
 export type BalanceResult = {
   currencies: Currency[];
-  interestData: DateValueArray[];
+  interestData: InterestPoint[];
   depositAndWithdrawalData: DepositsWithdrawalsArray[];
   dailySnapshots: Map<string, Map<string, number>>;
   earnedInterestBreakdown: EarnedInterestBreakdown[];
@@ -46,8 +46,12 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
     }
   };
 
-  // Statistics accumulators
-  const interestByDate = new Map<string, number>();
+  // Statistics accumulators.
+  // Regular and fixed-term interest are kept apart: a term deposit pays its
+  // whole accrual on the maturity date, so merging the two makes a single
+  // payout dwarf every ordinary day in the chart.
+  const regularByDate = new Map<string, number>();
+  const fixedTermByDate = new Map<string, number>();
   const depositByDate = new Map<string, number>();
   const withdrawByDate = new Map<string, number>();
   const interestBreakdown = new Map<
@@ -107,7 +111,9 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
 
     // Interest statistics
     if (t.type === TransactionType.INTEREST || t.type === TransactionType.FIXEDTERMINTEREST) {
-      interestByDate.set(date, (interestByDate.get(date) ?? 0) + t.usdEquivalent);
+      const target =
+        t.type === TransactionType.FIXEDTERMINTEREST ? fixedTermByDate : regularByDate;
+      target.set(date, (target.get(date) ?? 0) + t.usdEquivalent);
 
       // Interest breakdown: in-kind vs in-NEXO
       const isInNexo = t.outputCurrency === "NEXO" && t.inputCurrency !== "NEXO";
@@ -144,8 +150,13 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
   }
 
   // Convert maps to sorted arrays
-  const interestData: DateValueArray[] = [...interestByDate.entries()]
-    .map(([date, value]) => ({ date, value }))
+  const interestDates = new Set([...regularByDate.keys(), ...fixedTermByDate.keys()]);
+  const interestData: InterestPoint[] = [...interestDates]
+    .map((date) => ({
+      date,
+      regular: regularByDate.get(date) ?? 0,
+      fixedTerm: fixedTermByDate.get(date) ?? 0,
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const allDates = new Set([...depositByDate.keys(), ...withdrawByDate.keys()]);

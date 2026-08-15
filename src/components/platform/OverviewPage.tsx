@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Wallet, PiggyBank } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import { formatUSD, formatPercent } from "../../lib/format";
 import { filterByDateRange, type DateRange } from "../../lib/date-filter";
+import { aggregateMonthly, totalInterest } from "../../lib/interest-series";
 import PortfolioChart from "./charts/PortfolioChart";
 import HistoricChart from "./charts/HistoricChart";
 import DepositsWithdrawalsChart from "./charts/DepositsWithdrawalsChart";
@@ -22,17 +23,22 @@ function ChartCard({
   children,
   subtitle,
   notice,
+  action,
 }: {
   title: string;
   children: React.ReactNode;
   subtitle?: string;
   notice?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <section className="p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]">
-      <h2 className="text-[1.6rem] font-bold text-slate-900 dark:text-white tracking-tight mb-1">
-        {title}
-      </h2>
+      <div className="flex items-start justify-between gap-4">
+        <h2 className="text-[1.6rem] font-bold text-slate-900 dark:text-white tracking-tight mb-1">
+          {title}
+        </h2>
+        {action}
+      </div>
       {subtitle && <p className="text-[1.15rem] text-slate-400 mb-6">{subtitle}</p>}
       {!subtitle && <div className="mb-6" />}
       {notice && (
@@ -45,6 +51,44 @@ function ChartCard({
       )}
       {children}
     </section>
+  );
+}
+
+type Granularity = "daily" | "monthly";
+
+const GRANULARITIES: { label: string; value: Granularity }[] = [
+  { label: "Daily", value: "daily" },
+  { label: "Monthly", value: "monthly" },
+];
+
+function GranularitySelector({
+  value,
+  onChange,
+}: {
+  value: Granularity;
+  onChange: (g: Granularity) => void;
+}) {
+  return (
+    <div
+      className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] w-fit"
+      role="group"
+      aria-label="Interest granularity"
+    >
+      {GRANULARITIES.map((g) => (
+        <button
+          key={g.value}
+          onClick={() => onChange(g.value)}
+          aria-pressed={value === g.value}
+          className={`px-4 py-1.5 rounded-lg text-[1.2rem] font-medium transition-all duration-200 cursor-pointer border-none ${
+            value === g.value
+              ? "bg-white dark:bg-accent/20 text-accent shadow-sm"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-transparent"
+          }`}
+        >
+          {g.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -75,6 +119,7 @@ export default function OverviewPage() {
   const unpricedSymbols = useAppStore((s) => s.unpricedSymbols);
   const partialCoverageSymbols = useAppStore((s) => s.partialCoverageSymbols);
   const [dateRange, setDateRange] = useState<DateRange>("ALL");
+  const [granularity, setGranularity] = useState<Granularity>("daily");
 
   const portfolioData = currencies
     .filter((c) => c.usdEquivalent > 0.01 && c.supported)
@@ -86,7 +131,7 @@ export default function OverviewPage() {
   // Performance metrics
   const totalDeposits = statistics.depositAndWithdrawalData.reduce((s, d) => s + d.deposit, 0);
   const totalWithdrawals = statistics.depositAndWithdrawalData.reduce((s, d) => s + Math.abs(d.withdrawal), 0);
-  const totalInterest = statistics.interestData.reduce((s, d) => s + d.value, 0);
+  const totalInterestUsd = totalInterest(statistics.interestData);
   const netDeposits = totalDeposits - totalWithdrawals;
   const unrealizedPL = totalValue - netDeposits;
   const plPercent = netDeposits > 0 ? (unrealizedPL / netDeposits) * 100 : 0;
@@ -95,9 +140,10 @@ export default function OverviewPage() {
   const filteredHistoric = useMemo(
     () => filterByDateRange(statistics.historicPortfolioData, dateRange), [statistics.historicPortfolioData, dateRange]
   );
-  const filteredInterest = useMemo(
-    () => filterByDateRange(statistics.interestData, dateRange), [statistics.interestData, dateRange]
-  );
+  const filteredInterest = useMemo(() => {
+    const inRange = filterByDateRange(statistics.interestData, dateRange);
+    return granularity === "monthly" ? aggregateMonthly(inRange) : inRange;
+  }, [statistics.interestData, dateRange, granularity]);
   const filteredDepWith = useMemo(
     () => filterByDateRange(statistics.depositAndWithdrawalData, dateRange), [statistics.depositAndWithdrawalData, dateRange]
   );
@@ -164,14 +210,14 @@ export default function OverviewPage() {
             </span>
           </div>
           <p className="text-[2.2rem] font-bold tabular-nums tracking-tight text-emerald-400">
-            {formatUSD(totalInterest)}
+            {formatUSD(totalInterestUsd)}
           </p>
           <div className="flex gap-6 pt-3 mt-3 border-t border-slate-100 dark:border-white/[0.06]">
             <div>
               <p className="text-[1rem] text-slate-400 uppercase tracking-wide mb-0.5">Daily Avg</p>
               <p className="text-[1.35rem] font-semibold tabular-nums text-slate-600 dark:text-slate-300">
                 {statistics.interestData.length > 0
-                  ? formatUSD(totalInterest / statistics.interestData.length)
+                  ? formatUSD(totalInterestUsd / statistics.interestData.length)
                   : "$0.00"}
               </p>
             </div>
@@ -236,6 +282,9 @@ export default function OverviewPage() {
             <p className="text-[3.6rem] font-extrabold text-slate-900 dark:text-white tracking-tight leading-none mb-6">
               {formatUSD(totalValue)}
             </p>
+            <p className="text-[1rem] text-slate-400 uppercase tracking-wide mb-2">
+              Top 3 by value
+            </p>
             <div className="space-y-2">
               {portfolioData.slice(0, 3).map((d) => (
                 <div key={d.name} className="flex items-center justify-between text-[1.25rem]">
@@ -245,6 +294,11 @@ export default function OverviewPage() {
                   </span>
                 </div>
               ))}
+              {portfolioData.length > 3 && (
+                <p className="text-[1.1rem] text-slate-400 pt-1">
+                  +{portfolioData.length - 3} more — see the chart or Coinlist
+                </p>
+              )}
             </div>
           </div>
           <div className="p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]">
@@ -289,7 +343,15 @@ export default function OverviewPage() {
       )}
 
       {filteredInterest.length > 0 && (
-        <ChartCard title="Earned Interest" subtitle="Daily interest earned in USD">
+        <ChartCard
+          title="Earned Interest"
+          subtitle={
+            granularity === "monthly"
+              ? "Interest earned in USD, per month. Term payouts settle a whole accrual on their maturity date — hide that series in the legend to read ordinary days."
+              : "Interest earned in USD, per day. Term payouts settle a whole accrual on their maturity date — hide that series in the legend to read ordinary days."
+          }
+          action={<GranularitySelector value={granularity} onChange={setGranularity} />}
+        >
           <InterestChart data={filteredInterest} />
         </ChartCard>
       )}
