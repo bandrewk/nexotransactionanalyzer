@@ -59,7 +59,7 @@ export default function LandingPage() {
         <header className="text-center pt-12 pb-16 animate-in">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[1.2rem] font-medium mb-8">
             <span className="w-[6px] h-[6px] rounded-full bg-accent animate-pulse" />
-            Version 4.1
+            Version 4.2
           </div>
           <h1 className="text-[4.4rem] md:text-[5.6rem] font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1] mb-6">
             Analyze your Nexo
