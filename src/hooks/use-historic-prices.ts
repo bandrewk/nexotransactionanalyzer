@@ -53,8 +53,8 @@ export function useHistoricPrices() {
 
       const unpricedSymbols = [...crypto.unpricedSymbols, ...fiat.unpricedSymbols].sort();
 
-      const series = buildPortfolioSeries(dates, dailySnapshots, prices);
-      setHistoricPortfolioData(series, unpricedSymbols);
+      const { series, gapSymbols } = buildPortfolioSeries(dates, dailySnapshots, prices);
+      setHistoricPortfolioData(series, unpricedSymbols, gapSymbols);
     };
 
     compute();

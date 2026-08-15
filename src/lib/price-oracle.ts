@@ -213,6 +213,14 @@ export async function fetchCurrentPrices(
   return out;
 }
 
+export type PortfolioSeries = {
+  series: DateValueArray[];
+  /** Count of sampled dates omitted because a held asset had no usable price. */
+  omittedDates: number;
+  /** Symbols that caused an omission despite having SOME price data (partial coverage). */
+  gapSymbols: string[];
+};
+
 /**
  * Value each day's holdings. A date is omitted entirely when a non-dust holding
  * has no price — a partial total is worse than an absent point, because it
@@ -223,10 +231,12 @@ export function buildPortfolioSeries(
   snapshots: Map<string, Map<string, number>>,
   prices: PriceMap,
   maxPoints = 500
-): DateValueArray[] {
+): PortfolioSeries {
   const series: DateValueArray[] = [];
   const sampleInterval = Math.max(1, Math.ceil(dates.length / maxPoints));
   let lastBalances = new Map<string, number>();
+  let omittedDates = 0;
+  const gapSet = new Set<string>();
 
   for (let i = 0; i < dates.length; i++) {
     const date = dates[i];
@@ -262,14 +272,18 @@ export function buildPortfolioSeries(
       }
       if (price === undefined) {
         complete = false;
+        if (prices.has(symbol)) gapSet.add(symbol);
         return;
       }
       total += amount * price;
     });
 
-    if (!complete) continue;
+    if (!complete) {
+      omittedDates++;
+      continue;
+    }
     series.push({ date, value: parseFloat(total.toFixed(2)) });
   }
 
-  return series;
+  return { series, omittedDates, gapSymbols: [...gapSet].sort() };
 }

@@ -228,7 +228,7 @@ describe("buildPortfolioSeries", () => {
     const prices: Map<string, Map<string, number>> = new Map([
       ["BTC", new Map([["2024-01-01", 100], ["2024-01-03", 200]])],
     ]);
-    const series = buildPortfolioSeries(["2024-01-01", "2024-01-03"], snapshots, prices);
+    const { series } = buildPortfolioSeries(["2024-01-01", "2024-01-03"], snapshots, prices);
     expect(series).toEqual([
       { date: "2024-01-01", value: 200 },
       { date: "2024-01-03", value: 600 },
@@ -239,13 +239,13 @@ describe("buildPortfolioSeries", () => {
     const prices: Map<string, Map<string, number>> = new Map([
       ["BTC", new Map([["2024-01-01", 100]])], // no price on the 3rd
     ]);
-    const series = buildPortfolioSeries(["2024-01-01", "2024-01-03"], snapshots, prices);
+    const { series } = buildPortfolioSeries(["2024-01-01", "2024-01-03"], snapshots, prices);
     expect(series[1]).toEqual({ date: "2024-01-03", value: 300 });
   });
 
   it("omits a day entirely when a held asset has no price at all", () => {
     // BTC is held but completely unpriced -> the day's total would be misleading
-    const series = buildPortfolioSeries(["2024-01-01"], snapshots, new Map());
+    const { series } = buildPortfolioSeries(["2024-01-01"], snapshots, new Map());
     expect(series).toEqual([]);
   });
 
@@ -256,7 +256,7 @@ describe("buildPortfolioSeries", () => {
     const prices: Map<string, Map<string, number>> = new Map([
       ["BTC", new Map([["2024-01-01", 100]])],
     ]);
-    const series = buildPortfolioSeries(["2024-01-01"], dust, prices);
+    const { series } = buildPortfolioSeries(["2024-01-01"], dust, prices);
     expect(series).toEqual([{ date: "2024-01-01", value: 200 }]);
   });
 
@@ -268,7 +268,7 @@ describe("buildPortfolioSeries", () => {
       ["2024-01-01", new Map([["BTC", 2]])],
       ["2024-01-05", new Map([["BTC", 2]])],
     ]);
-    const series = buildPortfolioSeries(["2024-01-01", "2024-01-05"], snaps, prices);
+    const { series } = buildPortfolioSeries(["2024-01-01", "2024-01-05"], snaps, prices);
     expect(series).toHaveLength(2);
     expect(series[1]).toEqual({ date: "2024-01-05", value: 200 });
   });
@@ -281,7 +281,7 @@ describe("buildPortfolioSeries", () => {
       ["2024-01-01", new Map([["BTC", 2]])],
       ["2024-03-01", new Map([["BTC", 2]])],
     ]);
-    const series = buildPortfolioSeries(["2024-01-01", "2024-03-01"], snaps, prices);
+    const { series } = buildPortfolioSeries(["2024-01-01", "2024-03-01"], snaps, prices);
     expect(series).toEqual([{ date: "2024-01-01", value: 200 }]);
   });
 
@@ -295,11 +295,37 @@ describe("buildPortfolioSeries", () => {
     }
     const priceMap = new Map<string, number>();
     for (const d of dates) priceMap.set(d, 10);
-    const series = buildPortfolioSeries(dates, many, new Map([["BTC", priceMap]]), 10);
+    const { series } = buildPortfolioSeries(dates, many, new Map([["BTC", priceMap]]), 10);
     // The final date is always retained so the chart ends at the latest data,
     // which can add one point beyond the sampling budget.
     expect(series.length).toBeLessThanOrEqual(11);
     expect(series[series.length - 1].date).toBe("2024-01-30");
+  });
+
+  it("reports symbols that caused omitted days despite having partial data", () => {
+    // BTC has a price only at the start; the 7-day cap makes later dates unusable.
+    const prices: Map<string, Map<string, number>> = new Map([
+      ["BTC", new Map([["2024-01-01", 100]])],
+    ]);
+    const snaps = new Map<string, Map<string, number>>([
+      ["2024-01-01", new Map([["BTC", 2]])],
+      ["2024-03-01", new Map([["BTC", 2]])],
+    ]);
+    const result = buildPortfolioSeries(["2024-01-01", "2024-03-01"], snaps, prices);
+    expect(result.series).toHaveLength(1);
+    expect(result.omittedDates).toBe(1);
+    expect(result.gapSymbols).toEqual(["BTC"]);
+  });
+
+  it("does not double-report a symbol that has no price map at all", () => {
+    const snaps = new Map<string, Map<string, number>>([
+      ["2024-01-01", new Map([["BTC", 2]])],
+    ]);
+    const result = buildPortfolioSeries(["2024-01-01"], snaps, new Map());
+    expect(result.series).toEqual([]);
+    expect(result.omittedDates).toBe(1);
+    // BTC is fully unpriced, reported via unpricedSymbols instead — not here.
+    expect(result.gapSymbols).toEqual([]);
   });
 });
 

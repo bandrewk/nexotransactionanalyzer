@@ -12,6 +12,8 @@ interface AppState {
   dailySnapshots: Map<string, Map<string, number>>;
   /** Held symbols with no historic price coverage. Surfaced in the UI, never valued at 0. */
   unpricedSymbols: string[];
+  /** Symbols with partial price coverage that forced days to be omitted from the chart. */
+  partialCoverageSymbols: string[];
 
   // Platform state
   isLoading: boolean;
@@ -24,7 +26,11 @@ interface AppState {
   loadFromStorage: () => boolean;
   updatePrices: (updates: { symbol: string; usdPrice: number }[]) => void;
   updateFiatRate: (symbol: string, rate: number) => void;
-  setHistoricPortfolioData: (data: { date: string; value: number }[], unpricedSymbols?: string[]) => void;
+  setHistoricPortfolioData: (
+    data: { date: string; value: number }[],
+    unpricedSymbols?: string[],
+    partialCoverageSymbols?: string[]
+  ) => void;
   setPriceFeedOk: (ok: boolean) => void;
   setFiatPriceFeedOk: (ok: boolean) => void;
   save: () => void;
@@ -44,6 +50,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   statistics: emptyStatistics,
   dailySnapshots: new Map(),
   unpricedSymbols: [],
+  partialCoverageSymbols: [],
   isLoading: false,
   isPriceFeedOk: false,
   isFiatPriceFeedOk: false,
@@ -65,6 +72,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       dailySnapshots: result.dailySnapshots,
       unpricedSymbols: [],
+      partialCoverageSymbols: [],
       isLoading: false,
       hasData: true,
     });
@@ -89,6 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       dailySnapshots: result.dailySnapshots,
       unpricedSymbols: [],
+      partialCoverageSymbols: [],
       isLoading: false,
       hasData: true,
     });
@@ -122,10 +131,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  setHistoricPortfolioData: (data, unpricedSymbols = []) => {
+  setHistoricPortfolioData: (data, unpricedSymbols = [], partialCoverageSymbols = []) => {
     set((state) => ({
       statistics: { ...state.statistics, historicPortfolioData: data },
       unpricedSymbols,
+      partialCoverageSymbols,
     }));
   },
 
@@ -145,6 +155,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       statistics: emptyStatistics,
       dailySnapshots: new Map(),
       unpricedSymbols: [],
+      partialCoverageSymbols: [],
       isLoading: false,
       isPriceFeedOk: false,
       isFiatPriceFeedOk: false,

@@ -73,6 +73,7 @@ export default function OverviewPage() {
   const statistics = useAppStore((s) => s.statistics);
   const isPriceFeedOk = useAppStore((s) => s.isPriceFeedOk);
   const unpricedSymbols = useAppStore((s) => s.unpricedSymbols);
+  const partialCoverageSymbols = useAppStore((s) => s.partialCoverageSymbols);
   const [dateRange, setDateRange] = useState<DateRange>("ALL");
 
   const portfolioData = currencies
@@ -100,6 +101,17 @@ export default function OverviewPage() {
   const filteredDepWith = useMemo(
     () => filterByDateRange(statistics.depositAndWithdrawalData, dateRange), [statistics.depositAndWithdrawalData, dateRange]
   );
+
+  const historicNotice = [
+    unpricedSymbols.length > 0
+      ? `No historic price data for ${unpricedSymbols.join(", ")} — days holding these assets are omitted rather than undervalued.`
+      : null,
+    partialCoverageSymbols.length > 0
+      ? `Incomplete price history for ${partialCoverageSymbols.join(", ")} — some days are missing from this chart.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ") || undefined;
 
   return (
     <div className="space-y-6 animate-in">
@@ -253,11 +265,7 @@ export default function OverviewPage() {
         <ChartCard
           title="Historic Portfolio Value"
           subtitle="Daily close prices via DefiLlama"
-          notice={
-            unpricedSymbols.length > 0
-              ? `No historic price data for ${unpricedSymbols.join(", ")} — days holding these assets are omitted rather than undervalued.`
-              : undefined
-          }
+          notice={historicNotice}
         >
           <HistoricChart data={filteredHistoric} />
         </ChartCard>
