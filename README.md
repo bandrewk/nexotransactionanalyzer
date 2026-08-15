@@ -14,8 +14,9 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 ## Features
 
 ### Portfolio Analytics
-- Real-time portfolio value via CoinGecko, CryptoCompare, and Frankfurter
-- Historic portfolio value chart with daily close prices
+- Real-time portfolio value via CoinGecko, with DefiLlama as fallback
+- Historic portfolio value chart from DefiLlama daily closes, fiat via Frankfurter
+- Assets that cannot be priced are named, never silently valued at zero
 - Portfolio distribution donut chart
 - Performance metrics: Net Invested, Interest Earned, Unrealized P/L
 - 1-week portfolio change on Dashboard
@@ -24,9 +25,9 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 ### Transaction Management
 - Searchable, sortable, paginated transaction table
 - Transaction type dropdown filter
-- Blockchain explorer links for 19+ chains (BTC, ETH, SOL, XRP, ADA, DOT, etc.)
+- Blockchain explorer links for 20 chains (BTC, SOL, XRP, ADA, DOT, TRX, etc.)
 - Column visibility toggles (ID, Fee, Time)
-- Support for all 27 Nexo transaction types
+- Support for all 22 Nexo transaction types
 
 ### Coinlist
 - Holdings grid with coin icons and USD values
@@ -34,7 +35,7 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Zero balance toggle
 
 ### Interest Tracking
-- Daily interest earned chart
+- Interest chart split by payout kind, with a daily/monthly switch
 - Per-currency interest breakdown with bar chart and table
 - Disclaimer about Nexo CSV limitations for in-kind vs NEXO interest detection
 
@@ -70,7 +71,7 @@ npm install
 npm run dev
 ```
 
-No external services required. Currency metadata is bundled locally in `src/data/currencies.ts` and price data is fetched from CoinGecko, CryptoCompare, and Frankfurter at runtime.
+No external services required. Currency metadata is bundled locally in `src/data/currencies.ts` and price data is fetched at runtime from CoinGecko and DefiLlama (crypto) and Frankfurter (fiat). None require an API key.
 
 ## Scripts
 
@@ -86,11 +87,15 @@ No external services required. Currency metadata is bundled locally in `src/data
 
 ## Testing
 
-101 tests across 6 unit test suites and 17 E2E scenarios:
+152 tests across 10 unit test suites and 17 E2E scenarios:
 
-- **CSV Parser** — parsing, normalization (EURX→EUR), repayment/liquidation fixes, edge cases
-- **Balance Calculator** — running balances, interest breakdown, deposit/withdrawal tracking, internal transfer skipping
-- **TX Linkage** — blockchain explorer URL mapping for 19+ chains
+- **CSV Parser** — parsing, normalization (EURX→EUR), repayment/liquidation fixes, export schema regression
+- **Balance Calculator** — running balances, interest split by payout kind, deposit/withdrawal tracking, internal transfer skipping
+- **Price Oracle** — DefiLlama request planning, point-budget chunking, carry-forward staleness cap, unpriced-symbol reporting
+- **Interest Series** — monthly aggregation, value preservation
+- **Portfolio** — totals and which holdings had to be excluded
+- **Performance** — week-over-week change, and when it must refuse to answer
+- **TX Linkage** — blockchain explorer URL mapping for 20 chains
 - **Formatting** — USD, crypto amounts, percentages, edge cases
 - **Storage** — localStorage save/load, version mismatch, corruption handling
 - **Date Filter** — range filtering logic
