@@ -263,7 +263,9 @@ export default function OverviewPage() {
         </ChartCard>
       )}
 
-      {filteredHistoric.length === 0 && unpricedSymbols.length > 0 && (
+      {filteredHistoric.length === 0 &&
+        statistics.historicPortfolioData.length === 0 &&
+        unpricedSymbols.length > 0 && (
         <ChartCard
           title="Historic Portfolio Value"
           notice={`Historic price data is unavailable for ${unpricedSymbols.join(", ")}, so no portfolio history can be shown.`}
