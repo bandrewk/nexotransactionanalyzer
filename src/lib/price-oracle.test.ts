@@ -6,7 +6,7 @@ import {
   fetchHistoricPrices,
   fetchHistoricFiatRates,
   buildPortfolioSeries,
-  DEFILLAMA_MAX_SPAN,
+  DEFILLAMA_MAX_POINTS,
 } from "./price-oracle";
 
 afterEach(() => {
@@ -36,7 +36,7 @@ describe("buildChartUrl", () => {
 
   it("clamps span to the DefiLlama maximum", () => {
     const url = buildChartUrl(["coingecko:bitcoin"], 1619136000, 600);
-    expect(url).toContain(`span=${DEFILLAMA_MAX_SPAN}`);
+    expect(url).toContain(`span=${DEFILLAMA_MAX_POINTS}`);
     expect(url).not.toContain("span=600");
   });
 });
@@ -45,7 +45,7 @@ describe("planChunks", () => {
   it("returns one chunk when the range fits in the span cap", () => {
     const chunks = planChunks("2024-01-01", "2024-03-01"); // 60 days
     expect(chunks).toHaveLength(1);
-    expect(chunks[0].span).toBeLessThanOrEqual(DEFILLAMA_MAX_SPAN);
+    expect(chunks[0].span).toBeLessThanOrEqual(DEFILLAMA_MAX_POINTS);
   });
 
   it("splits a multi-year range into contiguous chunks under the cap", () => {
@@ -53,7 +53,7 @@ describe("planChunks", () => {
     expect(chunks.length).toBeGreaterThan(1);
     for (const c of chunks) {
       expect(c.span).toBeGreaterThan(0);
-      expect(c.span).toBeLessThanOrEqual(DEFILLAMA_MAX_SPAN);
+      expect(c.span).toBeLessThanOrEqual(DEFILLAMA_MAX_POINTS);
     }
     // chunks must be ordered and non-overlapping
     for (let i = 1; i < chunks.length; i++) {
@@ -151,6 +151,69 @@ describe("fetchHistoricPrices", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.unpricedSymbols).toEqual(["WEIRD"]);
+  });
+
+  it("requests exactly one coin per request so the point budget is never exceeded", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ coins: {} }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // 3 coins over 600 days -> 2 time chunks each -> 6 single-coin requests.
+    await fetchHistoricPrices(
+      [
+        { symbol: "BTC", coingeckoId: "bitcoin" },
+        { symbol: "ETH", coingeckoId: "ethereum" },
+        { symbol: "LINK", coingeckoId: "chainlink" },
+      ],
+      "2024-01-01",
+      "2025-08-23"
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+
+    for (const call of fetchMock.mock.calls) {
+      const url = new URL(call[0] as string);
+      const coinsSegment = decodeURIComponent(url.pathname.split("/chart/")[1]);
+      expect(coinsSegment.split(",")).toHaveLength(1);
+      const span = Number(url.searchParams.get("span"));
+      expect(span).toBeGreaterThan(0);
+      expect(span).toBeLessThanOrEqual(DEFILLAMA_MAX_POINTS);
+    }
+  });
+
+  it("keeps a coin's prices when one of its chunks fails", async () => {
+    let call = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => {
+        call++;
+        if (call === 2) throw new TypeError("Failed to fetch");
+        return {
+          ok: true,
+          json: async () => ({
+            coins: {
+              "coingecko:bitcoin": {
+                symbol: "BTC",
+                prices: [{ timestamp: 1704067200, price: 42000 }],
+              },
+            },
+          }),
+        };
+      })
+    );
+
+    const result = await fetchHistoricPrices(
+      [{ symbol: "BTC", coingeckoId: "bitcoin" }],
+      "2024-01-01",
+      "2025-08-23"
+    );
+
+    // One chunk succeeded, so BTC is priced — the 7-day carry-forward cap in
+    // buildPortfolioSeries is what protects against the resulting gap.
+    expect(result.prices.get("BTC")?.get("2024-01-01")).toBe(42000);
+    expect(result.unpricedSymbols).toEqual([]);
   });
 });
 

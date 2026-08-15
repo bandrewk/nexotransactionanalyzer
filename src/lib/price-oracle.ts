@@ -1,13 +1,19 @@
 import type { DateValueArray } from "../types";
 
-/** DefiLlama rejects span values above this; verified empirically. */
-export const DEFILLAMA_MAX_SPAN = 500;
+/**
+ * DefiLlama caps a request at 500 data points, counted as numCoins × span.
+ * Requesting one coin per request therefore allows a span of 500.
+ */
+export const DEFILLAMA_MAX_POINTS = 500;
 
 const CHART_BASE = "https://coins.llama.fi/chart";
 const CURRENT_BASE = "https://coins.llama.fi/prices/current";
 const FRANKFURTER_BASE = "https://api.frankfurter.dev/v1";
 const DAY_SECONDS = 86400;
 const DUST_THRESHOLD = 0.001;
+
+/** Max number of in-flight DefiLlama requests at once. */
+const REQUEST_CONCURRENCY = 5;
 
 /**
  * How long a price may be carried forward before a day is treated as unpriced.
@@ -33,11 +39,14 @@ export function toDateKey(unixSeconds: number): string {
 }
 
 export function buildChartUrl(coinKeys: string[], startUnix: number, span: number): string {
-  const capped = Math.min(span, DEFILLAMA_MAX_SPAN);
+  const capped = Math.min(span, DEFILLAMA_MAX_POINTS);
   return `${CHART_BASE}/${coinKeys.join(",")}?start=${startUnix}&span=${capped}&period=1d`;
 }
 
-/** Split a date range into consecutive windows that each fit under the span cap. */
+/**
+ * Split a date range into consecutive windows that each fit under the point
+ * budget for a SINGLE coin (span × 1 coin ≤ DEFILLAMA_MAX_POINTS).
+ */
 export function planChunks(
   startDate: string,
   endDate: string
@@ -50,7 +59,7 @@ export function planChunks(
   let cursor = startUnix;
   let remaining = totalDays;
   while (remaining > 0) {
-    const span = Math.min(remaining, DEFILLAMA_MAX_SPAN);
+    const span = Math.min(remaining, DEFILLAMA_MAX_POINTS);
     chunks.push({ startUnix: cursor, span });
     cursor += span * DAY_SECONDS;
     remaining -= span;
@@ -62,6 +71,10 @@ export function planChunks(
  * Fetch daily USD closes for the given coins from DefiLlama.
  * Coins are addressed as `coingecko:<id>`, which is exactly what currencies.ts stores.
  * Symbols that cannot be priced are reported, never defaulted to zero.
+ *
+ * DefiLlama's 500-point budget is numCoins × span, not span alone, so each
+ * request names exactly one coin; time chunks come from planChunks. Requests
+ * run with bounded concurrency rather than one at a time or all at once.
  */
 export async function fetchHistoricPrices(
   coins: OracleCoin[],
@@ -79,31 +92,44 @@ export async function fetchHistoricPrices(
   // DefiLlama keys the response by the id we asked for, so keep a reverse index.
   const keyToSymbol = new Map<string, string>();
   for (const c of priceable) keyToSymbol.set(`coingecko:${c.coingeckoId}`, c.symbol);
-  const coinKeys = [...keyToSymbol.keys()];
 
-  for (const chunk of planChunks(startDate, endDate)) {
-    try {
-      const res = await fetch(buildChartUrl(coinKeys, chunk.startUnix, chunk.span));
-      if (!res.ok) continue;
-      const data = await res.json();
-      const coinsPayload = data?.coins;
-      if (!coinsPayload) continue;
-
-      for (const [key, entry] of Object.entries(coinsPayload)) {
-        const symbol = keyToSymbol.get(key);
-        if (!symbol) continue;
-        const points = (entry as { prices?: { timestamp: number; price: number }[] }).prices ?? [];
-        let byDate = prices.get(symbol);
-        if (!byDate) {
-          byDate = new Map<string, number>();
-          prices.set(symbol, byDate);
-        }
-        for (const p of points) byDate.set(toDateKey(p.timestamp), p.price);
-      }
-    } catch {
-      // A failed chunk leaves a gap; buildPortfolioSeries carries prices forward.
-      // Total failure surfaces below as unpricedSymbols.
+  const chunks = planChunks(startDate, endDate);
+  const requests: { coinKey: string; startUnix: number; span: number }[] = [];
+  for (const c of priceable) {
+    const coinKey = `coingecko:${c.coingeckoId}`;
+    for (const chunk of chunks) {
+      requests.push({ coinKey, startUnix: chunk.startUnix, span: chunk.span });
     }
+  }
+
+  for (let i = 0; i < requests.length; i += REQUEST_CONCURRENCY) {
+    const slice = requests.slice(i, i + REQUEST_CONCURRENCY);
+    await Promise.all(
+      slice.map(async (req) => {
+        try {
+          const res = await fetch(buildChartUrl([req.coinKey], req.startUnix, req.span));
+          if (!res.ok) return;
+          const data = await res.json();
+          const coinsPayload = data?.coins;
+          if (!coinsPayload) return;
+
+          for (const [key, entry] of Object.entries(coinsPayload)) {
+            const symbol = keyToSymbol.get(key);
+            if (!symbol) continue;
+            const points = (entry as { prices?: { timestamp: number; price: number }[] }).prices ?? [];
+            let byDate = prices.get(symbol);
+            if (!byDate) {
+              byDate = new Map<string, number>();
+              prices.set(symbol, byDate);
+            }
+            for (const p of points) byDate.set(toDateKey(p.timestamp), p.price);
+          }
+        } catch {
+          // A failed request leaves a gap; buildPortfolioSeries caps carry-forward
+          // staleness. Total failure surfaces below as unpricedSymbols.
+        }
+      })
+    );
   }
 
   const unpricedSymbols = [
