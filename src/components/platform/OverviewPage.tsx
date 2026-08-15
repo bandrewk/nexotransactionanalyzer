@@ -17,7 +17,17 @@ const DATE_RANGES: { label: string; value: DateRange }[] = [
   { label: "All", value: "ALL" },
 ];
 
-function ChartCard({ title, children, subtitle }: { title: string; children: React.ReactNode; subtitle?: string }) {
+function ChartCard({
+  title,
+  children,
+  subtitle,
+  notice,
+}: {
+  title: string;
+  children: React.ReactNode;
+  subtitle?: string;
+  notice?: string;
+}) {
   return (
     <section className="p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]">
       <h2 className="text-[1.6rem] font-bold text-slate-900 dark:text-white tracking-tight mb-1">
@@ -25,6 +35,14 @@ function ChartCard({ title, children, subtitle }: { title: string; children: Rea
       </h2>
       {subtitle && <p className="text-[1.15rem] text-slate-400 mb-6">{subtitle}</p>}
       {!subtitle && <div className="mb-6" />}
+      {notice && (
+        <p
+          role="status"
+          className="text-[1.15rem] text-amber-600 dark:text-amber-400 -mt-4 mb-6"
+        >
+          {notice}
+        </p>
+      )}
       {children}
     </section>
   );
@@ -54,6 +72,7 @@ export default function OverviewPage() {
   const currencies = useAppStore((s) => s.currencies);
   const statistics = useAppStore((s) => s.statistics);
   const isPriceFeedOk = useAppStore((s) => s.isPriceFeedOk);
+  const unpricedSymbols = useAppStore((s) => s.unpricedSymbols);
   const [dateRange, setDateRange] = useState<DateRange>("ALL");
 
   const portfolioData = currencies
@@ -231,8 +250,25 @@ export default function OverviewPage() {
       </div>
 
       {filteredHistoric.length > 0 && (
-        <ChartCard title="Historic Portfolio Value" subtitle="Daily close prices via CryptoCompare">
+        <ChartCard
+          title="Historic Portfolio Value"
+          subtitle="Daily close prices via DefiLlama"
+          notice={
+            unpricedSymbols.length > 0
+              ? `No historic price data for ${unpricedSymbols.join(", ")} — days holding these assets are omitted rather than undervalued.`
+              : undefined
+          }
+        >
           <HistoricChart data={filteredHistoric} />
+        </ChartCard>
+      )}
+
+      {filteredHistoric.length === 0 && unpricedSymbols.length > 0 && (
+        <ChartCard
+          title="Historic Portfolio Value"
+          notice={`Historic price data is unavailable for ${unpricedSymbols.join(", ")}, so no portfolio history can be shown.`}
+        >
+          <div className="h-[300px]" />
         </ChartCard>
       )}
 
