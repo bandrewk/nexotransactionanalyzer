@@ -96,6 +96,19 @@ No external services required. Currency metadata is bundled locally in `src/data
 - **Date Filter** — range filtering logic
 - **E2E** — full demo flow, navigation, search, pagination, dark mode, save/restore
 
+### End-to-end tests
+
+```bash
+npx playwright install chromium   # one-time browser download
+npm run test:e2e
+```
+
+If you'd rather use a Chrome you already have installed, point Playwright at it:
+
+```bash
+PLAYWRIGHT_CHROME_PATH=/usr/bin/google-chrome-stable npm run test:e2e
+```
+
 ## CI/CD
 
 The project uses three chained GitHub Actions workflows:

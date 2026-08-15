@@ -20,7 +20,7 @@ export default function Footer() {
 
         {/* Data sources */}
         <p className="text-[1.15rem] text-slate-400 max-w-[48rem] mx-auto">
-          Market data provided by CoinGecko, CryptoCompare, and Frankfurter.
+          Market data provided by CoinGecko, DefiLlama, and Frankfurter.
         </p>
 
         {/* License */}

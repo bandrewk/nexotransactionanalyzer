@@ -1,3 +1,9 @@
+# NOTE: `target-branch` applies to *version* updates only.
+# Dependabot SECURITY updates ignore it and always open against the repository's
+# default branch (currently `main`), which bypasses the development -> main flow.
+# Either retarget those PRs to `development` by hand, or make `development` the
+# default branch if you want everything funnelled through it.
+# Upstream behaviour, not a misconfiguration here.
 version: 2
 updates:
   - package-ecosystem: "npm"

@@ -182,7 +182,56 @@ describe("calculateBalances", () => {
   });
 
   it("total interest earned is positive", () => {
-    const totalInterest = result.interestData.reduce((sum, d) => sum + d.value, 0);
-    expect(totalInterest).toBeGreaterThan(0);
+    const total = result.interestData.reduce((sum, d) => sum + d.regular + d.fixedTerm, 0);
+    expect(total).toBeGreaterThan(0);
+  });
+});
+
+describe("interest is split by payout kind", () => {
+  const HEADER =
+    "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount," +
+    "USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)";
+
+  const row = (id: string, type: string, usd: string, date: string) =>
+    `${id},${type},BTC,1.00000000,BTC,1.00000000,${usd},-,-,"approved / synthetic",${date}`;
+
+  it("routes regular interest to `regular` and term payouts to `fixedTerm`", () => {
+    const csv =
+      `${HEADER}\n` +
+      `${row("NXT0000001", "Interest", "$5.00", "2024-01-01 00:00:00")}\n` +
+      `${row("NXT0000002", "Fixed Term Interest", "$400.00", "2024-01-01 00:00:00")}\n`;
+    const result = calculateBalances(parseCSV(csv));
+
+    expect(result.interestData).toHaveLength(1);
+    expect(result.interestData[0]).toEqual({
+      date: "2024-01-01",
+      regular: 5,
+      fixedTerm: 400,
+    });
+  });
+
+  it("emits a bucket for a date that has only one of the two kinds", () => {
+    const csv =
+      `${HEADER}\n` +
+      `${row("NXT0000001", "Interest", "$5.00", "2024-01-01 00:00:00")}\n` +
+      `${row("NXT0000002", "Fixed Term Interest", "$400.00", "2024-02-01 00:00:00")}\n`;
+    const result = calculateBalances(parseCSV(csv));
+
+    expect(result.interestData).toEqual([
+      { date: "2024-01-01", regular: 5, fixedTerm: 0 },
+      { date: "2024-02-01", regular: 0, fixedTerm: 400 },
+    ]);
+  });
+
+  it("still counts both kinds in the per-currency breakdown", () => {
+    const csv =
+      `${HEADER}\n` +
+      `${row("NXT0000001", "Interest", "$5.00", "2024-01-01 00:00:00")}\n` +
+      `${row("NXT0000002", "Fixed Term Interest", "$400.00", "2024-01-01 00:00:00")}\n`;
+    const result = calculateBalances(parseCSV(csv));
+
+    const btc = result.earnedInterestBreakdown.find((b) => b.currency === "BTC");
+    expect(btc).toBeDefined();
+    expect(btc!.inKindUsd).toBe(405);
   });
 });

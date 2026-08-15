@@ -10,6 +10,11 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
+    // Fall back to a system Chrome when Playwright's own browser isn't downloaded.
+    // CI always runs `playwright install`, so this only affects local runs.
+    ...(process.env.PLAYWRIGHT_CHROME_PATH
+      ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROME_PATH } }
+      : {}),
   },
   webServer: {
     command: "npm run preview",
