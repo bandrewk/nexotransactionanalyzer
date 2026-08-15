@@ -3,7 +3,7 @@ import type { Transaction } from "../types";
 const STORAGE_KEY = "nexo-ta-transactions";
 const VERSION_KEY = "nexo-ta-version";
 const SAVED_KEY = "nexo-ta-saved";
-export const APP_VERSION = "4.0.0";
+export const APP_VERSION = __APP_VERSION__;
 
 export function saveTransactions(transactions: Transaction[]): void {
   try {

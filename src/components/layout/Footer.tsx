@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="max-w-[64rem] mx-auto space-y-8 text-center">
         {/* Links row */}
         <div className="flex flex-wrap items-center justify-center gap-6 text-[1.2rem]">
-          <span className="text-slate-400">Version 4.1</span>
+          <span className="text-slate-400">Version {__APP_VERSION__}</span>
           <span className="text-slate-300 dark:text-slate-600">&middot;</span>
           <span className="text-slate-400">&copy; 2021&ndash;2026 bandrewk</span>
           <span className="text-slate-300 dark:text-slate-600">&middot;</span>
