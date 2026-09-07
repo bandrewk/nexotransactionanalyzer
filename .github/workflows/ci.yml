@@ -17,6 +17,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # Keeps machine-local absolute paths (and the usernames in them) out of
+      # a public repo. See scripts/check-no-local-paths.sh.
+      - run: npm run lint:paths
 
   typecheck:
     runs-on: ubuntu-latest
