@@ -1,21 +1,36 @@
 import { useState, useMemo } from "react";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
+  useTable,
+  tableFeatures,
+  rowSortingFeature,
+  globalFilteringFeature,
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  rowPaginationFeature,
+  createSortedRowModel,
+  createFilteredRowModel,
+  createPaginatedRowModel,
   flexRender,
   createColumnHelper,
   type SortingState,
-  type ColumnDef,
 } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, ChevronsUpDown, Search, Filter, X } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import { getExplorerUrl } from "../../lib/tx-linkage";
 import type { Transaction } from "../../types";
 
-const columnHelper = createColumnHelper<Transaction>();
+const features = tableFeatures({
+  rowSortingFeature,
+  globalFilteringFeature,
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  rowPaginationFeature,
+  sortedRowModel: createSortedRowModel(),
+  filteredRowModel: createFilteredRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+});
+
+const columnHelper = createColumnHelper<typeof features, Transaction>();
 
 export default function TransactionsPage() {
   const transactions = useAppStore((s) => s.transactions);
@@ -43,91 +58,87 @@ export default function TransactionsPage() {
     );
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const columns = useMemo<ColumnDef<Transaction, any>[]>(
-    () => [
-      columnHelper.accessor("id", {
-        header: "Id",
-        cell: (info) => <span className="font-mono text-[1.05rem] text-slate-400">{info.getValue()}</span>,
-        enableHiding: true,
-      }),
-      columnHelper.accessor("type", {
-        header: "Type",
-        cell: (info) => {
-          const v = info.getValue();
-          return (
-            <span className="inline-flex px-2.5 py-0.5 rounded-md text-[1.1rem] font-medium
-              bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-300">
-              {v}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor("inputCurrency", { header: "Input" }),
-      columnHelper.accessor("inputAmount", {
-        header: "Input Amt",
-        cell: (info) => <span className="tabular-nums">{info.getValue().toFixed(8)}</span>,
-      }),
-      columnHelper.accessor("outputCurrency", { header: "Output" }),
-      columnHelper.accessor("outputAmount", {
-        header: "Output Amt",
-        cell: (info) => <span className="tabular-nums">{info.getValue().toFixed(8)}</span>,
-      }),
-      columnHelper.accessor("usdEquivalent", {
-        header: "USD",
-        cell: (info) => (
-          <span className="tabular-nums font-medium text-slate-700 dark:text-slate-200">
-            ${info.getValue().toFixed(2)}
-          </span>
-        ),
-      }),
-      columnHelper.accessor("details", {
-        header: "Details",
-        cell: (info) => {
-          const row = info.row.original;
-          const cleanDetails = row.details.replace(/^"|"$/g, "");
-          const link = getExplorerUrl(row.type, row.inputCurrency, cleanDetails);
-          if (link) {
+  const columns = useMemo(
+    () =>
+      columnHelper.columns([
+        columnHelper.accessor("id", {
+          header: "Id",
+          cell: (info) => <span className="font-mono text-[1.05rem] text-slate-400">{info.getValue()}</span>,
+          enableHiding: true,
+        }),
+        columnHelper.accessor("type", {
+          header: "Type",
+          cell: (info) => {
+            const v = info.getValue();
             return (
-              <span className="break-all text-[1.1rem]">
-                {link.prefix}
-                <a href={link.url} target="_blank" rel="noopener noreferrer"
-                  className="text-accent hover:underline">
-                  {link.txHash.slice(0, 16)}...
-                </a>
+              <span className="inline-flex px-2.5 py-0.5 rounded-md text-[1.1rem] font-medium
+                bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-slate-300">
+                {v}
               </span>
             );
-          }
-          return <span className="break-all text-[1.1rem] text-slate-500">{cleanDetails}</span>;
-        },
-      }),
-      columnHelper.accessor("fee", { header: "Fee", enableHiding: true }),
-      columnHelper.accessor("dateTime", {
-        header: showTime ? "Date / Time" : "Date",
-        cell: (info) => (
-          <span className="tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
-            {showTime ? info.getValue() : info.getValue().slice(0, 10)}
-          </span>
-        ),
-      }),
-    ],
+          },
+        }),
+        columnHelper.accessor("inputCurrency", { header: "Input" }),
+        columnHelper.accessor("inputAmount", {
+          header: "Input Amt",
+          cell: (info) => <span className="tabular-nums">{info.getValue().toFixed(8)}</span>,
+        }),
+        columnHelper.accessor("outputCurrency", { header: "Output" }),
+        columnHelper.accessor("outputAmount", {
+          header: "Output Amt",
+          cell: (info) => <span className="tabular-nums">{info.getValue().toFixed(8)}</span>,
+        }),
+        columnHelper.accessor("usdEquivalent", {
+          header: "USD",
+          cell: (info) => (
+            <span className="tabular-nums font-medium text-slate-700 dark:text-slate-200">
+              ${info.getValue().toFixed(2)}
+            </span>
+          ),
+        }),
+        columnHelper.accessor("details", {
+          header: "Details",
+          cell: (info) => {
+            const row = info.row.original;
+            const cleanDetails = row.details.replace(/^"|"$/g, "");
+            const link = getExplorerUrl(row.type, row.inputCurrency, cleanDetails);
+            if (link) {
+              return (
+                <span className="break-all text-[1.1rem]">
+                  {link.prefix}
+                  <a href={link.url} target="_blank" rel="noopener noreferrer"
+                    className="text-accent hover:underline">
+                    {link.txHash.slice(0, 16)}...
+                  </a>
+                </span>
+              );
+            }
+            return <span className="break-all text-[1.1rem] text-slate-500">{cleanDetails}</span>;
+          },
+        }),
+        columnHelper.accessor("fee", { header: "Fee", enableHiding: true }),
+        columnHelper.accessor("dateTime", {
+          header: showTime ? "Date / Time" : "Date",
+          cell: (info) => (
+            <span className="tabular-nums text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              {showTime ? info.getValue() : info.getValue().slice(0, 10)}
+            </span>
+          ),
+        }),
+      ]),
     [showTime]
   );
 
   const columnVisibility = useMemo(() => ({ id: showId, fee: showFee }), [showId, showFee]);
 
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const table = useReactTable({
+  const table = useTable({
     data: filteredTransactions,
     columns,
+    features,
     state: { sorting, globalFilter, columnVisibility },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 50 } },
+    initialState: { pagination: { pageIndex: 0, pageSize: 50 } },
   });
 
   return (
@@ -277,7 +288,7 @@ export default function TransactionsPage() {
       {/* Pagination */}
       <div className="flex items-center justify-between text-[1.25rem] text-slate-500 dark:text-slate-400">
         <span className="tabular-nums">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} &middot; {filteredTransactions.length} rows
+          Page {table.state.pagination.pageIndex + 1} of {table.getPageCount()} &middot; {filteredTransactions.length} rows
           {selectedTypes.length > 0 && ` (filtered from ${transactions.length})`}
         </span>
         <div className="flex gap-1">

@@ -4,6 +4,7 @@ import { useAppStore } from "../../stores/app-store";
 import { formatUSD, formatPercent } from "../../lib/format";
 import { computePortfolioTotal } from "../../lib/portfolio";
 import { computeWeekPerformance } from "../../lib/performance";
+import { getExportCoverage } from "../../lib/export-coverage";
 import NewsFeed from "./NewsFeed";
 
 export default function HomePage() {
@@ -15,6 +16,13 @@ export default function HomePage() {
   const { totalValue, excludedSymbols } = computePortfolioTotal(currencies);
 
   const totalTransactions = transactions.length;
+
+  // Every balance here is a running sum over the whole file. A date-bounded
+  // export breaks that assumption invisibly, so state the span outright.
+  const coverage = useMemo(
+    () => getExportCoverage(transactions, new Date().toISOString().substring(0, 10)),
+    [transactions]
+  );
   const uniqueCurrencies = new Set(currencies.filter((c) => Math.abs(c.amount) >= 0.001).map((c) => c.symbol)).size;
 
   // 1W performance from historic portfolio data. Null whenever the series
@@ -106,6 +114,18 @@ export default function HomePage() {
           <p className="text-[2.4rem] font-bold tracking-tight text-slate-900 dark:text-white">
             {totalTransactions.toLocaleString()}
           </p>
+          {coverage && (
+            <p className="text-[1.1rem] text-slate-500 dark:text-slate-400 mt-2 tabular-nums">
+              {coverage.firstDate} to {coverage.lastDate}
+            </p>
+          )}
+          {coverage?.isStale && (
+            <p role="status" className="text-[1.1rem] text-amber-600 dark:text-amber-400 mt-1">
+              Newest transaction is {coverage.staleDays.toLocaleString()} days old. If your
+              export was limited to a date range, balances are correct as of {coverage.lastDate}
+              {" "}— not today.
+            </p>
+          )}
         </div>
 
         {/* Assets */}

@@ -17,6 +17,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # Keeps machine-local absolute paths (and the usernames in them) out of
+      # a public repo. See scripts/check-no-local-paths.sh.
+      - run: npm run lint:paths
 
   typecheck:
     runs-on: ubuntu-latest
@@ -75,5 +78,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
+      # `test:e2e` builds first -- Playwright serves dist/ via `vite preview`,
+      # so a stale build silently tests the previous revision.
       - run: npm run test:e2e

@@ -88,9 +88,30 @@ test.describe("Transactions page", () => {
 
   test("pagination controls work", async ({ page }) => {
     await expect(page.locator("text=Page 1 of")).toBeVisible();
-    const nextBtn = page.locator("button").filter({ has: page.locator("svg") }).last();
+    // Last button in the pagination row; scoped so unrelated icon buttons
+    // elsewhere on the page cannot claim the selector.
+    const nextBtn = page.locator("button:has(svg)").last();
     await nextBtn.click();
     await expect(page.locator("text=Page 2 of")).toBeVisible();
+  });
+
+  // Sorting is the one table feature with no coverage, which made it the one
+  // place a react-table regression could pass CI unnoticed. The demo data is
+  // generated newest-first, so a single click on Date must surface a strictly
+  // older first row, and a second click must restore the newest.
+  test("sorting by date reorders rows", async ({ page }) => {
+    const firstDateCell = page.locator("tbody tr").first().locator("td").last();
+    const initial = (await firstDateCell.innerText()).trim();
+
+    const dateHeader = page.locator("th:has-text('Date')");
+    await dateHeader.click();
+    await expect(firstDateCell).not.toHaveText(initial);
+    const ascending = (await firstDateCell.innerText()).trim();
+    expect(ascending < initial).toBe(true);
+
+    await dateHeader.click();
+    await expect(firstDateCell).not.toHaveText(ascending);
+    expect((await firstDateCell.innerText()).trim() >= initial).toBe(true);
   });
 
   test("column toggle shows Transaction ID", async ({ page }) => {

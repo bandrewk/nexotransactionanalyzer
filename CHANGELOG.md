@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.3.0] - 2026-09-07
+
+### Added
+- The dashboard now states the date range an export actually covers, under the transaction count, and says so plainly when the newest row is more than 30 days old. Every balance in the app is a running sum over the whole CSV, which assumes the file begins at account opening and ends today. A date-bounded export breaks that assumption without breaking anything visible: balances come out correct as of the cut-off and are then priced at today's prices, so assets sold after the cut-off still read as holdings and the total reads high. Nothing in the numbers gives it away, which is why the covered span has to be stated outright. (#84, #89)
+
+### Fixed
+- The demo's "1W Change" tile had quietly degraded to `--` for every visitor who clicked Try Demo, and would have kept getting worse. `generate_demo.py` had its window hardcoded to 2025-03 .. 2026-03, so the fixture's newest row had drifted 165 days old — well past the three-day freshness `computeWeekPerformance` requires before it will report a week-over-week figure. Dates are now anchored to the generation date and every row shifted by one constant, so the fixture always ends on the day it was built. The seed is unchanged, so the data is identical and the row count is still 3,421. (#89)
+
+### Changed
+- `@tanstack/react-table` 8.21.3 → 9.2.4, a breaking major. v9 makes features opt-in rather than bundled: the four `get*RowModel` options are gone and the row-model factories move into a static `tableFeatures({...})` object alongside the feature modules, `useReactTable` is renamed `useTable`, and pagination state is read from `table.state` rather than `table.getState()`. Behaviour is unchanged, and the `@tanstack/react-table/legacy` compatibility layer was deliberately not used. Two suppressions became unnecessary and were removed: `@typescript-eslint/no-explicit-any`, since `columnHelper.columns([...])` preserves per-column value types, and `react-hooks/incompatible-library`, which v9 no longer trips. (#87)
+- Six dependency updates: papaparse 5.5.4, react-dom 19.2.8, `@types/react-dom` 19.2.4, `@playwright/test` 1.62.1, `@testing-library/user-event` 14.6.4. Two of these were security advisories that had been sitting unapplied on `development` — browserslist (high, unbounded memory growth and a prototype write via untrusted stats) and `@humanfs/node` (moderate, recursive copy following symlinks out of the source tree). Both had landed on `main` only, because Dependabot security updates ignore `target-branch` by design, so `development` carried them until it was reconciled. `npm audit` now reports 0 vulnerabilities on both branches. (#80, #81, #82, #83, #85, #86)
+- papaparse 5.5.3 → 5.5.4 was checked for silent parser drift rather than trusted: parsing a real 10,520-row export produced byte-identical output across both versions.
+
+### Internal
+- `npm run test:e2e` now runs the build itself. Playwright serves `dist/` through `vite preview`, so `npx playwright test` on its own exercised whatever was last built rather than current source — locally that failed silently and in the worst direction, going green against code that was no longer there. CI was never affected, since it built as a separate step; that step is now removed so `test:e2e` is the single owner. (#88)
+- E2E coverage for table sorting, which had none at any level. The unit suites are pure-logic `src/lib/` tests that never touch the table, and the e2e suite covered rendering, search, pagination and column visibility but not sorting — so a regression in the sorted row model would have passed CI unnoticed, which is exactly the risk the react-table major introduced. Confirmed to fail when sorting is disabled. (#87)
+- `npm run lint:paths` fails the build on machine-local absolute paths. `generate_demo.py` had written to a hardcoded absolute Windows user path since the demo was added, which meant it only ran on one machine and put a local username into a public repository. The path is now derived from the script's own location. (#89)
+- Test suite grew from 152 to 160 tests across 11 suites, and the E2E suite from 17 to 18.
+
 ## [4.2.0] - 2026-08-15
 
 ### Fixed
