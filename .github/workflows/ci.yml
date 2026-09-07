@@ -75,5 +75,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
+      # `test:e2e` builds first -- Playwright serves dist/ via `vite preview`,
+      # so a stale build silently tests the previous revision.
       - run: npm run test:e2e
