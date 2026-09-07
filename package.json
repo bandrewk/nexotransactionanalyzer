@@ -18,7 +18,7 @@
     "@fontsource/inter": "^5.2.5",
     "@tanstack/react-table": "^9.2.4",
     "lucide-react": "^0.525.0",
-    "papaparse": "^5.5.4",
+    "papaparse": "^5.7.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
