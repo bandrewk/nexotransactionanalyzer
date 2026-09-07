@@ -1,3 +1,4 @@
+import os
 import random
 import string
 from datetime import datetime, timedelta
@@ -39,8 +40,12 @@ currencies_interest = {
     "MATIC": (0.1, 1.0, 0.5, 2.0),
 }
 
-start_date = datetime(2025, 3, 1)
-end_date = datetime(2026, 3, 17)
+# Generation window. These are relative to the run date, not fixed calendar
+# dates: a hardcoded window ages, and an aged fixture stops representing a
+# live account. See the anchoring step further down.
+SPAN_DAYS = 381
+end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+start_date = end_date - timedelta(days=SPAN_DAYS)
 
 def amt_for_usd(cur, target_usd):
     """Convert a target USD value to a currency amount using mid-price."""
@@ -100,7 +105,7 @@ for i in range(20):
 
 # --- Daily Interest (1 year, 8 currencies) ---
 interest_currencies = ["BTC", "ETH", "NEXO", "XRP", "LINK", "DOGE", "SOL", "ADA"]
-d = datetime(2025, 3, 1)
+d = start_date
 while d <= end_date:
     for cur in interest_currencies:
         min_amt, max_amt, min_price, max_price = currencies_interest[cur]
@@ -155,7 +160,7 @@ for i in range(3):
 amt = round(random.uniform(5, 50), 8)
 price = random.uniform(0.8, 3.0)
 usd_val = round(amt * price, 2)
-dt = datetime(2025, 8, 15)
+dt = start_date + timedelta(days=167)
 add_row("Dividend", "NEXO", amt, "NEXO", amt, usd_val,
         "approved / Loyalty Dividend", dt.replace(hour=9))
 
@@ -277,11 +282,34 @@ for i in range(3):
     add_row("Liquidation", cur, -amt, cur, amt, round(target, 2),
             "approved / Liquidation", dt)
 
+# Anchor the newest row to the day this runs.
+#
+# Several generators offset from `start_date` by more than `SPAN_DAYS`, so the
+# newest row overshoots `end_date` by a week or so. Left alone that puts rows
+# in the future. Shifting every row by one constant fixes the overshoot and
+# guarantees the fixture always ends today, without disturbing the spacing or
+# any seed-determined value.
+#
+# This matters beyond tidiness: the previous fixed window left the newest row
+# 165 days old, which made the dashboard's 1W change render "--" for every
+# demo visitor (computeWeekPerformance rejects a series whose last point is
+# more than 3 days stale) and tripped the stale-export warning.
+DT_FORMAT = "%Y-%m-%d %H:%M:%S"
+newest = max(datetime.strptime(r[10], DT_FORMAT) for r in rows)
+shift = end_date - newest.replace(hour=0, minute=0, second=0, microsecond=0)
+rows = [
+    r[:10] + ((datetime.strptime(r[10], DT_FORMAT) + shift).strftime(DT_FORMAT),) + r[11:]
+    for r in rows
+]
+
 # Sort all rows by date descending
 rows.sort(key=lambda r: r[10], reverse=True)
 
 # Write CSV
-with open("C:/Users/Bryan/Documents/GitHub/nexotransactionanalyzer/nexo_demo_transactions.csv", "w", newline="") as f:
+OUT_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "public", "nexo_demo_transactions.csv"
+)
+with open(OUT_PATH, "w", newline="") as f:
     f.write(header + "\n")
     for r in rows:
         parts = list(r)
@@ -298,6 +326,8 @@ for r in rows:
     c = r[2]
     currs[c] = currs.get(c, 0) + 1
 
+print(f"Wrote {OUT_PATH}")
+print(f"Date range: {rows[-1][10][:10]} to {rows[0][10][:10]}")
 print(f"Total rows: {len(rows)}")
 print(f"\nTransaction types:")
 for t, c in sorted(types.items(), key=lambda x: -x[1]):
