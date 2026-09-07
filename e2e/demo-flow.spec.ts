@@ -68,6 +68,68 @@ test.describe("Demo flow", () => {
   });
 });
 
+// A rejected file used to render "Loaded <filename>" -- a success confirmation --
+// because fileSelected was set before the parse. The real error was captured and
+// then displayed in a branch that could no longer be reached.
+test.describe("Rejecting a file it cannot read", () => {
+  // Synthetic: the shape of a pre-2023 Nexo export, invented values.
+  const LEGACY_CSV = [
+    "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Details,Outstanding Loan,Date / Time",
+    'NXT1,LockingTermDeposit,ETH,-1.00000000,ETH,1.00000000,$1.00,"approved / x",$0.00,2022-01-05 00:00:00',
+  ].join("\n");
+
+  test("explains why, instead of claiming success", async ({ page }) => {
+    await page.goto("/");
+    await page.setInputFiles('input[type="file"]', {
+      name: "old-export.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(LEGACY_CSV),
+    });
+
+    const alert = page.getByRole("alert");
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText("could not be read");
+    await expect(alert).toContainText("Fee");
+    await expect(alert).toContainText("Date / Time (UTC)");
+
+    // The false-success card must not appear, and we must stay put.
+    await expect(page.getByText("Loaded old-export.csv")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("offers a report naming the unrecognised types", async ({ page }) => {
+    await page.goto("/");
+    await page.setInputFiles('input[type="file"]', {
+      name: "old-export.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(LEGACY_CSV),
+    });
+    const alert = page.getByRole("alert");
+    await expect(alert).toContainText("before 2023");
+    // Must not tell a user to fetch a fresh export as though that is certainly
+    // the fix -- the same symptom appears when Nexo changes the format.
+    await expect(alert).toContainText("this app needs updating");
+    await expect(alert.locator("pre")).toContainText("LockingTermDeposit");
+    await expect(alert.getByRole("button", { name: /copy report/i })).toBeVisible();
+  });
+});
+
+test.describe("File Details page", () => {
+  test("reports a clean demo file with no unrecognised types", async ({ page }) => {
+    await page.goto("/");
+    await page.click("text=Try Demo");
+    await page.waitForURL("**/platform/**", { timeout: 10000 });
+    await page.click("a:has-text('File Details')");
+
+    await expect(page.locator("h1:has-text('File Details')")).toBeVisible();
+    await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
+    await expect(page.locator("table")).toContainText("Interest");
+    // Demo data is current-format, so nothing should be flagged.
+    await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
+    await expect(page.locator("pre")).toContainText("Nexo Transaction Analyzer");
+  });
+});
+
 test.describe("Transactions page", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");

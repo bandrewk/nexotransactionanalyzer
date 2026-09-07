@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from "react";
-import { X, Upload, Play } from "lucide-react";
+import { X, Upload, Play, AlertTriangle } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
+import DiagnosticReport from "./DiagnosticReport";
 
 type FileUploadProps = {
   onSuccess: () => void;
@@ -13,10 +14,17 @@ export default function FileUpload({ onSuccess }: FileUploadProps) {
   const [error, setError] = useState<string | null>(null);
 
   const loadCSV = useAppStore((s) => s.loadCSV);
+  const diagnostics = useAppStore((s) => s.diagnostics);
 
+  // `fileSelected` swaps this component for a "Loaded <name>" card, so it must
+  // only be set once the file has actually been accepted. Setting it up front
+  // meant a rejected file showed a success confirmation and the real error --
+  // which was captured correctly -- was rendered in a branch that could no
+  // longer be reached.
   const processContent = (content: string) => {
     try {
       loadCSV(content);
+      setFileSelected(true);
       onSuccess();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to process CSV file.");
@@ -30,8 +38,9 @@ export default function FileUpload({ onSuccess }: FileUploadProps) {
       return;
     }
     setFile(f);
-    setFileSelected(true);
-    f.text().then(processContent);
+    f.text()
+      .then(processContent)
+      .catch(() => setError("Could not read that file. Please try selecting it again."));
   };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,10 +68,7 @@ export default function FileUpload({ onSuccess }: FileUploadProps) {
         if (!res.ok) throw new Error("Failed to load demo file.");
         return res.text();
       })
-      .then((content) => {
-        setFileSelected(true);
-        processContent(content);
-      })
+      .then(processContent)
       .catch((e) => setError(e.message));
   };
 
@@ -70,7 +76,6 @@ export default function FileUpload({ onSuccess }: FileUploadProps) {
     setFile(null);
     setFileSelected(false);
     setDragActive(false);
-    setError(null);
   };
 
   if (fileSelected) {
@@ -117,7 +122,31 @@ export default function FileUpload({ onSuccess }: FileUploadProps) {
           Choose File
         </label>
         {error && (
-          <p className="text-[1.3rem] font-medium text-red-400 mt-4">{error}</p>
+          <div
+            role="alert"
+            className="mt-6 p-5 rounded-xl text-left
+              bg-red-500/5 border border-red-500/20"
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[1.35rem] font-semibold text-red-400">
+                  This file could not be read
+                </p>
+                <p className="text-[1.25rem] text-slate-600 dark:text-slate-300 mt-1 break-words">
+                  {error}
+                </p>
+                {diagnostics && !diagnostics.parseable && (
+                  <p className="text-[1.25rem] text-slate-500 dark:text-slate-400 mt-2">
+                    {diagnostics.looksLikeLegacyExport
+                      ? "The columns and transaction type names in this file match Nexo exports from before 2023. If it is an old file, a fresh export should work. If you just downloaded it, Nexo has changed the format again and this app needs updating — please open an issue with the report below."
+                      : "Either this is not a Nexo transaction export, or Nexo has changed the format and this app has not caught up. If you are sure it is a current export, that is a bug here, not something you did wrong — please open an issue with the report below."}
+                  </p>
+                )}
+              </div>
+            </div>
+            {diagnostics && <DiagnosticReport diagnostics={diagnostics} />}
+          </div>
         )}
       </div>
 

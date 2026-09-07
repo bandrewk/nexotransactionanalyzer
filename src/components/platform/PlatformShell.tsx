@@ -7,6 +7,7 @@ import HomePage from "./HomePage";
 import OverviewPage from "./OverviewPage";
 import CoinlistPage from "./CoinlistPage";
 import TransactionsPage from "./TransactionsPage";
+import FileDetailsPage from "./FileDetailsPage";
 import { useAppStore } from "../../stores/app-store";
 import { usePriceFeed } from "../../hooks/use-price-feed";
 import { useFiatRates } from "../../hooks/use-fiat-rates";
@@ -50,7 +51,8 @@ export default function PlatformShell() {
             <Route path="overview" element={<OverviewPage />} />
             <Route path="coinlist" element={<CoinlistPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
-            <Route path="*" element={<Navigate to="home" replace />} />
+            <Route path="file-details" element={<FileDetailsPage />} />
+          <Route path="*" element={<Navigate to="home" replace />} />
           </Routes>
         </div>
       </main>
