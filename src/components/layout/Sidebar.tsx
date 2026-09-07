@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Home, BarChart3, Coins, List, Save, LogOut, Menu, X } from "lucide-react";
+import { Home, BarChart3, Coins, List, Save, LogOut, Menu, X, FileSearch } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import { hasSavedData } from "../../lib/storage";
 import { useState, useEffect } from "react";
@@ -9,6 +9,7 @@ const navItems = [
   { to: "/platform/overview", icon: BarChart3, label: "Overview" },
   { to: "/platform/coinlist", icon: Coins, label: "Coinlist" },
   { to: "/platform/transactions", icon: List, label: "Transactions" },
+  { to: "/platform/file-details", icon: FileSearch, label: "File Details" },
 ];
 
 export function MobileMenuButton({ onClick }: { onClick: () => void }) {

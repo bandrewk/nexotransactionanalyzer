@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Coins, BarChart3 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAppStore } from "../../stores/app-store";
 import { formatUSD, formatPercent } from "../../lib/format";
 import { computePortfolioTotal } from "../../lib/portfolio";
@@ -12,6 +13,7 @@ export default function HomePage() {
   const transactions = useAppStore((s) => s.transactions);
   const statistics = useAppStore((s) => s.statistics);
   const isPriceFeedOk = useAppStore((s) => s.isPriceFeedOk);
+  const diagnostics = useAppStore((s) => s.diagnostics);
 
   const { totalValue, excludedSymbols } = computePortfolioTotal(currencies);
 
@@ -47,6 +49,32 @@ export default function HomePage() {
           Welcome back. Here&apos;s your portfolio summary.
         </p>
       </div>
+
+      {/* Unrecognised transaction types make every figure below unreliable, so
+          say it here rather than only on the File Details page. */}
+      {diagnostics && diagnostics.unknownTypes.length > 0 && (
+        <div
+          role="status"
+          className="p-5 rounded-2xl bg-amber-500/5 border border-amber-500/20"
+        >
+          <p className="text-[1.3rem] font-semibold text-amber-600 dark:text-amber-400">
+            {diagnostics.unknownRowCount.toLocaleString()}{" "}
+            {diagnostics.unknownRowCount === 1 ? "transaction uses" : "transactions use"}{" "}
+            {diagnostics.unknownTypes.length} type
+            {diagnostics.unknownTypes.length === 1 ? "" : "s"} this app does not recognise
+          </p>
+          <p className="text-[1.2rem] text-slate-600 dark:text-slate-300 mt-1">
+            Any figure involving those rows is unreliable.
+            {diagnostics.looksLikeLegacyExport
+              ? " Those names match Nexo exports from before 2023, so this may be an older file — a fresh export should work. If you just downloaded it, this app is out of date."
+              : " Nexo may have added transaction types since this app was last updated, in which case there is nothing wrong with your file."}{" "}
+            <Link to="/platform/file-details" className="text-accent hover:underline">
+              See File Details
+            </Link>
+            .
+          </p>
+        </div>
+      )}
 
       {/* Quick stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
