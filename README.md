@@ -21,6 +21,7 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Performance metrics: Net Invested, Interest Earned, Unrealized P/L
 - 1-week portfolio change on Dashboard
 - Date range filtering on charts (1M, 3M, 6M, 1Y, All)
+- The date range an export covers is stated outright, and flagged when it stops more than 30 days ago
 
 ### Transaction Management
 - Searchable, sortable, paginated transaction table
@@ -28,6 +29,12 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Blockchain explorer links for 20 chains (BTC, SOL, XRP, ADA, DOT, TRX, etc.)
 - Column visibility toggles (ID, Fee, Time)
 - Support for all 22 Nexo transaction types
+
+### File Details
+- Reports what the app read from your export: column names, row count, date range, and every transaction type with the shape of its rows
+- Names transaction types the app does not recognise, and says so on the Dashboard too, since figures derived from them cannot be trusted
+- Generates a report to paste into a GitHub issue, so a data problem can be looked at without sending your CSV
+- A CSV that cannot be read explains why, naming the missing columns
 
 ### Coinlist
 - Holdings grid with coin icons and USD values
@@ -81,13 +88,15 @@ No external services required. Currency metadata is bundled locally in `src/data
 | `npm run build` | Production build |
 | `npm run preview` | Preview production build |
 | `npm run lint` | ESLint |
+| `npm run lint:paths` | Fails on machine-local absolute paths in tracked files |
 | `npm run typecheck` | TypeScript type checking |
 | `npm run test` | Unit tests (Vitest) |
-| `npm run test:e2e` | E2E tests (Playwright) |
+| `npm run test:watch` | Unit tests in watch mode |
+| `npm run test:e2e` | E2E tests (Playwright); builds first, since Playwright serves `dist/` |
 
 ## Testing
 
-152 tests across 10 unit test suites and 17 E2E scenarios:
+176 tests across 12 unit test suites and 21 E2E scenarios:
 
 - **CSV Parser** — parsing, normalization (EURX→EUR), repayment/liquidation fixes, export schema regression
 - **Balance Calculator** — running balances, interest split by payout kind, deposit/withdrawal tracking, internal transfer skipping
@@ -99,7 +108,9 @@ No external services required. Currency metadata is bundled locally in `src/data
 - **Formatting** — USD, crypto amounts, percentages, edge cases
 - **Storage** — localStorage save/load, version mismatch, corruption handling
 - **Date Filter** — range filtering logic
-- **E2E** — full demo flow, navigation, search, pagination, dark mode, save/restore
+- **Export Coverage** — the span a file covers, and when it is stale enough to warn about
+- **CSV Diagnostics** — schema and type analysis of a file the parser rejects, row-shape derivation, report generation
+- **E2E** — full demo flow, navigation, search, sorting, pagination, column visibility, dark mode, save/restore, rejection of an unreadable file, File Details
 
 ### End-to-end tests
 
@@ -118,13 +129,13 @@ PLAYWRIGHT_CHROME_PATH=/usr/bin/google-chrome-stable npm run test:e2e
 
 The project uses three chained GitHub Actions workflows:
 
-1. **CI** — Lint, typecheck, unit tests (Node 20/22/24 matrix), build, E2E tests
+1. **CI** — Lint, absolute-path check, typecheck, unit tests (Node 20/22/24 matrix), build, E2E tests
 2. **Deploy** — FTP upload to production (triggers after CI passes on main)
 3. **Release** — Creates a GitHub release from `CHANGELOG.md` (triggers after Deploy succeeds)
 
 ## Demo Data
 
-A Python script (`generate_demo.py`) generates realistic sample transaction data for testing. The demo CSV covers ~1 year of transactions across 12+ currencies with all transaction types.
+A Python script (`generate_demo.py`) generates realistic sample transaction data for testing. The demo CSV covers ~1 year of transactions across 12+ currencies with all transaction types. Its dates are anchored to the day it is generated rather than fixed, so the fixture does not age out of the freshness window the Dashboard needs to show a weekly change.
 
 ## Privacy
 

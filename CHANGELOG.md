@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.4.0] - 2026-09-07
+
+### Added
+- A **File Details** page, reachable from the sidebar, reporting what the app actually read from an export: the column names and how many there are, the row count, the date range, and every transaction type with the shape of its rows. It also produces a report that can be pasted into an issue, so nobody has to send their CSV to get a data problem looked at. (#84, #97)
+- The dashboard says so when an export contains transaction types the app does not recognise, naming them and giving the affected row count. Unrecognised types are not skipped by the balance calculation — they fall through to the generic path and are summed as if understood — so a file containing them produces a confident total that is wrong. This does not correct that; it stops it being silent. (#84, #97)
+
+### Fixed
+- A CSV the parser rejects now explains why. It previously displayed "Loaded &lt;filename&gt;" — a success confirmation — and discarded the reason: `fileSelected` was set before the file had been read, so the component rendered the loaded state while the only error renderer sat in a branch that could no longer be reached, and dismissing the card cleared the message before it could ever appear. (#97)
+- `loadCSV` left `isLoading` true forever when parsing threw, and the file read had no error handler at all, which was a genuine silent hang if a file became unreadable between selection and reading. (#97)
+
+### Changed
+- papaparse 5.5.4 → 5.7.0, eslint 10.8.1 → 10.9.1, postcss 8.5.26 → 8.5.28, `@vitejs/plugin-react` 6.0.1 → 6.1.1, `@testing-library/react` 16.3.2 → 16.3.3. (#92, #93, #94, #95, #96)
+- The papaparse minor was checked rather than trusted: its only changes are the removal of the jQuery integration, a `downloadTimeout` option for remote parsing, and date handling in `unparse` — none of which this app uses. Parse output was compared between versions across eleven edge cases, including a comma inside a quoted field (#34), escaped quotes, CRLF, a byte-order mark, a newline inside a quoted field and a header with padding. All identical.
+
+### Internal
+- Old export schemas remain rejected rather than supported. A pre-2023 export uses different transaction type names, but renaming is only the visible half of the change: two types also flipped sign convention, and the free-text `Details` column changed shape. A single sample file cannot establish what else moved in vintages nobody has seen, so no alias map is introduced. `LEGACY_TYPE_NAMES` recognises such a file only in order to explain it, and a test asserts it stays out of the parsing and balance paths.
+- Diagnostic sample rows are published unaltered. Any redaction rule would be inferred from the handful of exports available, and one that misses something is worse than none because the user stops checking. A warning naming what to look for — transaction hashes, merchant names and locations, amounts, transaction IDs — leads the report and is on screen before it can be copied.
+- The app never asserts that an unreadable file is simply old. Nexo removed a column in May 2026 (#39), so the same symptom can mean this app has not caught up rather than the export being stale; both explanations are offered wherever it cannot tell them apart.
+- Test suite grew from 160 to 176 tests across 12 suites, and the E2E suite from 18 to 21.
+
 ## [4.3.0] - 2026-09-07
 
 ### Added

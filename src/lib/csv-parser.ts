@@ -2,7 +2,7 @@ import { parse } from "papaparse";
 import type { Transaction } from "../types";
 import { TransactionType } from "../data/transaction-types";
 
-const REQUIRED_COLUMNS = [
+export const REQUIRED_COLUMNS = [
   "Transaction",
   "Type",
   "Input Currency",

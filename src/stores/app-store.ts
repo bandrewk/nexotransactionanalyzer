@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Transaction, Currency, StatisticsState } from "../types";
 import { parseCSV } from "../lib/csv-parser";
 import { calculateBalances } from "../lib/balance-calculator";
+import { analyseCsv, type CsvDiagnostics } from "../lib/csv-diagnostics";
 import { saveTransactions, loadTransactions, clearSavedData, hasSavedData } from "../lib/storage";
 
 interface AppState {
@@ -14,6 +15,12 @@ interface AppState {
   unpricedSymbols: string[];
   /** Symbols with partial price coverage that forced days to be omitted from the chart. */
   partialCoverageSymbols: string[];
+  /**
+   * What the uploaded file looked like: schema, row shapes, unrecognised
+   * types. Redacted at source, so it is safe to persist and to display.
+   * Null after a restored session, where the raw text is long gone.
+   */
+  diagnostics: CsvDiagnostics | null;
 
   // Platform state
   isLoading: boolean;
@@ -51,6 +58,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   dailySnapshots: new Map(),
   unpricedSymbols: [],
   partialCoverageSymbols: [],
+  diagnostics: null,
   isLoading: false,
   isPriceFeedOk: false,
   isFiatPriceFeedOk: false,
@@ -58,11 +66,26 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   loadCSV: (content: string) => {
     set({ isLoading: true });
-    const transactions = parseCSV(content);
-    const result = calculateBalances(transactions);
+
+    // Diagnostics first: they are the only thing that still works when the
+    // file is rejected, and the caller needs them to explain the rejection.
+    const diagnostics = analyseCsv(content);
+
+    let transactions;
+    let result;
+    try {
+      transactions = parseCSV(content);
+      result = calculateBalances(transactions);
+    } catch (e) {
+      // Without this the store keeps isLoading true forever. Rethrow so the
+      // upload component can show the reason.
+      set({ isLoading: false, diagnostics });
+      throw e;
+    }
 
     set({
       transactions,
+      diagnostics,
       currencies: result.currencies,
       statistics: {
         interestData: result.interestData,
@@ -98,6 +121,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       dailySnapshots: result.dailySnapshots,
       unpricedSymbols: [],
       partialCoverageSymbols: [],
+      // A restored session has no raw CSV to inspect.
+      diagnostics: null,
       isLoading: false,
       hasData: true,
     });
@@ -156,6 +181,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       dailySnapshots: new Map(),
       unpricedSymbols: [],
       partialCoverageSymbols: [],
+      diagnostics: null,
       isLoading: false,
       isPriceFeedOk: false,
       isFiatPriceFeedOk: false,
