@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - `BUSD` was missing from the supported asset list, so a holding in it was excluded from the portfolio total and reported as unpriced. (#84)
 - A row's status is now read once and used everywhere. The Status section and the detail-prefix summary previously classified the same rows differently, disagreeing within a single report. (#84)
 - The "Detail prefixes" summary in the diagnostic report published whatever text preceded the first `/` in `Details`, so a prefix containing an email address or a merchant name was posted verbatim. Prefixes are now matched against the status words Nexo uses, and anything else is counted as `(other)`. The counts were the diagnostic value; the free text was not. (#84)
+- The demo's "1W Change" tile went blank a few days after every release. The fixture is regenerated when the site is deployed, so its newest row is current.
 
 ### Added
 - A rule table covering all 34 recognised transaction types, up from 22. Each type records its effect on holdings, the row shapes it was written against, whether the rule is evidenced or inferred, and an explanation shown on the File Details page. (#84)
