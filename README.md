@@ -28,7 +28,7 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Transaction type dropdown filter
 - Blockchain explorer links for 20 chains (BTC, SOL, XRP, ADA, DOT, TRX, etc.)
 - Column visibility toggles (ID, Fee, Time)
-- Support for all 22 Nexo transaction types
+- Recognition of all 34 Nexo transaction types
 
 ### File Details
 - Reports what the app read from your export: column names, row count, date range, and every transaction type with the shape of its rows
@@ -135,7 +135,7 @@ The project uses three chained GitHub Actions workflows:
 
 ## Demo Data
 
-A Python script (`generate_demo.py`) generates realistic sample transaction data for testing. The demo CSV covers ~1 year of transactions across 12+ currencies with all transaction types. Its dates are anchored to the day it is generated rather than fixed, so the fixture does not age out of the freshness window the Dashboard needs to show a weekly change.
+A Python script (`generate_demo.py`) generates realistic sample transaction data for testing. The demo CSV covers ~1 year of transactions across 12+ currencies, representative of credit-line card activity. Its dates are anchored to the day it is generated rather than fixed, so the fixture does not age out of the freshness window the Dashboard needs to show a weekly change.
 
 ## Privacy
 

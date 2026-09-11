@@ -114,6 +114,34 @@ test.describe("Rejecting a file it cannot read", () => {
   });
 });
 
+test.describe("Credit Line card chain upload", () => {
+  const CARD_CHAIN_CSV = [
+    "Transaction,Type,Credit Line,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)",
+    'NXT1,Credit Card Withdrawal Credit,Card,xUSD,-14.07,xUSD,14.07,$14.07,-,-,"authorized / Nexo Card Loan Withdrawal",2026-08-22 04:08:58',
+    'NXT2,Exchange Credit,Card,xUSD,-14.07,EURX,12.00,$14.07,-,-,"authorized / Nexo Card Loan Withdrawal",2026-08-22 04:08:58',
+    'NXT3,Nexo Card Purchase,Card,xUSD,-14.07,EURX,12.00,$14.07,-,-,"approved / SHOP | DEU",2026-08-22 04:08:58',
+  ].join("\n");
+
+  test("shows no xUSD on Coinlist and no unrecognised-types banner", async ({ page }) => {
+    await page.goto("/");
+    await page.setInputFiles('input[type="file"]', {
+      name: "nexo_card_chain.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(CARD_CHAIN_CSV),
+    });
+    await page.waitForURL("**/platform/**", { timeout: 10000 });
+
+    await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
+    await expect(page.locator("text=/this app does not recognise/i")).toHaveCount(0);
+
+    await page.click("a:has-text('Coinlist')");
+    await expect(page.locator("h1:has-text('Coinlist')")).toBeVisible();
+
+    await expect(page.getByText("xUSD", { exact: true })).toHaveCount(0);
+    await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
+  });
+});
+
 test.describe("File Details page", () => {
   test("reports a clean demo file with no unrecognised types", async ({ page }) => {
     await page.goto("/");
@@ -126,6 +154,7 @@ test.describe("File Details page", () => {
     await expect(page.locator("table")).toContainText("Interest");
     // Demo data is current-format, so nothing should be flagged.
     await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
+    await expect(page.locator("text=/unexpected/i")).toHaveCount(0);
     await expect(page.locator("pre")).toContainText("Nexo Transaction Analyzer");
   });
 });

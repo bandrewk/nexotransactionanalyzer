@@ -49,6 +49,7 @@ const emptyStatistics: StatisticsState = {
   depositAndWithdrawalData: [],
   historicPortfolioData: [],
   earnedInterestBreakdown: [],
+  interestChargedUsd: 0,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -92,6 +93,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         depositAndWithdrawalData: result.depositAndWithdrawalData,
         historicPortfolioData: [],
         earnedInterestBreakdown: result.earnedInterestBreakdown,
+        interestChargedUsd: result.interestChargedUsd,
       },
       dailySnapshots: result.dailySnapshots,
       unpricedSymbols: [],
@@ -117,6 +119,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         depositAndWithdrawalData: result.depositAndWithdrawalData,
         historicPortfolioData: [],
         earnedInterestBreakdown: result.earnedInterestBreakdown,
+        interestChargedUsd: result.interestChargedUsd,
       },
       dailySnapshots: result.dailySnapshots,
       unpricedSymbols: [],

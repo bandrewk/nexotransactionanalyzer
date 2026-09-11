@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.5.0] - 2026-09-11
+
+### Fixed
+- Nexo Card credit-line accounts no longer inflate holdings with phantom EUR and a negative `xUSD` balance. In Credit Mode a card payment is exported as three rows — a credit-line draw (`Credit Card Withdrawal Credit`), a conversion of that borrowed money to fiat to pay the merchant (`Exchange Credit`), and the purchase itself (`Nexo Card Purchase`). Only the third was recognised, and it was already ignored, so the other two were summed as though they moved real assets: the conversion credited EUR the account never held, and the draw accumulated a negative balance in `xUSD`, which is a credit line rather than an asset. Both funding rows are now ignored and the chain nets to no change in holdings. (#84)
+- `Exchange Liquidation`, which repays card debt, was credited instead of debited. Nexo writes the repayment amount positive although it leaves the account — the same inverted convention `Manual Repayment` already had patched — so an asset sold to repay the card increased the balance. (#84)
+- Negative `Interest` rows no longer inflate "Interest Earned". Nexo writes a positive figure in `USD Equivalent` even on rows that debit the account, so charges and reversals were counted as earnings. Interest statistics now count a row only when it credits, and the debited value is shown separately as "Charged / Reversed". **This is not confined to credit-line accounts:** any export containing a negative or zero-amount interest row will show a lower "Interest Earned" after upgrading. Currency balances are unchanged. (#84)
+- Transactions were excluded by matching `pending` or `rejected` anywhere in the free-text `Details` column, case-sensitively. A row whose status was `Rejected` was therefore counted, while an approved row whose text merely mentioned "pending" was dropped. The status is now read as the field's leading token. This also affects accounts with no credit line. (#84)
+- A blank `Transaction` id no longer truncates an account. Parsing stopped at the first row with an empty id while the File Details page went on describing the whole file, so an export with one blank id part-way through produced balances from only the rows before it, with nothing to indicate the rest had been dropped. (#84)
+- `BUSD` was missing from the supported asset list, so a holding in it was excluded from the portfolio total and reported as unpriced. (#84)
+- A row's status is now read once and used everywhere. The Status section and the detail-prefix summary previously classified the same rows differently, disagreeing within a single report. (#84)
+- The "Detail prefixes" summary in the diagnostic report published whatever text preceded the first `/` in `Details`, so a prefix containing an email address or a merchant name was posted verbatim. Prefixes are now matched against the status words Nexo uses, and anything else is counted as `(other)`. The counts were the diagnostic value; the free text was not. (#84)
+- The demo's "1W Change" tile went blank a few days after every release. The fixture is regenerated when the site is deployed, so its newest row is current.
+
+### Added
+- A rule table covering all 34 recognised transaction types, up from 22. Each type records its effect on holdings, the row shapes it was written against, whether the rule is evidenced or inferred, and an explanation shown on the File Details page. (#84)
+- File Details reports rows whose shape or currencies the app has no rule for, including types it otherwise recognises, and samples them. Previously only wholly unrecognised types were surfaced, so a known type behaving unusually was invisible. (#84)
+- A per-type, per-currency contribution table, stating what each transaction type contributes to each balance and what the ignored types would have moved. This is what makes a wrong total traceable to the rows that caused it. (#84)
+- For each row shape the app has no rule for, the report states its date span, currency pairs, and the `Details` text those rows share. Text appearing in only one row is never published, so a minority variant is visible without exposing anything unique to a single transaction. (#84)
+- "Charged / Reversed" on the Overview dashboard, shown beside gross interest when an account has interest charges. (#84)
+
+### Changed
+- The demo fixture moves to the 12-column schema with a `Credit Line` column and includes credit-line card activity, so the shipped example exercises the paths this release fixes (3,421 → 3,466 rows). (#84)
+- Report size is bounded by dropping the least diagnostic sections first and naming what was withheld, rather than truncating the end. Sample rows are never dropped. (#84)
+- The report's closing statement that nothing was altered is withdrawn whenever that stops being true. (#84)
+- The "1W Change" tile states why a week-over-week figure is unavailable — the newest transaction is over three days old, too little history, nothing to compare against a week back, or an empty portfolio then — instead of an unexplained `--`.
+
+### Internal
+- Card purchases are treated as Credit Mode. In Debit Mode they spend held assets instead of drawing a loan, and the two are indistinguishable by row shape; the report now surfaces the `Credit Line` column per type so such an export can be identified. (#84)
+- The export schema varies by account rather than by date — an account without a credit line has 11 columns, one with a credit line has 12. Tests cover both. (#84)
+- `vitest` 4.1.10 → 4.1.11, closing a path-traversal advisory in `@vitest/mocker`. Test tooling only; the shipped bundle is unchanged.
+
 ## [4.4.0] - 2026-09-07
 
 ### Added
@@ -33,7 +64,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - `@tanstack/react-table` 8.21.3 → 9.2.4, a breaking major. v9 makes features opt-in rather than bundled: the four `get*RowModel` options are gone and the row-model factories move into a static `tableFeatures({...})` object alongside the feature modules, `useReactTable` is renamed `useTable`, and pagination state is read from `table.state` rather than `table.getState()`. Behaviour is unchanged, and the `@tanstack/react-table/legacy` compatibility layer was deliberately not used. Two suppressions became unnecessary and were removed: `@typescript-eslint/no-explicit-any`, since `columnHelper.columns([...])` preserves per-column value types, and `react-hooks/incompatible-library`, which v9 no longer trips. (#87)
 - Six dependency updates: papaparse 5.5.4, react-dom 19.2.8, `@types/react-dom` 19.2.4, `@playwright/test` 1.62.1, `@testing-library/user-event` 14.6.4. Two of these were security advisories that had been sitting unapplied on `development` — browserslist (high, unbounded memory growth and a prototype write via untrusted stats) and `@humanfs/node` (moderate, recursive copy following symlinks out of the source tree). Both had landed on `main` only, because Dependabot security updates ignore `target-branch` by design, so `development` carried them until it was reconciled. `npm audit` now reports 0 vulnerabilities on both branches. (#80, #81, #82, #83, #85, #86)
-- papaparse 5.5.3 → 5.5.4 was checked for silent parser drift rather than trusted: parsing a real 10,520-row export produced byte-identical output across both versions.
+- papaparse 5.5.3 → 5.5.4 was checked for silent parser drift rather than trusted: parsing a full export produced byte-identical output across both versions.
 
 ### Internal
 - `npm run test:e2e` now runs the build itself. Playwright serves `dist/` through `vite preview`, so `npx playwright test` on its own exercised whatever was last built rather than current source — locally that failed silently and in the worst direction, going green against code that was no longer there. CI was never affected, since it built as a separate step; that step is now removed so `test:e2e` is the single owner. (#88)
