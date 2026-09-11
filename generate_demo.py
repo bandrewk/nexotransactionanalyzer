@@ -14,8 +14,8 @@ def usd(val):
 
 rows = []
 
-# 12-column header matching the current Nexo export format
-header = "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC),normalizedDisplayDetails"
+# 12-column header matching the current Nexo credit-line export format
+header = "Transaction,Type,Credit Line,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)"
 
 # Representative mid-prices for amount generation (not used by the app — it fetches real prices)
 mid_prices = {
@@ -51,10 +51,11 @@ def amt_for_usd(cur, target_usd):
     """Convert a target USD value to a currency amount using mid-price."""
     return round(target_usd / mid_prices.get(cur, 1.0), 8)
 
-def add_row(tx_type, in_cur, in_amt, out_cur, out_amt, usd_val, details, dt, fee="-", fee_cur="-"):
+def add_row(tx_type, in_cur, in_amt, out_cur, out_amt, usd_val, details, dt, fee="-", fee_cur="-", credit_line=""):
     rows.append((
         gen_tx_id(),
         tx_type,
+        credit_line,
         in_cur,
         f"{in_amt:.8f}",
         out_cur,
@@ -64,7 +65,6 @@ def add_row(tx_type, in_cur, in_amt, out_cur, out_amt, usd_val, details, dt, fee
         fee_cur,
         details,
         dt.strftime("%Y-%m-%d %H:%M:%S"),
-        details,  # normalizedDisplayDetails = same as Details
     ))
 
 # ==========================================
@@ -257,14 +257,27 @@ for i in range(20):
     usd_amt = round(random.uniform(5, 200), 2)
     eur_amt = round(usd_amt / random.uniform(1.05, 1.12), 2)
     dt = start_date + timedelta(days=random.randint(30, 370))
-    add_row("Nexo Card Purchase", "USD", -usd_amt, "EUR", eur_amt, usd_amt,
-            "approved", dt)
+    # Two extra credit-line legs per purchase (Credit Card Withdrawal Credit + Exchange Credit, same timestamp and amount)
+    add_row("Credit Card Withdrawal Credit", "xUSD", -usd_amt, "xUSD", usd_amt, usd_amt,
+            "authorized / Nexo Card Loan Withdrawal", dt, credit_line="Card")
+    add_row("Exchange Credit", "xUSD", -usd_amt, "EURX", eur_amt, usd_amt,
+            "authorized / Nexo Card Loan Withdrawal", dt, credit_line="Card")
+    add_row("Nexo Card Purchase", "xUSD", -usd_amt, "EURX", eur_amt, usd_amt,
+            f"approved / {merchant}", dt, credit_line="Card")
     cb_pct = random.choice([0.005, 0.01, 0.02])
     cb_usd = round(usd_amt * cb_pct, 2)
     nexo_price = random.uniform(0.8, 1.5)
     cb_nexo = round(cb_usd / nexo_price, 8)
     add_row("Cashback", "NEXO", cb_nexo, "NEXO", cb_nexo, cb_usd,
             f"approved / {merchant}", dt)
+
+# --- Exchange Liquidation repayments ---
+for i in range(5):
+    eur_amt = round(random.uniform(50, 200), 2)
+    usd_val = round(eur_amt * random.uniform(1.05, 1.12), 2)
+    dt = start_date + timedelta(days=random.randint(60, 360))
+    add_row("Exchange Liquidation", "EURX", eur_amt, "xUSD", usd_val, usd_val,
+            "approved / Crypto repayment / Exchange EURX to xUSD", dt, credit_line="Card")
 
 # --- Manual Repayment ---
 for i in range(10):
@@ -295,15 +308,15 @@ for i in range(3):
 # demo visitor (computeWeekPerformance rejects a series whose last point is
 # more than 3 days stale) and tripped the stale-export warning.
 DT_FORMAT = "%Y-%m-%d %H:%M:%S"
-newest = max(datetime.strptime(r[10], DT_FORMAT) for r in rows)
+newest = max(datetime.strptime(r[11], DT_FORMAT) for r in rows)
 shift = end_date - newest.replace(hour=0, minute=0, second=0, microsecond=0)
 rows = [
-    r[:10] + ((datetime.strptime(r[10], DT_FORMAT) + shift).strftime(DT_FORMAT),) + r[11:]
+    r[:11] + ((datetime.strptime(r[11], DT_FORMAT) + shift).strftime(DT_FORMAT),)
     for r in rows
 ]
 
 # Sort all rows by date descending
-rows.sort(key=lambda r: r[10], reverse=True)
+rows.sort(key=lambda r: r[11], reverse=True)
 
 # Write CSV
 OUT_PATH = os.path.join(
@@ -313,8 +326,8 @@ with open(OUT_PATH, "w", newline="") as f:
     f.write(header + "\n")
     for r in rows:
         parts = list(r)
-        # Quote the Details field (index 9) like the real Nexo export
-        parts[9] = '"' + parts[9] + '"'
+        # Quote the Details field (index 10) like the real Nexo export
+        parts[10] = '"' + parts[10] + '"'
         f.write(",".join(str(x) for x in parts) + "\n")
 
 # Stats
@@ -323,11 +336,11 @@ currs = {}
 for r in rows:
     t = r[1]
     types[t] = types.get(t, 0) + 1
-    c = r[2]
+    c = r[3]
     currs[c] = currs.get(c, 0) + 1
 
 print(f"Wrote {OUT_PATH}")
-print(f"Date range: {rows[-1][10][:10]} to {rows[0][10][:10]}")
+print(f"Date range: {rows[-1][11][:10]} to {rows[0][11][:10]}")
 print(f"Total rows: {len(rows)}")
 print(f"\nTransaction types:")
 for t, c in sorted(types.items(), key=lambda x: -x[1]):
