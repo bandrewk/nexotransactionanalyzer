@@ -207,15 +207,34 @@ export default function OverviewPage() {
 
         {/* Interest earned */}
         <div className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]">
-          <div className="flex items-center gap-2 mb-3">
-            <PiggyBank size={14} className="text-emerald-400" />
-            <span className="text-[1.1rem] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-              Interest Earned
-            </span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <PiggyBank size={14} className="text-emerald-400" />
+              <span className="text-[1.1rem] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                Interest Earned
+              </span>
+            </div>
+            {statistics.interestChargedUsd > 0 && (
+              <span className="text-[1rem] text-slate-400 font-medium">
+                Gross
+              </span>
+            )}
           </div>
-          <p className="text-[2.2rem] font-bold tabular-nums tracking-tight text-emerald-400">
-            {formatUSD(totalInterestUsd)}
-          </p>
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="text-[2.2rem] font-bold tabular-nums tracking-tight text-emerald-400">
+              {formatUSD(totalInterestUsd)}
+            </p>
+            {statistics.interestChargedUsd > 0 && (
+              <div className="text-right">
+                <span className="text-[1rem] text-slate-400 uppercase tracking-wide block">
+                  Charged / Reversed
+                </span>
+                <span className="text-[1.4rem] font-semibold tabular-nums text-amber-500">
+                  {formatUSD(statistics.interestChargedUsd)}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="flex gap-6 pt-3 mt-3 border-t border-slate-100 dark:border-white/[0.06]">
             <div>
               <p className="text-[1rem] text-slate-400 uppercase tracking-wide mb-0.5">Daily Avg</p>

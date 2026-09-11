@@ -5,7 +5,7 @@ import type {
   DepositsWithdrawalsArray,
   EarnedInterestBreakdown,
 } from "../types";
-import { TransactionType, INTERNAL_TRANSFER_TYPES } from "../data/transaction-types";
+import { TransactionType, getTypeRule } from "../data/transaction-types";
 import { currencyData } from "../data/currencies";
 
 export type BalanceResult = {
@@ -14,7 +14,33 @@ export type BalanceResult = {
   depositAndWithdrawalData: DepositsWithdrawalsArray[];
   dailySnapshots: Map<string, Map<string, number>>;
   earnedInterestBreakdown: EarnedInterestBreakdown[];
+  interestChargedUsd: number;
 };
+
+/**
+ * Excluded detail statuses for balance calculation.
+ * Detail status is the text before the first "/", or the entire field if no "/" exists.
+ */
+export const EXCLUDED_DETAIL_STATUSES = new Set<string>(["pending", "rejected"]);
+
+/**
+ * Extracts the status prefix from a Details string:
+ * the text before the first "/", or the whole field when there is no "/".
+ * Trims whitespace and lowercases.
+ */
+export function extractDetailStatus(details: string | undefined | null): string {
+  if (!details) return "";
+  const slashIdx = details.indexOf("/");
+  const rawStatus = slashIdx === -1 ? details : details.slice(0, slashIdx);
+  return rawStatus.trim().toLowerCase();
+}
+
+/**
+ * Checks whether the status in Details is excluded from balance calculation.
+ */
+export function isExcludedDetailStatus(details: string | undefined | null): boolean {
+  return EXCLUDED_DETAIL_STATUSES.has(extractDetailStatus(details));
+}
 
 function isAlmostZero(val: number): boolean {
   return Math.abs(val) < 0.000001;
@@ -46,18 +72,29 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
     }
   };
 
+  // Displayed amounts snap to zero below the dust threshold; the snapshot series does not.
+  const credit = (symbol: string, delta: number) => {
+    ensureCurrency(symbol);
+    const idx = currencyMap.get(symbol)!;
+    currencies[idx].amount += delta;
+    if (isAlmostZero(currencies[idx].amount)) currencies[idx].amount = 0;
+    currencyBalances.set(symbol, (currencyBalances.get(symbol) ?? 0) + delta);
+  };
+
   // Statistics accumulators.
   // Regular and fixed-term interest are kept apart: a term deposit pays its
   // whole accrual on the maturity date, so merging the two makes a single
   // payout dwarf every ordinary day in the chart.
   const regularByDate = new Map<string, number>();
   const fixedTermByDate = new Map<string, number>();
+  const allInterestDates = new Set<string>();
   const depositByDate = new Map<string, number>();
   const withdrawByDate = new Map<string, number>();
   const interestBreakdown = new Map<
     string,
     { inKindAmount: number; inKindUsd: number; inNexoAmount: number; inNexoUsd: number }
   >();
+  let interestChargedUsd = 0;
 
   // Per-currency running balances for historic portfolio
   const currencyBalances = new Map<string, number>();
@@ -69,66 +106,67 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
   );
 
   for (const t of sorted) {
-    if (t.details.includes("pending") || t.details.includes("rejected")) continue;
+    if (isExcludedDetailStatus(t.details)) continue;
 
     const date = t.dateTime.substring(0, 10);
-    const isInternal = INTERNAL_TRANSFER_TYPES.has(t.type);
+    const rule = getTypeRule(t.type);
+    const effect = rule?.effect ?? "generic";
 
-    // Update currency amounts (skip internal transfers)
-    if (!isInternal) {
+    // Update currency amounts based on holding effect
+    if (effect === "generic") {
       const ic = t.inputCurrency;
       const oc = t.outputCurrency;
 
-      ensureCurrency(ic);
-      if (oc && oc !== "-") ensureCurrency(oc);
-
-      const icIdx = currencyMap.get(ic)!;
-
-      if (ic === oc || !oc || oc === "-") {
-        // Single currency transaction
-        currencies[icIdx].amount += t.inputAmount;
-        if (isAlmostZero(currencies[icIdx].amount)) currencies[icIdx].amount = 0;
-      } else {
-        // Exchange between two currencies
-        const ocIdx = currencyMap.get(oc)!;
-        currencies[icIdx].amount += t.inputAmount;
-        currencies[ocIdx].amount += t.outputAmount;
-        if (isAlmostZero(currencies[icIdx].amount)) currencies[icIdx].amount = 0;
-        if (isAlmostZero(currencies[ocIdx].amount)) currencies[ocIdx].amount = 0;
+      credit(ic, t.inputAmount);
+      if (oc && oc !== "-" && oc !== ic) {
+        credit(oc, t.outputAmount);
       }
-
-      // Update running balances for historic portfolio
-      if (ic === oc || !oc || oc === "-") {
-        currencyBalances.set(ic, (currencyBalances.get(ic) ?? 0) + t.inputAmount);
-      } else {
-        currencyBalances.set(ic, (currencyBalances.get(ic) ?? 0) + t.inputAmount);
-        currencyBalances.set(oc, (currencyBalances.get(oc) ?? 0) + t.outputAmount);
-      }
+    } else if (effect === "debit-input") {
+      credit(t.inputCurrency, -Math.abs(t.inputAmount));
     }
 
     // Snapshot balances at end of each date
     dailySnapshots.set(date, new Map(currencyBalances));
 
-    // Interest statistics
+    // A row counts as earned interest only when it credits. In-kind rows carry the
+    // sign on inputAmount, in-NEXO rows on outputAmount. Zero and non-finite amounts
+    // are neither earned nor charged.
     if (t.type === TransactionType.INTEREST || t.type === TransactionType.FIXEDTERMINTEREST) {
-      const target =
-        t.type === TransactionType.FIXEDTERMINTEREST ? fixedTermByDate : regularByDate;
-      target.set(date, (target.get(date) ?? 0) + t.usdEquivalent);
+      allInterestDates.add(date);
 
-      // Interest breakdown: in-kind vs in-NEXO
       const isInNexo = t.outputCurrency === "NEXO" && t.inputCurrency !== "NEXO";
-      const key = t.inputCurrency;
-      const existing = interestBreakdown.get(key) || {
-        inKindAmount: 0, inKindUsd: 0, inNexoAmount: 0, inNexoUsd: 0,
-      };
-      if (isInNexo) {
-        existing.inNexoAmount += Math.abs(t.outputAmount);
-        existing.inNexoUsd += t.usdEquivalent;
-      } else {
-        existing.inKindAmount += Math.abs(t.inputAmount);
-        existing.inKindUsd += t.usdEquivalent;
+      const directionalAmount = isInNexo ? t.outputAmount : t.inputAmount;
+      const isCredit = Number.isFinite(directionalAmount) && directionalAmount > 0;
+      const isCharged = Number.isFinite(directionalAmount) && directionalAmount < 0;
+
+      if (isCredit) {
+        const target =
+          t.type === TransactionType.FIXEDTERMINTEREST ? fixedTermByDate : regularByDate;
+        target.set(date, (target.get(date) ?? 0) + t.usdEquivalent);
+
+        // Interest breakdown: in-kind vs in-NEXO
+        const key = t.inputCurrency;
+        const existing = interestBreakdown.get(key) || {
+          inKindAmount: 0, inKindUsd: 0, inNexoAmount: 0, inNexoUsd: 0,
+        };
+        if (isInNexo) {
+          // A quantity, not a signed value — Math.abs is deliberate.
+          existing.inNexoAmount += Math.abs(t.outputAmount);
+          existing.inNexoUsd += t.usdEquivalent;
+        } else {
+          // A quantity, not a signed value — Math.abs is deliberate.
+          existing.inKindAmount += Math.abs(t.inputAmount);
+          existing.inKindUsd += t.usdEquivalent;
+        }
+        interestBreakdown.set(key, existing);
+      } else if (isCharged) {
+        // Charges and reversals accumulate separately, and additively, so they
+        // cannot pull an existing figure negative.
+        const charged = Math.abs(t.usdEquivalent);
+        if (Number.isFinite(charged)) {
+          interestChargedUsd += charged;
+        }
       }
-      interestBreakdown.set(key, existing);
     }
 
     // Deposits
@@ -150,7 +188,11 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
   }
 
   // Convert maps to sorted arrays
-  const interestDates = new Set([...regularByDate.keys(), ...fixedTermByDate.keys()]);
+  const interestDates = new Set([
+    ...regularByDate.keys(),
+    ...fixedTermByDate.keys(),
+    ...allInterestDates,
+  ]);
   const interestData: InterestPoint[] = [...interestDates]
     .map((date) => ({
       date,
@@ -177,5 +219,6 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
     depositAndWithdrawalData,
     dailySnapshots,
     earnedInterestBreakdown,
+    interestChargedUsd,
   };
 }

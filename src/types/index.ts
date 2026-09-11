@@ -1,6 +1,7 @@
 export type Transaction = {
   id: string;
   type: string;
+  creditLine?: string;
   inputCurrency: string;
   inputAmount: number;
   outputCurrency: string;
@@ -62,4 +63,5 @@ export type StatisticsState = {
   depositAndWithdrawalData: DepositsWithdrawalsArray[];
   historicPortfolioData: DateValueArray[];
   earnedInterestBreakdown: EarnedInterestBreakdown[];
+  interestChargedUsd: number;
 };
