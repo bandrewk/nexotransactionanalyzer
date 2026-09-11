@@ -43,8 +43,8 @@ const DATE_COLUMNS = ["Date / Time (UTC)", "Date / Time"];
 /** Sample rows kept per unrecognised type. */
 export const MAX_SAMPLE_ROWS = 3;
 
-/** Verbatim sample rows kept per unexpected (type, shape). Three is enough to show variation. */
-export const MAX_UNEXPECTED_SHAPE_SAMPLE_ROWS = 3;
+/** Verbatim sample rows kept per unexpected (type, shape). Two is enough to show variation. */
+export const MAX_UNEXPECTED_SHAPE_SAMPLE_ROWS = 2;
 
 /** Absolute cap on sample rows kept for any single type across all shapes. */
 export const MAX_SAMPLE_ROWS_PER_TYPE = 5;
@@ -88,14 +88,6 @@ export const MAX_REPORT_SECTION_ENTRIES = 100;
 export const MAX_DETAIL_PREFIXES = 50;
 
 /**
- * Maximum gross flow breakdown entries shown.
- *
- * Gross flows are sorted by absolute magnitude so the largest cancellations
- * survive, keeping this section bounded to a handful of lines.
- */
-export const MAX_GROSS_FLOW_ENTRIES = 10;
-
-/**
  * Maximum overall size of the formatted diagnostic report in bytes.
  *
  * A backstop against pathological files (thousands of novel types, endless
@@ -123,10 +115,13 @@ export type TypeShape = {
   count: number;
   expected: boolean;
   reason?: string;
+  currencyReason?: boolean;
+  offendingCurrency?: string;
   currencyPairs?: ValueCount[];
   firstDate?: string;
   lastDate?: string;
   recurringDetails?: ValueCount[];
+  otherDetailsCount?: number;
 };
 
 export type CreditLineDiagnostics = {
@@ -271,7 +266,7 @@ export type { CurrencyClass };
  * Classify a currency string for diagnostic validation:
  * - normalise with FIATx rule (EURX -> EUR, GBPX -> GBP, USDX -> USD) BEFORE classifying;
  * - "credit-line" = matches /^x[A-Z]{3}$/ (xUSD observed; xEUR/xGBP plausible);
- * - "known"       = present in currencyData (114 assets);
+ * - "known"       = present in currencyData (115 assets);
  * - "unknown"     = anything else;
  * - treat "" and "-" as absent, not unknown.
  */
@@ -299,7 +294,12 @@ export function checkRowExpectation(
   shape: string,
   rawInputCurrency: string | undefined,
   rawOutputCurrency: string | undefined
-): { expected: boolean; reason?: string } {
+): {
+  expected: boolean;
+  reason?: string;
+  currencyReason?: boolean;
+  offendingCurrency?: string;
+} {
   const rule = getTypeRule(type);
   if (!rule) {
     return { expected: false };
@@ -333,29 +333,44 @@ export function checkRowExpectation(
   }
 
   let reason: string | undefined;
-  if (icUnknown) {
-    reason = `${truncateValue(rawIc, 25)} is not a known asset`;
-  } else if (ocUnknown) {
-    reason = `${truncateValue(rawOc, 25)} is not a known asset`;
-  } else if (inputViolated) {
-    const cur = truncateValue(rawIc, 25);
-    if (icClass === "credit-line") {
-      reason = `input ${cur} is a credit-line unit`;
+  let offendingCurrency: string | undefined;
+
+  if (icUnknown && ocUnknown) {
+    if (rawIc === rawOc) {
+      offendingCurrency = truncateValue(rawIc, 25);
+      reason = `${offendingCurrency} is not a known asset`;
     } else {
-      reason = `input ${cur} is not a credit-line unit`;
+      offendingCurrency = `${truncateValue(rawIc, 15)}->${truncateValue(rawOc, 15)}`;
+      reason = `${offendingCurrency} are not known assets`;
+    }
+  } else if (icUnknown) {
+    offendingCurrency = truncateValue(rawIc, 25);
+    reason = `${offendingCurrency} is not a known asset`;
+  } else if (ocUnknown) {
+    offendingCurrency = truncateValue(rawOc, 25);
+    reason = `${offendingCurrency} is not a known asset`;
+  } else if (inputViolated) {
+    offendingCurrency = truncateValue(rawIc, 25);
+    if (icClass === "credit-line") {
+      reason = `input ${offendingCurrency} is a credit-line unit`;
+    } else {
+      reason = `input ${offendingCurrency} is not a credit-line unit`;
     }
   } else if (outputViolated) {
-    const cur = truncateValue(rawOc, 25);
+    offendingCurrency = truncateValue(rawOc, 25);
     if (ocClass === "credit-line") {
-      reason = `output ${cur} is a credit-line unit`;
+      reason = `output ${offendingCurrency} is a credit-line unit`;
     } else {
-      reason = `output ${cur} is not a credit-line unit`;
+      reason = `output ${offendingCurrency} is not a credit-line unit`;
     }
   } else if (!shapeMatches) {
     reason = undefined;
   }
 
-  return { expected: false, reason };
+  const currencyReason =
+    shapeMatches && (icUnknown || ocUnknown || inputViolated || outputViolated);
+
+  return { expected: false, reason, currencyReason, offendingCurrency };
 }
 
 export function truncateValue(val: string, maxLen = MAX_FIELD_VALUE_LENGTH): string {
@@ -366,16 +381,106 @@ export function truncateValue(val: string, maxLen = MAX_FIELD_VALUE_LENGTH): str
 }
 
 /**
+ * Extracts the canonical status of a row from its Details cell.
+ *
+ * This is the SINGLE definition of "the status of a row" across this module,
+ * used consistently by:
+ * 1. The Status section (status census and counts)
+ * 2. The Detail-prefix extractor
+ * 3. The "none beyond the status" detail remainder handling
+ *
+ * Rules:
+ * - Empty or missing Details produces "(none)" (no status could be read).
+ * - Reads the status as the leading token: before the first "/", or the whole field when no "/".
+ * - If the token is a known status word (case-insensitively), that status is returned.
+ * - Any leading token that is not a known status word is bucketed as "(other)"
+ *   and never published verbatim.
+ */
+export function extractRowStatus(rawDetails: string | undefined | null): string {
+  const rawStatus = extractDetailStatus(rawDetails);
+  if (!rawStatus || rawStatus === "(none)") {
+    return "(none)";
+  }
+  return KNOWN_DETAIL_STATUSES.has(rawStatus) ? rawStatus : "(other)";
+}
+
+export const getRowStatus = extractRowStatus;
+
+/**
  * Strips the leading status word (the part before the first "/") from a Details string
- * and returns the remaining text trimmed, or the full text trimmed if no "/" exists.
+ * and returns the remaining text trimmed. When there is no "/", if the field matches
+ * a known status word (case-insensitively and after trimming), the whole field is the
+ * status and an empty remainder is returned. Otherwise, the field is treated as free
+ * text and returned trimmed.
  */
 export function extractDetailRemainder(rawDetails: string | undefined | null): string {
   if (!rawDetails) return "";
   const trimmed = rawDetails.trim();
-  if (trimmed.includes("/")) {
-    return trimmed.slice(trimmed.indexOf("/") + 1).trim();
+  const slashIdx = trimmed.indexOf("/");
+  if (slashIdx !== -1) {
+    return trimmed.slice(slashIdx + 1).trim();
+  }
+  const status = extractRowStatus(trimmed);
+  if (status !== "(none)" && status !== "(other)") {
+    return "";
   }
   return trimmed;
+}
+
+/**
+ * Formats and disambiguates detail strings for display so that distinct strings whose
+ * prefixes match up to maxLen characters remain distinguishable.
+ * If two distinct strings produce the same standard truncation, we keep enough
+ * of the differing tail so a reader is not told two different strings are the same one.
+ */
+export function formatDetailTexts(
+  details: ValueCount[],
+  maxLen = MAX_DETAIL_TEXT_LENGTH
+): string[] {
+  const values = details.map((d) => d.value);
+  return details.map((d) => {
+    const rawVal = d.value;
+    const standardTrunc = truncateValue(rawVal, maxLen);
+    const hasCollision = values.some(
+      (other) => other !== rawVal && truncateValue(other, maxLen) === standardTrunc
+    );
+
+    if (!hasCollision) {
+      return `"${standardTrunc}" ×${d.count}`;
+    }
+
+    // Disambiguate colliding values by preserving enough of the differing tail
+    const sanitized = rawVal.replace(/[\r\n\t]+/g, " ").trim();
+    let disambiguated = standardTrunc;
+
+    for (let tailLen = 8; tailLen <= 14; tailLen++) {
+      if (sanitized.length > tailLen + 2) {
+        const headLen = maxLen - 1 - tailLen;
+        const candidate = sanitized.slice(0, headLen) + "…" + sanitized.slice(-tailLen);
+        const collidesWithCandidate = values.some((other) => {
+          if (other === rawVal) return false;
+          const otherSan = other.replace(/[\r\n\t]+/g, " ").trim();
+          const otherCand =
+            otherSan.length > tailLen + 2
+              ? otherSan.slice(0, headLen) + "…" + otherSan.slice(-tailLen)
+              : truncateValue(other, maxLen);
+          return otherCand === candidate;
+        });
+        if (!collidesWithCandidate) {
+          disambiguated = candidate;
+          break;
+        }
+      }
+    }
+
+    if (disambiguated === standardTrunc) {
+      const idx = values.indexOf(rawVal) + 1;
+      const head = sanitized.slice(0, Math.max(1, maxLen - 6));
+      disambiguated = `${head}…[#${idx}]`;
+    }
+
+    return `"${disambiguated}" ×${d.count}`;
+  });
 }
 
 export type SampleCandidate = {
@@ -514,6 +619,28 @@ export function shapeOf(row: Record<string, string>): string {
   const oc = fixFiatX((row["Output Currency"] ?? "").trim());
   const same = ic === oc ? "same" : "diff";
   return `in${sign(row["Input Amount"])} out${sign(row["Output Amount"])} ${same}`;
+}
+
+/**
+ * Format a shape's pattern string for display in reports and tables.
+ * When a shape is unexpected for a currency reason rather than a shape reason,
+ * returns the shape followed by the offending currency or pair so it does not
+ * duplicate the expected shape line.
+ */
+export function formatShapePattern(s: TypeShape): string {
+  if (!s.expected && s.currencyReason) {
+    const currencyOrPair =
+      s.offendingCurrency ||
+      (s.currencyPairs && s.currencyPairs.length > 0
+        ? (s.pattern.endsWith("same")
+            ? s.currencyPairs[0].value.split("->")[0]
+            : s.currencyPairs[0].value)
+        : undefined);
+    if (currencyOrPair) {
+      return `${s.pattern} (${currencyOrPair})`;
+    }
+  }
+  return s.pattern;
 }
 
 function isRowEntirelyBlank(row: Record<string, string | undefined>): boolean {
@@ -684,7 +811,12 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
     counts.set(type, (counts.get(type) ?? 0) + 1);
 
     const shape = shapeOf(row);
-    const { expected: isRowExpected, reason: unexpectedReason } = checkRowExpectation(
+    const {
+      expected: isRowExpected,
+      reason: unexpectedReason,
+      currencyReason: isCurrencyReason,
+      offendingCurrency,
+    } = checkRowExpectation(
       type,
       shape,
       row["Input Currency"],
@@ -704,6 +836,8 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         count: 1,
         expected: isRowExpected,
         reason: unexpectedReason,
+        currencyReason: isCurrencyReason,
+        offendingCurrency,
       });
     }
     shapes.set(type, byShape);
@@ -768,7 +902,7 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
           });
         }
         sampleCandidates.set(shapeFullKey, candidates);
-      } else if (candidates.length < MAX_UNEXPECTED_SHAPE_SAMPLE_ROWS) {
+      } else if (candidates.length < Math.max(MAX_SAMPLE_ROWS, MAX_UNEXPECTED_SHAPE_SAMPLE_ROWS)) {
         candidates.push({
           rawRow: rawRow(columns, row),
           curPair,
@@ -783,21 +917,10 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
 
     // Detail prefix and status analysis
     const details = row["Details"] ?? "";
-    const leadingStatus = extractDetailStatus(details) || "(none)";
+    const rowStatus = extractRowStatus(details);
 
-    let prefix = "(none)";
-    if (details.includes("/")) {
-      const rawPrefix = details.split("/", 1)[0].trim().toLowerCase();
-      if (KNOWN_DETAIL_STATUSES.has(rawPrefix)) {
-        prefix = rawPrefix;
-      } else {
-        prefix = "(other)";
-      }
-    }
-    prefixes.set(prefix, (prefixes.get(prefix) ?? 0) + 1);
-
-    const safeStatus = KNOWN_DETAIL_STATUSES.has(leadingStatus) ? leadingStatus : "(other)";
-    statusCounts.set(safeStatus, (statusCounts.get(safeStatus) ?? 0) + 1);
+    prefixes.set(rowStatus, (prefixes.get(rowStatus) ?? 0) + 1);
+    statusCounts.set(rowStatus, (statusCounts.get(rowStatus) ?? 0) + 1);
 
     // Excluded by calculator
     const isExcluded = isExcludedDetailStatus(details);
@@ -806,11 +929,12 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
     }
 
     // Status disagreement check: leading status implies failure but included, or vice versa
+    const rawLeadingStatus = extractDetailStatus(details);
     const isLeadingExcluded =
-      EXCLUDED_DETAIL_STATUSES.has(leadingStatus) ||
-      ["cancelled", "failed", "declined", "reversed"].includes(leadingStatus);
+      EXCLUDED_DETAIL_STATUSES.has(rawLeadingStatus) ||
+      ["cancelled", "failed", "declined", "reversed"].includes(rawLeadingStatus);
     const isLeadingApproved = ["approved", "authorized", "completed", "processed"].includes(
-      leadingStatus
+      rawLeadingStatus
     );
     if ((isLeadingExcluded && !isExcluded) || (isLeadingApproved && isExcluded)) {
       statusDisagreements++;
@@ -933,8 +1057,8 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
       }
     }
 
-    // Net contributions & Gross flows
-    if (!isExcluded) {
+    // Net contributions & Gross flows (calculator excludes blank IDs and excluded statuses)
+    if (txId && !isExcluded) {
       const rule = getTypeRule(type);
       const effect = rule?.effect ?? "generic";
 
@@ -1029,16 +1153,33 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         // Dates
         const dateObj = unexpectedDates.get(shapeFullKey);
 
-        // Recurring details
+        // Recurring details with guarded cardinality:
+        // Ensures no Details text that appears in only one row is published in the summary.
         const detailMap = unexpectedDetails.get(shapeFullKey);
         const recurringDetails: ValueCount[] = [];
-        if (detailMap) {
-          for (const [text, count] of detailMap.entries()) {
-            if (count >= recurringThreshold) {
+        let otherDetailsCount = 0;
+        if (detailMap && detailMap.size > 0) {
+          const distinctCount = detailMap.size;
+          const shapeRowCount = shapeObj.count;
+          const allAppearMoreThanOnce = [...detailMap.values()].every((c) => c > 1);
+
+          if (distinctCount <= 5 && shapeRowCount >= 10 && allAppearMoreThanOnce) {
+            // publish-all
+            for (const [text, count] of detailMap.entries()) {
               recurringDetails.push({ value: text, count });
             }
+            recurringDetails.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+            otherDetailsCount = 0;
+          } else {
+            // fallback to today's frequency rule
+            for (const [text, count] of detailMap.entries()) {
+              if (count >= recurringThreshold) {
+                recurringDetails.push({ value: text, count });
+              }
+            }
+            recurringDetails.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+            otherDetailsCount = distinctCount - recurringDetails.length;
           }
-          recurringDetails.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
         }
 
         finalizedShapes.push({
@@ -1047,6 +1188,7 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
           firstDate: dateObj?.first,
           lastDate: dateObj?.last,
           recurringDetails,
+          otherDetailsCount,
         });
       } else {
         finalizedShapes.push(shapeObj);
@@ -1561,7 +1703,6 @@ export function formatCreditLineSummary(
 type OverflowConfig = {
   includeRoutineCoverage: boolean;
   includeTemporal: boolean;
-  includeGrossFlows: boolean;
   includeRelationships: boolean;
   includeNetContributions: boolean;
   includeSampleRows: boolean;
@@ -1591,20 +1732,32 @@ function buildReport(
   out.push(`- App version: ${appVersion}`);
 
   // Ingestion coverage
-  let ingestLine = `- Ingest: CSV rows=${d.ingestion.csvRows}; parsed=${d.ingestion.parsed}; skipped blank ids=${d.ingestion.skippedBlankIds}`;
-  if (d.ingestion.skippedBlankIds > 0 && d.ingestion.firstSkippedBlankIdRow) {
-    ingestLine += ` (row ${d.ingestion.firstSkippedBlankIdRow.rowOrdinal}, ${d.ingestion.firstSkippedBlankIdRow.column})`;
+  const ingestParts: string[] = [
+    `CSV rows=${d.ingestion.csvRows}`,
+    `parsed=${d.ingestion.parsed}`,
+  ];
+  if (d.ingestion.skippedBlankIds > 0) {
+    let part = `skipped blank ids=${d.ingestion.skippedBlankIds}`;
+    if (d.ingestion.firstSkippedBlankIdRow) {
+      part += ` (row ${d.ingestion.firstSkippedBlankIdRow.rowOrdinal}, ${d.ingestion.firstSkippedBlankIdRow.column})`;
+    }
+    ingestParts.push(part);
   }
-  ingestLine += `; unparseable numbers=${d.ingestion.unparseableNumbers}`;
-  if (d.ingestion.unparseableNumbers > 0 && d.ingestion.firstUnparseableNumberRow) {
-    ingestLine += ` (row ${d.ingestion.firstUnparseableNumberRow.rowOrdinal}, ${d.ingestion.firstUnparseableNumberRow.column})`;
+  if (d.ingestion.unparseableNumbers > 0) {
+    let part = `unparseable numbers=${d.ingestion.unparseableNumbers}`;
+    if (d.ingestion.firstUnparseableNumberRow) {
+      part += ` (row ${d.ingestion.firstUnparseableNumberRow.rowOrdinal}, ${d.ingestion.firstUnparseableNumberRow.column})`;
+    }
+    ingestParts.push(part);
   }
-  ingestLine += `; invalid dates=${d.ingestion.invalidDates}`;
-  if (d.ingestion.invalidDates > 0 && d.ingestion.firstInvalidDateRow) {
-    ingestLine += ` (row ${d.ingestion.firstInvalidDateRow.rowOrdinal}, ${d.ingestion.firstInvalidDateRow.column})`;
+  if (d.ingestion.invalidDates > 0) {
+    let part = `invalid dates=${d.ingestion.invalidDates}`;
+    if (d.ingestion.firstInvalidDateRow) {
+      part += ` (row ${d.ingestion.firstInvalidDateRow.rowOrdinal}, ${d.ingestion.firstInvalidDateRow.column})`;
+    }
+    ingestParts.push(part);
   }
-  ingestLine += ".";
-  out.push(ingestLine);
+  out.push(`- Ingest: ${ingestParts.join("; ")}.`);
 
   if (!d.parseable && d.missingRequiredColumns.length > 0) {
     out.push(`- Missing required columns: ${d.missingRequiredColumns.join(", ")}`);
@@ -1646,7 +1799,11 @@ function buildReport(
       out.push("#### Relationships");
       out.push("");
       for (const m of d.relationships.matches) {
-        let line = `Links: ${m.type1Rows} ${truncateValue(m.type1)} rows share timestamp+amount with ${m.type2Rows} ${truncateValue(m.type2)} (${m.matchedCount} matched, ${m.unmatchedCount} unmatched)`;
+        let matchText = `${m.matchedCount} matched`;
+        if (m.unmatchedCount > 0) {
+          matchText += `, ${m.unmatchedCount} unmatched`;
+        }
+        let line = `Links: ${m.type1Rows} ${truncateValue(m.type1)} rows share timestamp+amount with ${m.type2Rows} ${truncateValue(m.type2)} (${matchText})`;
         if (m.ambiguousGroups > 0) {
           line += `; ${m.ambiguousGroups} group${m.ambiguousGroups === 1 ? "" : "s"} ambiguous.`;
         } else {
@@ -1664,9 +1821,12 @@ function buildReport(
   if (hasFeeException) {
     out.push("#### Fees");
     out.push("");
-    out.push(
-      `Fees: absent=${d.feeCensus.absent}; zero=${d.feeCensus.zero}; nonzero=${d.feeCensus.nonzero}; invalid=${d.feeCensus.invalid}.`
-    );
+    const feeParts: string[] = [];
+    if (d.feeCensus.absent > 0) feeParts.push(`absent=${d.feeCensus.absent}`);
+    if (d.feeCensus.zero > 0) feeParts.push(`zero=${d.feeCensus.zero}`);
+    if (d.feeCensus.nonzero > 0) feeParts.push(`nonzero=${d.feeCensus.nonzero}`);
+    if (d.feeCensus.invalid > 0) feeParts.push(`invalid=${d.feeCensus.invalid}`);
+    out.push(`Fees: ${feeParts.join("; ")}.`);
     for (const [tName, f] of Object.entries(d.feeCensus.byType)) {
       out.push(
         `- ${truncateValue(tName)}: ${f.count} fee${f.count === 1 ? "" : "s"}, total ${formatSigFig(f.total)} ${f.currency} (${f.legMatch}).`
@@ -1681,11 +1841,18 @@ function buildReport(
     out.push("#### Status");
     out.push("");
     const statParts = Object.entries(d.status.counts)
+      .filter(([, v]) => v > 0)
       .map(([k, v]) => `${k}=${v}`)
       .join(", ");
-    let sLine = `Status: ${statParts}; excluded by calculator=${d.status.excludedByCalculator}; disagreements=${d.status.disagreements}`;
-    if (d.status.disagreements > 0 && d.status.disagreementTypes.length > 0) {
-      sLine += ` (affected types: ${d.status.disagreementTypes.map((t) => truncateValue(t)).join(", ")})`;
+    let sLine = `Status: ${statParts}`;
+    if (d.status.excludedByCalculator > 0) {
+      sLine += `; excluded by calculator=${d.status.excludedByCalculator}`;
+    }
+    if (d.status.disagreements > 0) {
+      sLine += `; disagreements=${d.status.disagreements}`;
+      if (d.status.disagreementTypes.length > 0) {
+        sLine += ` (affected types: ${d.status.disagreementTypes.map((t) => truncateValue(t)).join(", ")})`;
+      }
     }
     sLine += ".";
     out.push(sLine);
@@ -1699,14 +1866,25 @@ function buildReport(
   if (hasDuplicateException) {
     out.push("#### Duplicates");
     out.push("");
-    let dLine = `Duplicates: identical full rows=${d.duplicates.identicalFullRows}; repeated ids=${d.duplicates.repeatedIds}`;
-    if (d.duplicates.repeatedIdsConflicting > 0) {
-      dLine += ` (${d.duplicates.repeatedIdsConflicting} conflicting content, types: ${d.duplicates.repeatedIdsConflictingTypes.join(", ")})`;
-    } else if (d.duplicates.repeatedIds > 0) {
-      dLine += ` (same content)`;
+    const dupParts: string[] = [];
+    if (d.duplicates.identicalFullRows > 0) {
+      dupParts.push(`identical full rows=${d.duplicates.identicalFullRows}`);
     }
-    dLine += `; identical ignoring id=${d.duplicates.identicalIgnoringIdRows} in ${d.duplicates.identicalIgnoringIdGroups} groups (not proof).`;
-    out.push(dLine);
+    if (d.duplicates.repeatedIds > 0) {
+      let rStr = `repeated ids=${d.duplicates.repeatedIds}`;
+      if (d.duplicates.repeatedIdsConflicting > 0) {
+        rStr += ` (${d.duplicates.repeatedIdsConflicting} conflicting content, types: ${d.duplicates.repeatedIdsConflictingTypes.join(", ")})`;
+      } else {
+        rStr += ` (same content)`;
+      }
+      dupParts.push(rStr);
+    }
+    if (d.duplicates.identicalIgnoringIdGroups > 0) {
+      dupParts.push(
+        `identical ignoring id=${d.duplicates.identicalIgnoringIdRows} in ${d.duplicates.identicalIgnoringIdGroups} groups (not proof)`
+      );
+    }
+    out.push(dupParts.length > 0 ? `Duplicates: ${dupParts.join("; ")}.` : "Duplicates: none.");
     out.push("");
   }
 
@@ -1776,28 +1954,40 @@ function buildReport(
         }
       }
 
+      let ignoredStr = "";
+      const rule = getTypeRule(typeName);
+      if (rule?.effect === "ignore") {
+        ignoredStr = " — [ignored]";
+      }
+
       let detailsStr = "";
       if (shape.recurringDetails && shape.recurringDetails.length > 0) {
         const displayedDetails = shape.recurringDetails.slice(0, MAX_RECURRING_DETAILS_PER_SHAPE);
-        const detailsText = displayedDetails
-          .map((d) => `"${truncateValue(d.value, MAX_DETAIL_TEXT_LENGTH)}" ×${d.count}`)
-          .join(", ");
+        const detailsFormatted = formatDetailTexts(displayedDetails, MAX_DETAIL_TEXT_LENGTH);
+        const detailsText = detailsFormatted.join(", ");
         const detailsOverflow =
           shape.recurringDetails.length > MAX_RECURRING_DETAILS_PER_SHAPE
             ? `, ... and ${shape.recurringDetails.length - MAX_RECURRING_DETAILS_PER_SHAPE} more`
             : "";
-        detailsStr = ` — details: ${detailsText}${detailsOverflow}`;
+        const tail =
+          shape.otherDetailsCount && shape.otherDetailsCount > 0
+            ? ` (+ ${shape.otherDetailsCount} other unique detail${shape.otherDetailsCount === 1 ? "" : "s"})`
+            : "";
+        detailsStr = ` — details: ${detailsText}${detailsOverflow}${tail}`;
         if (shape.recurringDetails.length > MAX_RECURRING_DETAILS_PER_SHAPE) {
           omissions.push(
             `showing the ${MAX_RECURRING_DETAILS_PER_SHAPE} most frequent detail texts for ${typeName} (${shape.pattern})`
           );
         }
+      } else if (shape.otherDetailsCount && shape.otherDetailsCount > 0) {
+        detailsStr = ` — details: none recurring (${shape.otherDetailsCount} distinct)`;
       } else {
-        detailsStr = " — details: no recurring detail text";
+        detailsStr = " — details: none beyond the status";
       }
 
+      const pattern = formatShapePattern(shape);
       out.push(
-        `- ${truncateValue(typeName)} / ${shape.pattern} ×${shape.count}${infoStr}${pairsStr}${detailsStr}`
+        `- ${truncateValue(typeName)} / ${pattern} ×${shape.count}${infoStr}${pairsStr}${ignoredStr}${detailsStr}`
       );
     }
 
@@ -1864,7 +2054,8 @@ function buildReport(
     const isIgnored = t.handling === "ignored";
     const displayedShapes = t.shapes.slice(0, MAX_SHAPES_PER_TYPE);
     const shapeLines = displayedShapes.map((s) => {
-      const str = `${s.pattern} ×${s.count}`;
+      const pattern = formatShapePattern(s);
+      const str = `${pattern} ×${s.count}`;
       if (s.expected) return str;
       const reasonSuffix = s.reason ? `: ${truncateValue(s.reason, 60)}` : "";
       if (isIgnored) {
@@ -1977,59 +2168,39 @@ function buildReport(
   }
   out.push("");
 
-  // Gross vs net conditional split
-  if (d.grossSplits.length > 0) {
-    if (config.includeGrossFlows) {
-      out.push("#### Gross flow breakdown");
-      out.push("");
-      const sortedSplits = [...d.grossSplits].sort((a, b) => {
-        const magA = Math.abs(a.negSum) + Math.abs(a.posSum);
-        const magB = Math.abs(b.negSum) + Math.abs(b.posSum);
-        if (magB !== magA) return magB - magA;
-        const countDiff = b.negCount + b.posCount - (a.negCount + a.posCount);
-        if (countDiff !== 0) return countDiff;
-        return a.type.localeCompare(b.type) || a.currency.localeCompare(b.currency);
-      });
-      const displayedSplits = sortedSplits.slice(0, MAX_GROSS_FLOW_ENTRIES);
-      for (const g of displayedSplits) {
-        const posStr = g.posCount > 0 ? `/${formatSigFig(g.posSum)}` : "";
-        out.push(
-          `- ${truncateValue(g.type)} ${truncateValue(g.currency)}: negative=${g.negCount}/${formatSigFig(g.negSum)}; zero=${g.zeroCount}; positive=${g.posCount}${posStr}.`
-        );
-      }
-      if (sortedSplits.length > MAX_GROSS_FLOW_ENTRIES) {
-        out.push(
-          `- ... and ${sortedSplits.length - MAX_GROSS_FLOW_ENTRIES} more, omitted`
-        );
-        omissions.push(`showing the ${MAX_GROSS_FLOW_ENTRIES} largest gross flows`);
-      }
-      out.push("");
-    } else {
-      omissions.push("gross flow breakdown (size limit)");
-    }
-  }
-
   // --- 5. Routine coverage summaries ---
   if (config.includeRoutineCoverage) {
     if (!hasFeeException) {
-      out.push(
-        `Fees: absent=${d.feeCensus.absent}; zero=${d.feeCensus.zero}; nonzero=${d.feeCensus.nonzero}; invalid=${d.feeCensus.invalid}.`
-      );
+      if (d.feeCensus.nonzero === 0 && d.feeCensus.zero === 0 && d.feeCensus.invalid === 0) {
+        out.push("Fees: none.");
+      } else {
+        const feeParts: string[] = [];
+        if (d.feeCensus.absent > 0) feeParts.push(`absent=${d.feeCensus.absent}`);
+        if (d.feeCensus.zero > 0) feeParts.push(`zero=${d.feeCensus.zero}`);
+        if (d.feeCensus.nonzero > 0) feeParts.push(`nonzero=${d.feeCensus.nonzero}`);
+        if (d.feeCensus.invalid > 0) feeParts.push(`invalid=${d.feeCensus.invalid}`);
+        out.push(feeParts.length > 0 ? `Fees: ${feeParts.join("; ")}.` : "Fees: none.");
+      }
     }
 
     if (!hasStatusException) {
       const statParts = Object.entries(d.status.counts)
+        .filter(([, v]) => v > 0)
         .map(([k, v]) => `${k}=${v}`)
         .join(", ");
-      out.push(
-        `Status: ${statParts}; excluded by calculator=${d.status.excludedByCalculator}; disagreements=${d.status.disagreements}.`
-      );
+      let sLine = `Status: ${statParts}`;
+      if (d.status.excludedByCalculator > 0) {
+        sLine += `; excluded by calculator=${d.status.excludedByCalculator}`;
+      }
+      if (d.status.disagreements > 0) {
+        sLine += `; disagreements=${d.status.disagreements}`;
+      }
+      sLine += ".";
+      out.push(sLine);
     }
 
     if (!hasDuplicateException) {
-      out.push(
-        `Duplicates: identical full rows=0; repeated ids=0; identical ignoring id=0 in 0 groups (not proof).`
-      );
+      out.push("Duplicates: none.");
     }
 
     if (d.relationships.allRowsShareTimestamp) {
@@ -2045,12 +2216,25 @@ function buildReport(
       out.push(creditLineSummary);
     }
 
-    let usdStr = `USD Equivalent: missing=${d.usdEquivalent.missing}; malformed=${d.usdEquivalent.malformed}`;
-    if (d.usdEquivalent.conspicuousRepetition) {
-      usdStr += `; conspicuous repetition: "${truncateValue(d.usdEquivalent.conspicuousRepetition.value)}" in ${d.usdEquivalent.conspicuousRepetition.count} rows (${d.usdEquivalent.conspicuousRepetition.percentage}%)`;
+    const hasUsdIssues =
+      d.usdEquivalent.missing > 0 ||
+      d.usdEquivalent.malformed > 0 ||
+      d.usdEquivalent.conspicuousRepetition !== undefined;
+    if (hasUsdIssues) {
+      const usdParts: string[] = [];
+      if (d.usdEquivalent.missing > 0) {
+        usdParts.push(`missing=${d.usdEquivalent.missing}`);
+      }
+      if (d.usdEquivalent.malformed > 0) {
+        usdParts.push(`malformed=${d.usdEquivalent.malformed}`);
+      }
+      if (d.usdEquivalent.conspicuousRepetition) {
+        usdParts.push(
+          `conspicuous repetition: "${truncateValue(d.usdEquivalent.conspicuousRepetition.value)}" in ${d.usdEquivalent.conspicuousRepetition.count} rows (${d.usdEquivalent.conspicuousRepetition.percentage}%)`
+        );
+      }
+      out.push(`USD Equivalent: ${usdParts.join("; ")}.`);
     }
-    usdStr += ".";
-    out.push(usdStr);
 
     // Detail prefixes: rendered only when not all rows share one status
     if (d.detailPrefixes.length > 1) {
@@ -2143,15 +2327,13 @@ export function formatDiagnosticReport(d: CsvDiagnostics, appVersion: string): s
   // 2. sample rows for unexpected shapes and unknown types
   // 3. net contributions
   // 4. relationships
-  // 5. gross flows
-  // 6. temporal transitions
-  // 7. routine coverage summaries
+  // 5. temporal transitions
+  // 6. routine coverage summaries
   //
   // Reduction drops least protected first.
   const baseConfig: OverflowConfig = {
     includeRoutineCoverage: true,
     includeTemporal: true,
-    includeGrossFlows: true,
     includeRelationships: true,
     includeNetContributions: true,
     includeSampleRows: true,
@@ -2163,60 +2345,53 @@ export function formatDiagnosticReport(d: CsvDiagnostics, appVersion: string): s
   const stages: OverflowConfig[] = [
     // Stage 0: full allowances
     { ...baseConfig },
-    // Stage 1: drop routine coverage summaries (7)
+    // Stage 1: drop routine coverage summaries (6)
     { ...baseConfig, includeRoutineCoverage: false },
-    // Stage 2: drop temporal transitions (6)
+    // Stage 2: drop temporal transitions (5)
     { ...baseConfig, includeRoutineCoverage: false, includeTemporal: false },
-    // Stage 3: drop gross flows (5)
-    { ...baseConfig, includeRoutineCoverage: false, includeTemporal: false, includeGrossFlows: false },
-    // Stage 4: drop relationships (4)
+    // Stage 3: drop relationships (4)
     {
       ...baseConfig,
       includeRoutineCoverage: false,
       includeTemporal: false,
-      includeGrossFlows: false,
       includeRelationships: false,
     },
-    // Stage 5: cap routine contributions to 10 and secondary samples to 1
+    // Stage 4: cap routine contributions to 10 and secondary samples to 1
     {
       ...baseConfig,
       includeRoutineCoverage: false,
       includeTemporal: false,
-      includeGrossFlows: false,
       includeRelationships: false,
       maxSamplesPerType: 1,
       maxRoutineContribs: 10,
     },
-    // Stage 6: drop net contributions completely (3), cap routine types to 10
+    // Stage 5: drop net contributions completely (3), cap routine types to 10
     {
       ...baseConfig,
       includeRoutineCoverage: false,
       includeTemporal: false,
-      includeGrossFlows: false,
       includeRelationships: false,
       includeNetContributions: false,
       maxSamplesPerType: 1,
       maxRoutineContribs: 0,
       maxRoutineTypes: 10,
     },
-    // Stage 7: drop routine types completely
+    // Stage 6: drop routine types completely
     {
       ...baseConfig,
       includeRoutineCoverage: false,
       includeTemporal: false,
-      includeGrossFlows: false,
       includeRelationships: false,
       includeNetContributions: false,
       maxSamplesPerType: 1,
       maxRoutineContribs: 0,
       maxRoutineTypes: 0,
     },
-    // Stage 8: drop sample rows completely (2)
+    // Stage 7: drop sample rows completely (2)
     {
       ...baseConfig,
       includeRoutineCoverage: false,
       includeTemporal: false,
-      includeGrossFlows: false,
       includeRelationships: false,
       includeNetContributions: false,
       includeSampleRows: false,

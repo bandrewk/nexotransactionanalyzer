@@ -4,6 +4,8 @@ import { resolve } from "path";
 import {
   analyseCsv,
   classifyCurrency,
+  extractDetailRemainder,
+  extractRowStatus,
   formatDiagnosticReport,
   formatSigFig,
   hasValueBearingContent,
@@ -16,7 +18,6 @@ import {
   MAX_CONTRIBUTIONS_PER_TYPE,
   MAX_CREDIT_LINE_VALUES_GLOBAL,
   MAX_CREDIT_LINE_VALUES_PER_TYPE,
-  MAX_GROSS_FLOW_ENTRIES,
   MAX_REPORT_SIZE_BYTES,
   shapeOf,
 } from "./csv-diagnostics";
@@ -27,9 +28,28 @@ import { fixFiatX } from "../data/currencies";
 const CURRENT_HEADER =
   "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)";
 
-const row = (type: string, opts: Partial<{ ic: string; ia: string; oc: string; oa: string; details: string; date: string }> = {}) => {
-  const { ic = "BTC", ia = "1.00000000", oc = "BTC", oa = "1.00000000", details = "approved / BTC Interest Earned", date = "2026-01-15 00:00:00" } = opts;
-  return `NXT1,${type},${ic},${ia},${oc},${oa},$1.00,-,-,"${details}",${date}`;
+const row = (
+  type: string,
+  opts: Partial<{
+    txId: string;
+    ic: string;
+    ia: string;
+    oc: string;
+    oa: string;
+    details: string;
+    date: string;
+  }> = {}
+) => {
+  const {
+    txId = "NXT1",
+    ic = "BTC",
+    ia = "1.00000000",
+    oc = "BTC",
+    oa = "1.00000000",
+    details = "approved / BTC Interest Earned",
+    date = "2026-01-15 00:00:00",
+  } = opts;
+  return `${txId},${type},${ic},${ia},${oc},${oa},$1.00,-,-,"${details}",${date}`;
 };
 
 const csv = (...rows: string[]) => [CURRENT_HEADER, ...rows].join("\n");
@@ -148,19 +168,22 @@ describe("analyseCsv", () => {
         row("Transfer In", { details: "private@example.org / transfer" }),
         row("Exchange", { ia: "-1.00000000", oc: "ETH", details: "Amazon EU SARL / card payment" }),
         row("Interest", { details: "approved / interest payment" }),
-        row("Deposit", { details: "plain note without slash" })
+        row("Deposit", { details: "plain note without slash" }),
+        row("Deposit", { details: "" })
       )
     );
     expect(d.detailPrefixes).toEqual([
-      { prefix: "(other)", count: 2 },
+      { prefix: "(other)", count: 3 },
       { prefix: "approved", count: 1 },
       { prefix: "(none)", count: 1 },
     ]);
     expect(JSON.stringify(d.detailPrefixes)).not.toContain("private@example.org");
     expect(JSON.stringify(d.detailPrefixes)).not.toContain("Amazon");
+    expect(JSON.stringify(d.detailPrefixes)).not.toContain("plain note without slash");
     const report = formatDiagnosticReport(d, "4.5.0");
     expect(report).not.toContain("private@example.org");
     expect(report).not.toContain("Amazon");
+    expect(report).not.toContain("plain note without slash");
   });
 
   it("handles an empty file without throwing", () => {
@@ -178,7 +201,7 @@ describe("formatDiagnosticReport", () => {
       'NXT1,TransferIn,ETH,1.00000000,ETH,1.00000000,$1.00,"approved / x",$0.00,2022-01-05 00:00:00',
     ].join("\n");
     const report = formatDiagnosticReport(analyseCsv(legacy), "4.3.0");
-    expect(report).toContain("Ingest: CSV rows=1; parsed=0;");
+    expect(report).toContain("Ingest: CSV rows=1; parsed=0.");
     expect(report).toContain("Missing required columns: Fee, Fee Currency, Date / Time (UTC)");
     expect(report).toContain("match Nexo exports from before 2023");
     // The claim must stay hedged: an unreadable file can equally mean Nexo
@@ -674,14 +697,9 @@ describe("Report size bounding and section caps", () => {
     const netContribSection = report.split("#### Net contribution breakdown")[1]?.split("####")[0] ?? "";
     expect(netContribSection).not.toContain("more, omitted");
 
-    // The gross flow section is bounded on that same file and names how many lines it omitted
-    expect(report).toContain("#### Gross flow breakdown");
-    expect(d.grossSplits.length).toBeGreaterThan(MAX_GROSS_FLOW_ENTRIES);
-    const expectedOmittedGross = d.grossSplits.length - MAX_GROSS_FLOW_ENTRIES;
-    expect(report).toContain(`... and ${expectedOmittedGross} more, omitted`);
-
-    // The omission footer names the gross flow fixed cap without attributing it to size limit
-    expect(report).toContain(`showing the ${MAX_GROSS_FLOW_ENTRIES} largest gross flows`);
+    // The gross flow breakdown section was deleted; gross splits remain computed on diagnostics
+    expect(report).not.toContain("#### Gross flow breakdown");
+    expect(d.grossSplits.length).toBeGreaterThan(0);
   });
 
   it("bounds a deliberately pathological file genuinely <= backstop while preserving sample rows and unexpected flags and dropping gross flows and temporal transitions first", () => {
@@ -736,11 +754,10 @@ describe("Report size bounding and section caps", () => {
     // Genuinely bounded to <= MAX_REPORT_SIZE_BYTES
     expect(byteLength).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
 
-    // Gross flows and temporal transitions were dropped first to stay within limit
+    // Gross flow breakdown is removed from reports; temporal transitions dropped first to stay within limit
     expect(report).not.toContain("#### Gross flow breakdown");
     expect(report).not.toContain("#### Temporal transitions");
     expect(report).toContain("temporal transitions (size limit)");
-    expect(report).toContain("gross flow breakdown (size limit)");
 
     // Sample rows and unexpected flags SURVIVED
     expect(report).toContain("#### Sample rows");
@@ -894,7 +911,7 @@ describe("currency classification and expectation diagnostics", () => {
 
     const report = formatDiagnosticReport(d, "4.5.0");
     expect(report).toContain(
-      "**in+ out+ same ×1 (unexpected: WBTC2 is not a known asset)**"
+      "**in+ out+ same (WBTC2) ×1 (unexpected: WBTC2 is not a known asset)**"
     );
     expect(report).toContain("#### Sample rows");
     expect(report).toContain("# Interest");
@@ -917,7 +934,7 @@ describe("currency classification and expectation diagnostics", () => {
 
     const report = formatDiagnosticReport(d, "4.5.0");
     expect(report).toContain(
-      "in- out+ diff ×1 (unexpected, no effect on balances: input BTC is not a credit-line unit)"
+      "in- out+ diff (BTC) ×1 (unexpected, no effect on balances: input BTC is not a credit-line unit)"
     );
     expect(report).not.toContain(
       "**in- out+ diff ×1"
@@ -943,7 +960,7 @@ describe("currency classification and expectation diagnostics", () => {
 
     const report = formatDiagnosticReport(d, "4.5.0");
     expect(report).toContain(
-      "**in+ out+ diff ×1 (unexpected: input xUSD is a credit-line unit)**"
+      "**in+ out+ diff (xUSD) ×1 (unexpected: input xUSD is a credit-line unit)**"
     );
     expect(report).toContain("#### Sample rows");
     expect(report).toContain("# Exchange Liquidation");
@@ -1034,7 +1051,7 @@ describe("Section A: Ingestion coverage", () => {
     expect(d.ingestion.firstSkippedBlankIdRow).toEqual({ rowOrdinal: 1, column: "Transaction" });
 
     const report = formatDiagnosticReport(d, "4.5.0");
-    expect(report).toContain("Ingest: CSV rows=2; parsed=1; skipped blank ids=1 (row 1, Transaction); unparseable numbers=0; invalid dates=0.");
+    expect(report).toContain("Ingest: CSV rows=2; parsed=1; skipped blank ids=1 (row 1, Transaction).");
   });
 
   it("records unparseable numbers with row ordinal and column name", () => {
@@ -1126,7 +1143,7 @@ describe("Section C: Fee census", () => {
     expect(d.feeCensus.absent).toBe(2);
     expect(d.feeCensus.nonzero).toBe(0);
     const report = formatDiagnosticReport(d, "4.5.0");
-    expect(report).toContain("Fees: absent=2; zero=0; nonzero=0; invalid=0.");
+    expect(report).toContain("Fees: none.");
   });
 
   it("reports fee totals, currency, and leg matching when fees are present", () => {
@@ -1163,7 +1180,7 @@ describe("Section D: Status vs exclusion and disagreements", () => {
     expect(d.status.counts).toEqual({ approved: 3 });
     expect(d.status.disagreements).toBe(0);
     const report = formatDiagnosticReport(d, "4.5.0");
-    expect(report).toContain("Status: approved=3; excluded by calculator=0; disagreements=0.");
+    expect(report).toContain("Status: approved=3.");
     expect(report).not.toContain("#### Detail prefixes");
   });
 
@@ -1195,7 +1212,7 @@ describe("Section E: Duplicates", () => {
     expect(d.duplicates.repeatedIds).toBe(0);
     expect(d.duplicates.identicalIgnoringIdGroups).toBe(0);
     const report = formatDiagnosticReport(d, "4.5.0");
-    expect(report).toContain("Duplicates: identical full rows=0; repeated ids=0; identical ignoring id=0 in 0 groups (not proof).");
+    expect(report).toContain("Duplicates: none.");
   });
 
   it("detects conflicting repeated IDs and identical ignoring ID rows", () => {
@@ -1263,7 +1280,7 @@ describe("Section F: Temporal transitions", () => {
 });
 
 describe("Section G: Gross vs net flows & USD anomalies", () => {
-  it("reports gross flow breakdown on cancelling flows and negative interest", () => {
+  it("reports gross split diagnostics, omits Gross flow breakdown section, and reports unexpected shapes", () => {
     const d = analyseCsv(
       csv(
         // Cancelling Deposit flow
@@ -1285,10 +1302,9 @@ describe("Section G: Gross vs net flows & USD anomalies", () => {
     expect(interestBtc!.negCount).toBe(1);
 
     const report = formatDiagnosticReport(d, "4.5.0");
-    expect(report).toContain("#### Gross flow breakdown");
-    expect(report).toContain("Deposit ETH: negative=1/");
-    expect(report).toContain("positive=1/");
-    expect(report).toContain("Interest BTC: negative=1/");
+    expect(report).not.toContain("#### Gross flow breakdown");
+    expect(report).toContain("Deposit / in- out- same ×1");
+    expect(report).toContain("Interest / in- out+ same ×1");
   });
 
   it("detects missing, malformed, and conspicuous repetition in USD equivalents", () => {
@@ -1562,7 +1578,7 @@ describe("Deepened unexpected shape evidence", () => {
     expect(shape?.recurringDetails).toEqual([{ value: "USD Interest", count: 15 }]);
   });
 
-  it("does not publish unique-per-row detail texts and reports no recurring detail text", () => {
+  it("ensures no Details text that appears in only one row is published in the summary and reports none recurring with distinct count", () => {
     const hash = "b".repeat(64);
     const rows = [
       row("Interest", { ia: "-1.00000000", details: "approved / Coffee Shop, Berlin" }),
@@ -1578,7 +1594,7 @@ describe("Deepened unexpected shape evidence", () => {
       report.indexOf("#### Unexpected shapes"),
       report.indexOf("#### Sample rows")
     );
-    expect(unexpectedSection).toContain("details: no recurring detail text");
+    expect(unexpectedSection).toContain("details: none recurring (3 distinct)");
     expect(unexpectedSection).not.toContain("Coffee Shop");
     expect(unexpectedSection).not.toContain("Bookstore");
     expect(unexpectedSection).not.toContain(hash);
@@ -1769,4 +1785,681 @@ describe("Deepened unexpected shape evidence", () => {
     expect(report).toContain("recurring detail text");
   });
 });
+
+describe("Unexpected shape evidence improvements & privacy defense (no Details text that appears in only one row is published in the summary)", () => {
+  it("case 1: shape with 2 distinct details across 1,008 rows publishes BOTH, including the 8-row minority", () => {
+    const rows: string[] = [];
+    for (let i = 0; i < 1000; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: "approved / Majority Interest" }));
+    }
+    for (let i = 0; i < 8; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: "approved / Minority Interest" }));
+    }
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(2);
+    expect(shape?.recurringDetails?.map((r) => r.value)).toEqual(["Majority Interest", "Minority Interest"]);
+    expect(shape?.otherDetailsCount).toBe(0);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain('"Majority Interest" ×1000');
+    expect(unexpectedSection).toContain('"Minority Interest" ×8');
+    expect(unexpectedSection).not.toContain("other unique detail");
+  });
+
+  it("case 2: ensures no Details text that appears in only one row is published in the summary (shape with 3 rows and 3 unique details publishes none of them)", () => {
+    const rows = [
+      row("Interest", { ia: "-1.0", details: "approved / merchant-alpha-cafe-1234" }),
+      row("Interest", { ia: "-1.0", details: "approved / merchant-beta-books-5678" }),
+      row("Interest", { ia: "-1.0", details: "approved / merchant-gamma-store-9012" }),
+    ];
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(0);
+    expect(shape?.otherDetailsCount).toBe(3);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("details: none recurring (3 distinct)");
+    expect(unexpectedSection).not.toContain("other unique detail");
+    expect(unexpectedSection).not.toContain("merchant-alpha-cafe-1234");
+    expect(unexpectedSection).not.toContain("merchant-beta-books-5678");
+    expect(unexpectedSection).not.toContain("merchant-gamma-store-9012");
+  });
+
+  it("case 3: ensures no Details text that appears in only one row is published in the summary (60 rows with 60 unique details shows none recurring (60 distinct))", () => {
+    const rows: string[] = [];
+    for (let i = 0; i < 60; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: `approved / unique-merchant-${i}` }));
+    }
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(0);
+    expect(shape?.otherDetailsCount).toBe(60);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("details: none recurring (60 distinct)");
+    expect(unexpectedSection).not.toContain("other unique detail");
+    for (let i = 0; i < 60; i++) {
+      expect(unexpectedSection).not.toContain(`unique-merchant-${i}`);
+    }
+  });
+
+  it("case 4: routine coverage sections suppress '=0' counts; a file genuinely without fees still says so once", () => {
+    const d = analyseCsv(
+      [
+        CURRENT_HEADER,
+        'NXT1,Interest,BTC,1.00000000,BTC,1.00000000,$1.00,-,-,"approved / test",2026-01-15 00:00:00',
+        'NXT2,Deposit,BTC,2.00000000,BTC,2.00000000,$2.00,-,-,"approved / test",2026-01-16 00:00:00',
+      ].join("\n")
+    );
+    const report = formatDiagnosticReport(d, "4.5.0");
+
+    // Ingest: does not print zero counts
+    expect(report).not.toContain("skipped blank ids=0");
+    expect(report).not.toContain("unparseable numbers=0");
+    expect(report).not.toContain("invalid dates=0");
+
+    // Relationships: does not print 0 unmatched
+    expect(report).not.toContain("0 unmatched");
+
+    // Fees: cleanly reports none
+    expect(report).toContain("Fees: none.");
+    expect(report).not.toContain("absent=0");
+    expect(report).not.toContain("zero=0");
+    expect(report).not.toContain("nonzero=0");
+    expect(report).not.toContain("invalid=0");
+
+    // Status: does not print zero counts
+    expect(report).not.toContain("excluded by calculator=0");
+    expect(report).not.toContain("disagreements=0");
+
+    // Duplicates: cleanly reports none
+    expect(report).toContain("Duplicates: none.");
+    expect(report).not.toContain("identical full rows=0");
+    expect(report).not.toContain("repeated ids=0");
+    expect(report).not.toContain("identical ignoring id=0");
+
+    // USD Equivalent: omitted when clean
+    expect(report).not.toContain("USD Equivalent:");
+
+    // Routine coverage: no '=0' substring exists in routine sections
+    expect(report).not.toContain("=0");
+  });
+
+  it("case 5: the demo still yields 0 unknown types and 0 unexpected shapes", () => {
+    const demoCSV = readFileSync(
+      resolve(__dirname, "../../public/nexo_demo_transactions.csv"),
+      "utf-8"
+    );
+    const d = analyseCsv(demoCSV);
+    expect(d.unknownTypes).toHaveLength(0);
+    const unexpectedShapes = d.types.flatMap((t) =>
+      t.shapes.filter((s) => !s.expected).map((s) => ({ type: t.name, ...s }))
+    );
+    expect(unexpectedShapes).toHaveLength(0);
+  });
+
+  it("case 6: a broad credit-line file stays well under the size backstop with no truncation", () => {
+    const fixtureRows = [
+      row("Interest", { ic: "BTC", ia: "0.001", oc: "BTC", oa: "0.001" }),
+      row("Exchange", { ic: "ETH", ia: "-0.5", oc: "USDT", oa: "1500" }),
+      row("Credit Card Withdrawal Credit", { ic: "xUSD", ia: "-14.07", oc: "xUSD", oa: "14.07" }),
+      row("Exchange Credit", { ic: "xUSD", ia: "-14.07", oc: "EURX", oa: "12.00" }),
+      row("Nexo Card Purchase", { ic: "xUSD", ia: "-14.07", oc: "EURX", oa: "12.00" }),
+      row("Nexo Card Transaction Fee", { ic: "xUSD", ia: "-0.35", oc: "xUSD", oa: "0.35" }),
+      row("Exchange Liquidation", { ic: "EURX", ia: "500.00", oc: "xUSD", oa: "577.25" }),
+      row("Deposit To Exchange", { ic: "EUR", ia: "1000", oc: "EURX", oa: "1000" }),
+      row("Withdrawal", { ic: "USDC", ia: "-500", oc: "USDC", oa: "500" }),
+      row("Top up Crypto", { ic: "BNB", ia: "2.0", oc: "BNB", oa: "2.0" }),
+      row("Dividend", { ic: "NEXO", ia: "50", oc: "NEXO", oa: "50" }),
+      row("Manual Sell Order", { ic: "USD", ia: "-100", oc: "USD", oa: "0" }),
+      row("Exchange Collateral", { ic: "NETH", ia: "-0.26450338", oc: "ETH", oa: "0.26450338", details: "approved / collateral swap" }),
+    ];
+    const d = analyseCsv(csv(...fixtureRows));
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const byteLength = new TextEncoder().encode(report).length;
+
+    // Report is well under 100 KB backstop (typically ~3 KB)
+    expect(byteLength).toBeLessThan(10_000);
+    expect(byteLength).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
+
+    // No truncation markers
+    expect(report).not.toContain("Report truncated deterministically");
+    expect(report).not.toContain("(size limit)");
+    expect(report).not.toContain("omitted to keep report within size limit");
+  });
+
+  it("case 7: ignore types show [ignored] on unexpected shape bullets", () => {
+    const rows = [
+      row("Transfer To Advanced", {
+        ic: "NETH",
+        ia: "-0.26450338",
+        oc: "ETH",
+        oa: "0.26450338",
+        details: "approved / collateral swap",
+      }),
+    ];
+    const d = analyseCsv(csv(...rows));
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("- Transfer To Advanced / in- out+ diff ×1");
+    expect(unexpectedSection).toContain("— [ignored]");
+    expect(unexpectedSection).not.toContain("— net:");
+  });
+
+  it("case 8: two distinct Details differing only past 40 chars remain distinguishable", () => {
+    const prefix = "approved / " + "a".repeat(45);
+    const detailA = `${prefix}-branch-alpha`;
+    const detailB = `${prefix}-branch-beta`;
+    const rows: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: detailA }));
+      rows.push(row("Interest", { ia: "-1.0", details: detailB }));
+    }
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape?.recurringDetails).toHaveLength(2);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+
+    // Both distinct details remain distinguishable and do not collide into one label
+    expect(unexpectedSection).toContain("alpha");
+    expect(unexpectedSection).toContain("beta");
+  });
+});
+
+describe("Unexpected shape details: bare status and distinct count improvements", () => {
+  it("extractDetailRemainder strips bare status words case-insensitively and preserves non-status free text", () => {
+    expect(extractDetailRemainder("approved")).toBe("");
+    expect(extractDetailRemainder("Approved")).toBe("");
+    expect(extractDetailRemainder(" approved ")).toBe("");
+    expect(extractDetailRemainder("rejected")).toBe("");
+    expect(extractDetailRemainder("pending")).toBe("");
+    expect(extractDetailRemainder("authorized")).toBe("");
+    expect(extractDetailRemainder("completed")).toBe("");
+    expect(extractDetailRemainder("processed")).toBe("");
+    expect(extractDetailRemainder("approved / Borrow Interest")).toBe("Borrow Interest");
+    expect(extractDetailRemainder("approved / ")).toBe("");
+    expect(extractDetailRemainder(" approved /   ")).toBe("");
+    expect(extractDetailRemainder("KAUFLAND Muenchen")).toBe("KAUFLAND Muenchen");
+    expect(extractDetailRemainder("   KAUFLAND Muenchen   ")).toBe("KAUFLAND Muenchen");
+    expect(extractDetailRemainder("")).toBe("");
+    expect(extractDetailRemainder(null)).toBe("");
+    expect(extractDetailRemainder(undefined)).toBe("");
+  });
+
+  it("Details exactly approved (and Approved, and approved) across 12 rows: no string published, 'none beyond the status' appears", () => {
+    const rows = [
+      ...Array.from({ length: 4 }, () => row("Interest", { ia: "-1.0", details: "approved" })),
+      ...Array.from({ length: 4 }, () => row("Interest", { ia: "-1.0", details: "Approved" })),
+      ...Array.from({ length: 4 }, () => row("Interest", { ia: "-1.0", details: " approved " })),
+    ];
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(0);
+    expect(shape?.otherDetailsCount).toBe(0);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("details: none beyond the status");
+    expect(unexpectedSection).not.toContain('"approved"');
+    expect(unexpectedSection).not.toContain("no recurring detail text");
+  });
+
+  it("Details 'approved / Borrow Interest' across 12 rows: 'Borrow Interest' ×12 still published", () => {
+    const rows = Array.from({ length: 12 }, () =>
+      row("Interest", { ia: "-1.0", details: "approved / Borrow Interest" })
+    );
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toEqual([{ value: "Borrow Interest", count: 12 }]);
+    expect(shape?.otherDetailsCount).toBe(0);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain('details: "Borrow Interest" ×12');
+    expect(unexpectedSection).not.toContain("other unique detail");
+  });
+
+  it("a one-row shape: no dangling (+ 1 other unique detail); distinct count stated instead", () => {
+    const rows = [row("Interest", { ia: "-1.0", details: "approved / merchant-xyz" })];
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(0);
+    expect(shape?.otherDetailsCount).toBe(1);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("details: none recurring (1 distinct)");
+    expect(unexpectedSection).not.toContain("other unique detail");
+    expect(unexpectedSection).not.toContain("merchant-xyz");
+  });
+
+  it("a shape where 2 strings are published and 40 further unique strings exist: the tail still appears, correctly pluralised", () => {
+    const rows: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: "approved / Alpha Staking" }));
+      rows.push(row("Interest", { ia: "-1.0", details: "approved / Beta Staking" }));
+    }
+    for (let i = 0; i < 40; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: `approved / unique-merchant-${i}` }));
+    }
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(2);
+    expect(shape?.otherDetailsCount).toBe(40);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain('details: "Alpha Staking" ×10, "Beta Staking" ×10 (+ 40 other unique details)');
+    for (let i = 0; i < 40; i++) {
+      expect(unexpectedSection).not.toContain(`unique-merchant-${i}`);
+    }
+  });
+
+  it("a shape where 2 strings are published and 1 further unique string exists: tail is singular 'detail'", () => {
+    const rows: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      rows.push(row("Interest", { ia: "-1.0", details: "approved / Alpha Staking" }));
+      rows.push(row("Interest", { ia: "-1.0", details: "approved / Beta Staking" }));
+    }
+    rows.push(row("Interest", { ia: "-1.0", details: "approved / Unique Lone Merchant" }));
+
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(2);
+    expect(shape?.otherDetailsCount).toBe(1);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain('details: "Alpha Staking" ×10, "Beta Staking" ×10 (+ 1 other unique detail)');
+    expect(unexpectedSection).not.toContain("other unique details");
+    expect(unexpectedSection).not.toContain("Unique Lone Merchant");
+  });
+
+  it("free text with no '/' that is not a status word (e.g. KAUFLAND Muenchen) is governed by recurrence guard and not published when unique", () => {
+    const rows = [row("Interest", { ia: "-1.0", details: "KAUFLAND Muenchen" })];
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toHaveLength(0);
+    expect(shape?.otherDetailsCount).toBe(1);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("details: none recurring (1 distinct)");
+    expect(unexpectedSection).not.toContain("KAUFLAND Muenchen");
+    expect(unexpectedSection).not.toContain("other unique detail");
+  });
+
+  it("free text with no '/' that is not a status word IS published when recurring", () => {
+    const rows = [
+      row("Interest", { ia: "-1.0", details: "KAUFLAND Muenchen" }),
+      row("Interest", { ia: "-1.0", details: "KAUFLAND Muenchen" }),
+    ];
+    const d = analyseCsv(csv(...rows));
+    const shape = d.types.find((t) => t.name === "Interest")?.shapes.find((s) => !s.expected);
+    expect(shape).toBeDefined();
+    expect(shape?.recurringDetails).toEqual([{ value: "KAUFLAND Muenchen", count: 2 }]);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain('details: "KAUFLAND Muenchen" ×2');
+  });
+});
+
+describe("Unified row status definition and consistency between Status and Detail prefixes", () => {
+  it("extractRowStatus correctly classifies bare, slashed, free-text, and empty statuses", () => {
+    expect(extractRowStatus("approved")).toBe("approved");
+    expect(extractRowStatus("Approved")).toBe("approved");
+    expect(extractRowStatus("  approved  ")).toBe("approved");
+    expect(extractRowStatus("approved / note")).toBe("approved");
+    expect(extractRowStatus("rejected")).toBe("rejected");
+    expect(extractRowStatus("Rejected")).toBe("rejected");
+    expect(extractRowStatus("rejected / reason")).toBe("rejected");
+    expect(extractRowStatus("pending")).toBe("pending");
+    expect(extractRowStatus("pending / in review")).toBe("pending");
+    expect(extractRowStatus("authorized")).toBe("authorized");
+    expect(extractRowStatus("completed")).toBe("completed");
+    expect(extractRowStatus("processed")).toBe("processed");
+    expect(extractRowStatus("KAUFLAND Muenchen")).toBe("(other)");
+    expect(extractRowStatus("Amazon EU SARL / card payment")).toBe("(other)");
+    expect(extractRowStatus("")).toBe("(none)");
+    expect(extractRowStatus("   ")).toBe("(none)");
+    expect(extractRowStatus(null)).toBe("(none)");
+    expect(extractRowStatus(undefined)).toBe("(none)");
+    expect(extractRowStatus("(none)")).toBe("(none)");
+  });
+
+  it("file mixing approved / x, bare approved, bare Rejected, and pending / y produces ONE consistent tally", () => {
+    const d = analyseCsv(
+      csv(
+        row("Interest", { details: "approved / x" }),
+        row("Interest", { details: "approved" }),
+        row("Interest", { details: "Approved" }),
+        row("Interest", { details: "Rejected" }),
+        row("Interest", { details: "pending / y" })
+      )
+    );
+
+    // Consistent tally in parsed diagnostics
+    expect(d.status.counts).toEqual({
+      approved: 3,
+      rejected: 1,
+      pending: 1,
+    });
+    expect(d.detailPrefixes).toEqual([
+      { prefix: "approved", count: 3 },
+      { prefix: "rejected", count: 1 },
+      { prefix: "pending", count: 1 },
+    ]);
+
+    // Check report output: both sections agree exactly
+    const report = formatDiagnosticReport(d, "4.5.0");
+    expect(report).toContain("Status: approved=3, rejected=1, pending=1; excluded by calculator=2.");
+    const prefixSection = report.split("#### Detail prefixes")[1]?.split("####")[0] ?? "";
+    expect(prefixSection).toContain("approved (3), rejected (1), pending (1)");
+    expect(report).not.toContain("(none)");
+  });
+
+  it("a row whose Details has no slash and is NOT a status word is bucketed as (other) in prefixes and NOT published verbatim anywhere", () => {
+    const d = analyseCsv(
+      csv(
+        row("Interest", { details: "KAUFLAND Muenchen" }),
+        row("Interest", { details: "approved / groceries" })
+      )
+    );
+
+    expect(d.detailPrefixes).toEqual([
+      { prefix: "(other)", count: 1 },
+      { prefix: "approved", count: 1 },
+    ]);
+    expect(d.status.counts).toEqual({
+      "(other)": 1,
+      approved: 1,
+    });
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    // Verbatim string must NEVER be published
+    expect(report).not.toContain("KAUFLAND Muenchen");
+    expect(report).toContain("(other) (1)");
+    expect(report).toContain('detail prefixes that were not recognised status words replaced with "(other)"');
+  });
+
+  it("(none) appears only when a row genuinely has no readable status (e.g. empty Details)", () => {
+    // 1. Without empty details: no (none) bucket in status or prefixes
+    const dWithoutEmpty = analyseCsv(
+      csv(
+        row("Interest", { details: "approved" }),
+        row("Interest", { details: "rejected / note" }),
+        row("Interest", { details: "KAUFLAND Muenchen" })
+      )
+    );
+    expect(dWithoutEmpty.detailPrefixes.some((p) => p.prefix === "(none)")).toBe(false);
+    expect(dWithoutEmpty.status.counts["(none)"]).toBeUndefined();
+
+    // 2. With genuinely unreadable details: (none) appears with exact match
+    const dWithEmpty = analyseCsv(
+      csv(
+        row("Interest", { details: "approved" }),
+        row("Interest", { details: "rejected / note" }),
+        row("Interest", { details: "" }),
+        row("Interest", { details: "   " })
+      )
+    );
+    expect(dWithEmpty.detailPrefixes.find((p) => p.prefix === "(none)")?.count).toBe(2);
+    expect(dWithEmpty.status.counts["(none)"]).toBe(2);
+
+    const report = formatDiagnosticReport(dWithEmpty, "4.5.0");
+    expect(report).toContain("(none)=2");
+    expect(report).toContain("(none) (2)");
+  });
+
+  it("bare status rows do not generate a spurious (none) bucket", () => {
+    // Bare and slashed forms of the same status must land in one bucket.
+    const rows = [
+      ...Array.from({ length: 6 }, () => row("Interest", { details: "approved" })),
+      ...Array.from({ length: 10 }, () => row("Interest", { details: "approved / regular" })),
+      ...Array.from({ length: 1 }, () => row("Interest", { details: "rejected" })),
+      ...Array.from({ length: 2 }, () => row("Interest", { details: "rejected / failed" })),
+    ];
+    const d = analyseCsv(csv(...rows));
+    expect(d.status.counts).toEqual({
+      approved: 16,
+      rejected: 3,
+    });
+    expect(d.detailPrefixes).toEqual([
+      { prefix: "approved", count: 16 },
+      { prefix: "rejected", count: 3 },
+    ]);
+    expect(d.detailPrefixes.some((p) => p.prefix === "(none)")).toBe(false);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    expect(report).toContain("Status: approved=16, rejected=3");
+    expect(report).toContain("approved (16), rejected (3)");
+    expect(report).not.toContain("(none)");
+  });
+
+  it("regression: Status section and Detail-prefixes section agree on a fixture containing every status form", () => {
+    const fixtureRows = [
+      // 1. Bare status words (various casing, whitespace)
+      row("Interest", { details: "approved" }),
+      row("Interest", { details: "Approved" }),
+      row("Interest", { details: " approved " }),
+      row("Interest", { details: "rejected" }),
+      row("Interest", { details: "Rejected" }),
+      row("Interest", { details: "pending" }),
+      row("Interest", { details: "authorized" }),
+      row("Interest", { details: "completed" }),
+      row("Interest", { details: "processed" }),
+
+      // 2. Slashed status words
+      row("Interest", { details: "approved / interest payout" }),
+      row("Interest", { details: "approved / " }),
+      row("Interest", { details: "rejected / user cancelled" }),
+      row("Interest", { details: "pending / verification" }),
+      row("Interest", { details: "authorized / pos terminal" }),
+      row("Interest", { details: "completed / batch 42" }),
+      row("Interest", { details: "processed / auto" }),
+
+      // 3. Bare non-status free text
+      row("Interest", { details: "KAUFLAND Muenchen" }),
+      row("Interest", { details: "REWE City Berlin" }),
+
+      // 4. Slashed non-status text
+      row("Interest", { details: "Amazon EU SARL / card payment" }),
+      row("Interest", { details: "Uber BV / ride" }),
+
+      // 5. Genuinely unreadable status
+      row("Interest", { details: "" }),
+      row("Interest", { details: "   " }),
+    ];
+
+    const d = analyseCsv(csv(...fixtureRows));
+
+    // Every key in status.counts matches detailPrefixes exactly
+    const prefixMap = new Map(d.detailPrefixes.map((p) => [p.prefix, p.count]));
+    const statusMap = new Map(Object.entries(d.status.counts));
+
+    expect(prefixMap.size).toBe(statusMap.size);
+    for (const [key, cnt] of statusMap.entries()) {
+      expect(prefixMap.get(key)).toBe(cnt);
+    }
+    for (const [key, cnt] of prefixMap.entries()) {
+      expect(statusMap.get(key)).toBe(cnt);
+    }
+
+    // Total row counts match
+    const totalStatusRows = [...statusMap.values()].reduce((sum, c) => sum + c, 0);
+    const totalPrefixRows = [...prefixMap.values()].reduce((sum, c) => sum + c, 0);
+    expect(totalStatusRows).toBe(fixtureRows.length);
+    expect(totalPrefixRows).toBe(fixtureRows.length);
+
+    // Formatted report consistency
+    const report = formatDiagnosticReport(d, "4.5.0");
+
+    // Both sections exist in report
+    expect(report).toContain("#### Detail prefixes");
+    expect(report).toContain("Status:");
+
+    // Check that detail prefixes and status sections contain exact matching tallies
+    for (const [key, cnt] of statusMap.entries()) {
+      expect(report).toContain(`${key}=${cnt}`);
+      expect(report).toContain(`${key} (${cnt})`);
+    }
+
+    // Verify privacy guard: no free text leaked
+    expect(report).not.toContain("KAUFLAND Muenchen");
+    expect(report).not.toContain("REWE City Berlin");
+    expect(report).not.toContain("Amazon EU SARL");
+    expect(report).not.toContain("Uber BV");
+  });
+});
+
+describe("BUSD support and currency vs sign shape diagnostics", () => {
+  it("a file with BUSD rows no longer flags 'BUSD is not a known asset'", () => {
+    const busdRows: string[] = [];
+    for (let i = 0; i < 51; i++) {
+      busdRows.push(
+        row("Interest", {
+          txId: `NXT_INT_${i}`,
+          ic: "BUSD",
+          ia: "1.00000000",
+          oc: "BUSD",
+          oa: "1.00000000",
+          details: "approved / BUSD Interest",
+        })
+      );
+    }
+    busdRows.push(
+      row("Exchange", {
+        txId: "NXT_EX_1",
+        ic: "BUSD",
+        ia: "-100.00000000",
+        oc: "USDT",
+        oa: "100.00000000",
+        details: "approved / Exchange BUSD to USDT",
+      })
+    );
+    busdRows.push(
+      row("Exchange", {
+        txId: "NXT_EX_2",
+        ic: "USDT",
+        ia: "-50.00000000",
+        oc: "BUSD",
+        oa: "50.00000000",
+        details: "approved / Exchange USDT to BUSD",
+      })
+    );
+    busdRows.push(
+      row("Exchange Cashback", {
+        txId: "NXT_CB_1",
+        ic: "BUSD",
+        ia: "0.50000000",
+        oc: "BUSD",
+        oa: "0.50000000",
+        details: "approved / Exchange Cashback BUSD",
+      })
+    );
+
+    const d = analyseCsv(csv(...busdRows));
+    const unexpectedFlags = d.types.flatMap((t) =>
+      t.shapes.filter((s) => !s.expected).map((s) => ({ type: t.name, ...s }))
+    );
+    expect(unexpectedFlags).toEqual([]);
+
+    const report = formatDiagnosticReport(d, "4.5.0");
+    expect(report).not.toContain("BUSD is not a known asset");
+    expect(report).not.toContain("#### Unexpected shapes");
+  });
+
+  it("a shape unexpected for a currency reason renders differently from the expected shape on the same type", () => {
+    // Both an expected row and a currency-unexpected row on the same type: Interest
+    const normalRow = row("Interest", {
+      txId: "NXT_NORM",
+      ic: "BTC",
+      ia: "0.01000000",
+      oc: "BTC",
+      oa: "0.01000000",
+      details: "approved / BTC Interest",
+    });
+    const currencyUnexpectedRow = row("Interest", {
+      txId: "NXT_UNEXPECTED_CUR",
+      ic: "NOVELCOIN",
+      ia: "10.00000000",
+      oc: "NOVELCOIN",
+      oa: "10.00000000",
+      details: "approved / NOVELCOIN Interest",
+    });
+
+    const d = analyseCsv(csv(normalRow, currencyUnexpectedRow));
+    const report = formatDiagnosticReport(d, "4.5.0");
+
+    // Extract table row for Interest
+    const tableLine = report.split("\n").find((line) => line.startsWith("| `Interest` |"));
+    expect(tableLine).toBeDefined();
+
+    // Table format: | Type | Rows | Handling | Shape |
+    const cells = tableLine!.split("|").map((c) => c.trim()).filter(Boolean);
+    expect(cells.length).toBe(4);
+    const shapeCell = cells[3]; // Shape column
+
+    // Split cell into individual shape fragments
+    const fragments = shapeCell.split("<br>");
+    expect(fragments.length).toBe(2);
+
+    const [expectedFrag, unexpectedFrag] = fragments;
+    // Assert the two cell fragments are not identical strings
+    expect(expectedFrag).not.toBe(unexpectedFrag);
+    expect(expectedFrag).toBe("in+ out+ same ×1");
+    expect(unexpectedFrag).toBe(
+      "**in+ out+ same (NOVELCOIN) ×1 (unexpected: NOVELCOIN is not a known asset)**"
+    );
+    // Specifically assert the shape representation in unexpectedFrag does not repeat the bare shape string
+    expect(unexpectedFrag).not.toContain("**in+ out+ same ×");
+    expect(unexpectedFrag).toContain("in+ out+ same (NOVELCOIN)");
+
+    // Assert unexpected shapes section also uses the currency-qualified shape
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("- Interest / in+ out+ same (NOVELCOIN) ×1");
+    expect(unexpectedSection).not.toContain("- Interest / in+ out+ same ×1");
+  });
+
+  it("a shape unexpected for a SIGN reason still renders as before", () => {
+    // Row on Interest with unexpected signs: in- out+ diff
+    const signUnexpectedRow = row("Interest", {
+      txId: "NXT_SIGN",
+      ic: "BTC",
+      ia: "-0.50000000",
+      oc: "ETH",
+      oa: "5.00000000",
+      details: "approved / negative interest swap",
+    });
+
+    const d = analyseCsv(csv(signUnexpectedRow));
+    const report = formatDiagnosticReport(d, "4.5.0");
+
+    // Sign reason renders bare shape pattern with (unexpected), no currency appended to shape
+    expect(report).toContain("**in- out+ diff ×1 (unexpected)**");
+    expect(report).not.toContain("in- out+ diff (BTC)");
+    expect(report).not.toContain("in- out+ diff (ETH)");
+
+    const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
+    expect(unexpectedSection).toContain("- Interest / in- out+ diff ×1");
+    expect(unexpectedSection).not.toContain("- Interest / in- out+ diff (");
+  });
+});
+
 

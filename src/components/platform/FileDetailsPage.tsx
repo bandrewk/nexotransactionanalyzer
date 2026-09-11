@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import DiagnosticReport from "../landing/DiagnosticReport";
-import { truncateValue } from "../../lib/csv-diagnostics";
+import { formatShapePattern, truncateValue } from "../../lib/csv-diagnostics";
 
 const CARD =
   "p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]";
@@ -172,13 +172,14 @@ export default function FileDetailsPage() {
                         <td className="py-2.5 px-4 font-mono text-[1.1rem]">
                           {t.shapes.map((s, idx) => {
                             const isIgnored = t.handling === "ignored";
+                            const pattern = formatShapePattern(s);
                             if (s.expected) {
                               return (
                                 <span
                                   key={`${s.pattern}-${idx}`}
                                   className="text-slate-500 dark:text-slate-400 mr-2"
                                 >
-                                  {s.pattern} ×{s.count}
+                                  {pattern} ×{s.count}
                                 </span>
                               );
                             }
@@ -188,7 +189,7 @@ export default function FileDetailsPage() {
                                   key={`${s.pattern}-${idx}`}
                                   className="text-slate-500 dark:text-slate-400 mr-2"
                                 >
-                                  {s.pattern} ×{s.count} (unexpected, no effect on balances
+                                  {pattern} ×{s.count} (unexpected, no effect on balances
                                   {s.reason ? `: ${truncateValue(s.reason, 60)}` : ""})
                                 </span>
                               );
@@ -198,7 +199,7 @@ export default function FileDetailsPage() {
                                 key={`${s.pattern}-${idx}`}
                                 className="text-amber-600 dark:text-amber-400 font-bold mr-2"
                               >
-                                {s.pattern} ×{s.count} (unexpected
+                                {pattern} ×{s.count} (unexpected
                                 {s.reason ? `: ${truncateValue(s.reason, 60)}` : ""})
                               </span>
                             );
