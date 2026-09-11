@@ -4,9 +4,20 @@ import { Link } from "react-router-dom";
 import { useAppStore } from "../../stores/app-store";
 import { formatUSD, formatPercent } from "../../lib/format";
 import { computePortfolioTotal } from "../../lib/portfolio";
-import { computeWeekPerformance } from "../../lib/performance";
+import {
+  computeWeekPerformance,
+  MAX_LAST_POINT_AGE_DAYS,
+  type WeekUnavailableReason,
+} from "../../lib/performance";
 import { getExportCoverage } from "../../lib/export-coverage";
 import NewsFeed from "./NewsFeed";
+
+const WEEK_UNAVAILABLE_TEXT: Record<WeekUnavailableReason, string> = {
+  "no-history": "Not enough history to compare a week.",
+  stale: `Newest transaction is over ${MAX_LAST_POINT_AGE_DAYS} days old.`,
+  "no-baseline": "No data from a week ago to compare against.",
+  "zero-baseline": "Portfolio was empty a week ago.",
+};
 
 export default function HomePage() {
   const currencies = useAppStore((s) => s.currencies);
@@ -27,10 +38,10 @@ export default function HomePage() {
   );
   const uniqueCurrencies = new Set(currencies.filter((c) => Math.abs(c.amount) >= 0.001).map((c) => c.symbol)).size;
 
-  // 1W performance from historic portfolio data. Null whenever the series
-  // cannot support the comparison — the tile then says so instead of
-  // presenting a meaningless zero as a result.
-  const weekPerf = useMemo(
+  // 1W performance from historic portfolio data. When the series cannot support
+  // the comparison the tile names the reason instead of presenting a meaningless
+  // zero as a result.
+  const weekResult = useMemo(
     () =>
       computeWeekPerformance(
         statistics.historicPortfolioData,
@@ -38,6 +49,10 @@ export default function HomePage() {
       ),
     [statistics.historicPortfolioData]
   );
+  const weekPerf = weekResult.available ? weekResult : null;
+  const weekUnavailable = weekResult.available
+    ? null
+    : WEEK_UNAVAILABLE_TEXT[weekResult.reason];
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-10rem)] gap-10 animate-in">
@@ -127,7 +142,12 @@ export default function HomePage() {
               </p>
             </>
           ) : (
-            <p className="text-[2.4rem] font-bold tracking-tight text-slate-400">--</p>
+            <>
+              <p className="text-[2.4rem] font-bold tracking-tight text-slate-400">--</p>
+              <p className="text-[1.15rem] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">
+                {weekUnavailable}
+              </p>
+            </>
           )}
         </div>
 
