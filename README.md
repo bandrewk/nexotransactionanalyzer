@@ -18,8 +18,8 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Historic portfolio value chart from DefiLlama daily closes, fiat via Frankfurter
 - Assets that cannot be priced are named, never silently valued at zero
 - Portfolio distribution donut chart
-- Performance metrics: Net Invested, Interest Earned, Unrealized P/L
-- 1-week portfolio change on Dashboard
+- Performance metrics: Net Invested, Interest Earned, Unrealized P/L, and Charged / Reversed where an account pays credit-line interest
+- 1-week portfolio change on Dashboard, which states why rather than showing a dash when it cannot be derived
 - Date range filtering on charts (1M, 3M, 6M, 1Y, All)
 - The date range an export covers is stated outright, and flagged when it stops more than 30 days ago
 
@@ -31,9 +31,11 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Recognition of all 34 Nexo transaction types
 
 ### File Details
-- Reports what the app read from your export: column names, row count, date range, and every transaction type with the shape of its rows
+- Reports what the app read from your export: column names, row count, date range, and every transaction type with the shape of its rows and how it is handled
+- Flags rows whose shape or currencies the app has no rule for, including types it otherwise recognises, and samples them
+- States what each transaction type contributes to each balance, so a wrong total can be traced to the rows that caused it
 - Names transaction types the app does not recognise, and says so on the Dashboard too, since figures derived from them cannot be trusted
-- Generates a report to paste into a GitHub issue, so a data problem can be looked at without sending your CSV
+- Generates a report to paste into a GitHub issue, so a data problem can be looked at without sending your CSV. Amounts sit in one section that can be removed on its own
 - A CSV that cannot be read explains why, naming the missing columns
 
 ### Coinlist
@@ -96,9 +98,10 @@ No external services required. Currency metadata is bundled locally in `src/data
 
 ## Testing
 
-176 tests across 12 unit test suites and 21 E2E scenarios:
+Unit suites by area, plus end-to-end scenarios:
 
-- **CSV Parser** — parsing, normalization (EURX→EUR), repayment/liquidation fixes, export schema regression
+- **CSV Parser** — parsing, normalization (EURX→EUR), repayment/liquidation fixes, export schema regression, both the 11- and 12-column schemas
+- **Transaction Types** — the rule table: every type has an effect on holdings, the shapes it was written against, and whether it is evidenced or inferred
 - **Balance Calculator** — running balances, interest split by payout kind, deposit/withdrawal tracking, internal transfer skipping
 - **Price Oracle** — DefiLlama request planning, point-budget chunking, carry-forward staleness cap, unpriced-symbol reporting
 - **Interest Series** — monthly aggregation, value preservation
@@ -109,7 +112,7 @@ No external services required. Currency metadata is bundled locally in `src/data
 - **Storage** — localStorage save/load, version mismatch, corruption handling
 - **Date Filter** — range filtering logic
 - **Export Coverage** — the span a file covers, and when it is stale enough to warn about
-- **CSV Diagnostics** — schema and type analysis of a file the parser rejects, row-shape derivation, report generation
+- **CSV Diagnostics** — schema and type analysis of a file the parser rejects, row-shape derivation, report generation, and what the report must never publish
 - **E2E** — full demo flow, navigation, search, sorting, pagination, column visibility, dark mode, save/restore, rejection of an unreadable file, File Details
 
 ### End-to-end tests

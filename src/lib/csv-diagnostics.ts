@@ -2170,16 +2170,19 @@ function buildReport(
 
   // --- 5. Routine coverage summaries ---
   if (config.includeRoutineCoverage) {
+    // Row censuses that carry no amounts, kept in their own section so a
+    // reader trimming the contribution figures does not lose them too.
+    const coverage: string[] = [];
     if (!hasFeeException) {
       if (d.feeCensus.nonzero === 0 && d.feeCensus.zero === 0 && d.feeCensus.invalid === 0) {
-        out.push("Fees: none.");
+        coverage.push("Fees: none.");
       } else {
         const feeParts: string[] = [];
         if (d.feeCensus.absent > 0) feeParts.push(`absent=${d.feeCensus.absent}`);
         if (d.feeCensus.zero > 0) feeParts.push(`zero=${d.feeCensus.zero}`);
         if (d.feeCensus.nonzero > 0) feeParts.push(`nonzero=${d.feeCensus.nonzero}`);
         if (d.feeCensus.invalid > 0) feeParts.push(`invalid=${d.feeCensus.invalid}`);
-        out.push(feeParts.length > 0 ? `Fees: ${feeParts.join("; ")}.` : "Fees: none.");
+        coverage.push(feeParts.length > 0 ? `Fees: ${feeParts.join("; ")}.` : "Fees: none.");
       }
     }
 
@@ -2196,24 +2199,24 @@ function buildReport(
         sLine += `; disagreements=${d.status.disagreements}`;
       }
       sLine += ".";
-      out.push(sLine);
+      coverage.push(sLine);
     }
 
     if (!hasDuplicateException) {
-      out.push("Duplicates: none.");
+      coverage.push("Duplicates: none.");
     }
 
     if (d.relationships.allRowsShareTimestamp) {
-      out.push("Links: all rows share one timestamp; temporal matching disabled.");
+      coverage.push("Links: all rows share one timestamp; temporal matching disabled.");
     }
 
     if (d.temporal.allRowsShareTimestamp) {
-      out.push("Transitions: all rows share one timestamp; temporal analysis not possible.");
+      coverage.push("Transitions: all rows share one timestamp; temporal analysis not possible.");
     }
 
     const creditLineSummary = formatCreditLineSummary(d, omissions);
     if (creditLineSummary) {
-      out.push(creditLineSummary);
+      coverage.push(creditLineSummary);
     }
 
     const hasUsdIssues =
@@ -2233,7 +2236,14 @@ function buildReport(
           `conspicuous repetition: "${truncateValue(d.usdEquivalent.conspicuousRepetition.value)}" in ${d.usdEquivalent.conspicuousRepetition.count} rows (${d.usdEquivalent.conspicuousRepetition.percentage}%)`
         );
       }
-      out.push(`USD Equivalent: ${usdParts.join("; ")}.`);
+      coverage.push(`USD Equivalent: ${usdParts.join("; ")}.`);
+    }
+
+
+    if (coverage.length > 0) {
+      out.push("#### Coverage");
+      out.push("");
+      out.push(...coverage);
     }
 
     // Detail prefixes: rendered only when not all rows share one status

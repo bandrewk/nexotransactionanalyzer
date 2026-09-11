@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - The demo fixture moves to the 12-column schema with a `Credit Line` column and includes credit-line card activity, so the shipped example exercises the paths this release fixes (3,421 → 3,466 rows). (#84)
 - Report size is bounded by dropping the least diagnostic sections first and naming what was withheld, rather than truncating the end. Sample rows are never dropped. (#84)
 - The report's closing statement that nothing was altered is withdrawn whenever that stops being true. (#84)
+- The report's row censuses — status, duplicates and the `Credit Line` distribution — move to their own "Coverage" section. They previously rendered under "Net contribution breakdown", so removing the amounts took them too. (#84)
 - The "1W Change" tile states why a week-over-week figure is unavailable — the newest transaction is over three days old, too little history, nothing to compare against a week back, or an empty portfolio then — instead of an unexplained `--`.
 
 ### Internal
