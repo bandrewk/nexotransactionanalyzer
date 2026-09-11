@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 ### Internal
 - Card purchases are treated as Credit Mode. In Debit Mode they spend held assets instead of drawing a loan, and the two are indistinguishable by row shape; the report now surfaces the `Credit Line` column per type so such an export can be identified. (#84)
 - The export schema varies by account rather than by date — an account without a credit line has 11 columns, one with a credit line has 12. Tests cover both. (#84)
+- `vitest` 4.1.10 → 4.1.11, closing a path-traversal advisory in `@vitest/mocker`. Test tooling only; the shipped bundle is unchanged.
 
 ## [4.4.0] - 2026-09-07
 
