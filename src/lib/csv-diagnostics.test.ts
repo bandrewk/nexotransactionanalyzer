@@ -377,6 +377,51 @@ describe("formatDiagnosticReport", () => {
   });
 });
 
+describe("a reader can remove the contribution figures on their own", () => {
+  // The amounts are the only part of the report someone is likely to want gone.
+  // They must be removable in one cut, without taking the amount-free censuses
+  // -- Credit Line above all -- with them.
+  const HEADER_12 =
+    "Transaction,Type,Credit Line,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)";
+  const report = () =>
+    formatDiagnosticReport(
+      analyseCsv(
+        [
+          HEADER_12,
+          'NXT1,Credit Card Withdrawal Credit,Card,xUSD,-14.07,xUSD,14.07,$14.07,-,-,"authorized / draw",2026-08-22 04:08:58',
+          'NXT2,Exchange Credit,Card,xUSD,-14.07,EURX,12.00,$14.07,-,-,"authorized / funding",2026-08-22 04:08:58',
+          'NXT3,Nexo Card Purchase,,xUSD,-14.07,EURX,12.00,$14.07,-,-,"approved / shop",2026-08-22 04:08:58',
+          'NXT4,Interest,,BTC,1.00000000,BTC,1.00000000,$1.00,-,-,"approved / interest",2026-08-23 00:00:00',
+        ].join("\n")
+      ),
+      "4.5.0"
+    );
+
+  /** Everything under `heading` up to the next `####`, as a user's cut would take it. */
+  const section = (text: string, heading: string) =>
+    text.split(heading)[1]?.split("####")[0] ?? "";
+
+  it("keeps the credit line, status and duplicate censuses out of the contribution section", () => {
+    const body = section(report(), "#### Net contribution breakdown");
+    expect(body).not.toContain("Credit Line:");
+    expect(body).not.toContain("Status:");
+    expect(body).not.toContain("Duplicates:");
+  });
+
+  it("survives deletion of the contribution section with the censuses intact", () => {
+    const full = report();
+    const trimmed =
+      full.split("#### Net contribution breakdown")[0] +
+      "####" +
+      full.split("#### Net contribution breakdown")[1].split("####").slice(1).join("####");
+
+    expect(trimmed).not.toContain("#### Net contribution breakdown");
+    expect(trimmed).toContain("Credit Line:");
+    expect(trimmed).toContain("#### Coverage");
+    expect(trimmed).toContain("#### Transaction types");
+  });
+});
+
 describe("Credit Line reporting", () => {
   it("reports Credit Line values as an inverted summary on a 12-column export", () => {
     const HEADER_12 =
