@@ -8,6 +8,8 @@ import {
   extractDetailStatus,
   isExcludedDetailStatus,
 } from "./balance-calculator";
+import { currencyData } from "../data/currencies";
+import { computePortfolioTotal } from "./portfolio";
 
 const demoCSV = readFileSync(
   resolve(__dirname, "../../public/nexo_demo_transactions.csv"),
@@ -163,6 +165,41 @@ describe("calculateBalances", () => {
     expect(fake).toBeDefined();
     expect(fake!.supported).toBe(false);
     expect(fake!.amount).toBe(100);
+  });
+
+  it("includes BUSD as a supported crypto asset with coingecko id binance-usd", () => {
+    const busd = currencyData.find((c) => c.symbol === "BUSD");
+    expect(busd).toBeDefined();
+    expect(busd!.name).toBe("Binance USD");
+    expect(busd!.supported).toBe(true);
+    expect(busd!.type).toBe("crypto");
+    expect(busd!.coingeckoId).toBe("binance-usd");
+
+    const busdTx = [{
+      id: "NXT_BUSD_1",
+      type: "Interest",
+      inputCurrency: "BUSD",
+      inputAmount: 51,
+      outputCurrency: "BUSD",
+      outputAmount: 51,
+      usdEquivalent: 51,
+      fee: "-",
+      feeCurrency: "-",
+      details: "approved / BUSD Interest",
+      dateTime: "2025-06-01 06:00:00",
+    }];
+    const r = calculateBalances(busdTx);
+    const busdHolding = r.currencies.find((c) => c.symbol === "BUSD");
+    expect(busdHolding).toBeDefined();
+    expect(busdHolding!.supported).toBe(true);
+    expect(busdHolding!.amount).toBe(51);
+    expect(busdHolding!.coingeckoId).toBe("binance-usd");
+
+    // Portfolio computation: priced BUSD is included and not reported as unsupported/unpriced
+    busdHolding!.usdEquivalent = 51;
+    const portfolio = computePortfolioTotal(r.currencies);
+    expect(portfolio.excludedSymbols).not.toContain("BUSD");
+    expect(portfolio.totalValue).toBeGreaterThanOrEqual(51);
   });
 
   it("exchange subtracts from source and adds to destination", () => {

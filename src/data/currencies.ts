@@ -30,6 +30,7 @@ export const currencyData: Currency[] = [
   c("XRP", "XRP", "ripple"),
   c("Tether", "USDT", "tether"),
   c("USD Coin", "USDC", "usd-coin"),
+  c("Binance USD", "BUSD", "binance-usd"),
   c("Pax Dollar", "USDP", "paxos-standard"),
   c("Dai", "DAI", "dai"),
   c("Bitcoin Cash", "BCH", "bitcoin-cash"),
