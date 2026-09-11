@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import DiagnosticReport from "../landing/DiagnosticReport";
+import { formatShapePattern, truncateValue } from "../../lib/csv-diagnostics";
 
 const CARD =
   "p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]";
@@ -122,7 +123,7 @@ export default function FileDetailsPage() {
                 <table className="w-full border-collapse text-[1.25rem]">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-white/[0.02]">
-                      {["Type", "Rows", "Recognised", "Shape"].map((h) => (
+                      {["Type", "Rows", "Handling", "Shape"].map((h) => (
                         <th
                           key={h}
                           className="text-left py-3 px-4 text-[1.15rem] font-semibold
@@ -145,17 +146,64 @@ export default function FileDetailsPage() {
                         <td className="py-2.5 px-4 tabular-nums text-slate-600 dark:text-slate-300">
                           {t.count.toLocaleString()}
                         </td>
-                        <td className="py-2.5 px-4">
-                          {t.known ? (
-                            <span className="text-emerald-400">yes</span>
-                          ) : (
+                        <td className="py-2.5 px-4 text-slate-600 dark:text-slate-300">
+                          {!t.known ? (
                             <span className="text-amber-600 dark:text-amber-400 font-medium">
-                              no{t.legacy ? " (legacy name)" : ""}
+                              not recognised — counted as-is{t.legacy ? " (legacy name)" : ""}
                             </span>
+                          ) : (
+                            <div>
+                              <span className="font-medium text-slate-700 dark:text-slate-200">
+                                {t.handling}
+                                {t.confidence === "inferred" && (
+                                  <span className="ml-1.5 font-normal text-amber-600 dark:text-amber-400">
+                                    (unconfirmed)
+                                  </span>
+                                )}
+                              </span>
+                              {t.why && (
+                                <p className="text-[1.1rem] text-slate-400 mt-0.5 leading-normal max-w-xl">
+                                  {t.why}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-4 font-mono text-[1.1rem] text-slate-500 dark:text-slate-400">
-                          {t.shapes.map((s) => `${s.pattern} ×${s.count}`).join("  ")}
+                        <td className="py-2.5 px-4 font-mono text-[1.1rem]">
+                          {t.shapes.map((s, idx) => {
+                            const isIgnored = t.handling === "ignored";
+                            const pattern = formatShapePattern(s);
+                            if (s.expected) {
+                              return (
+                                <span
+                                  key={`${s.pattern}-${idx}`}
+                                  className="text-slate-500 dark:text-slate-400 mr-2"
+                                >
+                                  {pattern} ×{s.count}
+                                </span>
+                              );
+                            }
+                            if (isIgnored) {
+                              return (
+                                <span
+                                  key={`${s.pattern}-${idx}`}
+                                  className="text-slate-500 dark:text-slate-400 mr-2"
+                                >
+                                  {pattern} ×{s.count} (unexpected, no effect on balances
+                                  {s.reason ? `: ${truncateValue(s.reason, 60)}` : ""})
+                                </span>
+                              );
+                            }
+                            return (
+                              <span
+                                key={`${s.pattern}-${idx}`}
+                                className="text-amber-600 dark:text-amber-400 font-bold mr-2"
+                              >
+                                {pattern} ×{s.count} (unexpected
+                                {s.reason ? `: ${truncateValue(s.reason, 60)}` : ""})
+                              </span>
+                            );
+                          })}
                         </td>
                       </tr>
                     ))}
@@ -169,9 +217,9 @@ export default function FileDetailsPage() {
             <h2 className={CARD_TITLE}>Report</h2>
             <p className="text-[1.15rem] text-slate-400 mb-6">
               Everything above in one block, ready to paste into a GitHub issue instead of
-              your CSV. Sample rows for unrecognised types are included unaltered, because
-              guessing at what is sensitive would only give false confidence — read the
-              report below and edit it before you post it.
+              your CSV. The report includes net amounts per currency per transaction type,
+              recurring detail text, and any unaltered sample rows, which together approximate
+              the account&apos;s balances — read the report below and edit it before you post it.
             </p>
             <DiagnosticReport diagnostics={diagnostics} standalone />
           </section>

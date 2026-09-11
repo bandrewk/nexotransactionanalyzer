@@ -17,6 +17,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # The fixture's dates are anchored to the day it is generated, and the
+      # 1W Change tile needs a point no more than three days old. Regenerating
+      # here keeps the deployed demo inside that window.
+      - name: Regenerate the demo fixture
+        run: python3 generate_demo.py
+
       - run: npm run build
 
       # Create .htaccess for SPA routing on Apache

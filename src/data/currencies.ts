@@ -8,6 +8,18 @@ const fiat = (name: string, symbol: string): Currency => ({
   name, symbol, type: "fiat", amount: 0, usdEquivalent: 0, coingeckoId: "", supported: true,
 });
 
+/**
+ * Normalises platform FIATx synthetic currency codes to their standard ISO fiat codes:
+ * EURX -> EUR, GBPX -> GBP, USDX -> USD.
+ * Leaves all other currency codes unchanged.
+ */
+export function fixFiatX(cur: string): string {
+  if (cur === "EURX") return "EUR";
+  if (cur === "GBPX") return "GBP";
+  if (cur === "USDX") return "USD";
+  return cur;
+}
+
 // All Nexo supported assets
 // Source: https://support.nexo.com/article/supported-crypto-assets
 export const currencyData: Currency[] = [
@@ -18,6 +30,7 @@ export const currencyData: Currency[] = [
   c("XRP", "XRP", "ripple"),
   c("Tether", "USDT", "tether"),
   c("USD Coin", "USDC", "usd-coin"),
+  c("Binance USD", "BUSD", "binance-usd"),
   c("Pax Dollar", "USDP", "paxos-standard"),
   c("Dai", "DAI", "dai"),
   c("Bitcoin Cash", "BCH", "bitcoin-cash"),
