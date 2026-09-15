@@ -23,6 +23,8 @@ import {
 } from "./csv-diagnostics";
 import { TransactionType, TYPE_RULES } from "../data/transaction-types";
 import { fixFiatX } from "../data/currencies";
+import { calculateBalances, isCreditLineInterestCharge } from "./balance-calculator";
+import { parseCSV } from "./csv-parser";
 
 // All fixtures here are invented. Real exports are never committed.
 const CURRENT_HEADER =
@@ -292,6 +294,7 @@ describe("formatDiagnosticReport", () => {
   it("renders Handling column and marks unexpected shapes in report, preserving why on TypeSummary for FileDetailsPage", () => {
     const fixture = csv(
       row("Exchange Credit", { ic: "xUSD", ia: "-1.00000000", oc: "EURX", oa: "1.00000000" }),
+      row("Manual Sell Order", { ic: "BTC", ia: "-0.01000000", oc: "BTC", oa: "0" }),
       row("Exchange Liquidation", { ic: "BTC", ia: "0.01000000", oc: "xUSD", oa: "500.00000000" }),
       row("Interest", { ia: "-1.00000000" }),
       row("SomethingBrandNew")
@@ -650,6 +653,11 @@ describe("Report size bounding and section caps", () => {
     const byteLength = new TextEncoder().encode(report).length;
     expect(byteLength).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
     expect(report).toContain(`... and ${2000 - MAX_CONTRIBUTIONS_PER_TYPE} more, omitted`);
+  });
+
+  it("renders the output-only handling for Loan Withdrawal", () => {
+    const d = analyseCsv(csv(row("Loan Withdrawal", { ic: "USD", ia: "-99.00", oc: "USDC", oa: "100.00" })));
+    expect(formatDiagnosticReport(d, "4.5.1")).toContain("counted, output only (unconfirmed)");
   });
 
   it("renders (unconfirmed) next to handling for inferred rules", () => {
@@ -1019,7 +1027,14 @@ describe("currency classification and expectation diagnostics", () => {
       oa: "577.25",
       details: "approved / normal liquidation",
     });
-    const d = analyseCsv(csv(normalRow));
+    const pairedMso = row("Manual Sell Order", {
+      ic: "EURX",
+      ia: "-500.00",
+      oc: "EURX",
+      oa: "0",
+      details: "approved / manual sell",
+    });
+    const d = analyseCsv(csv(normalRow, pairedMso));
     const summary = d.types.find((t) => t.name === "Exchange Liquidation");
     expect(summary).toBeDefined();
     expect(summary!.shapes).toHaveLength(1);
@@ -1048,7 +1063,7 @@ describe("currency classification and expectation diagnostics", () => {
   });
 
   it("flags only the rows that warrant it on a broad credit-line fixture", () => {
-    // Assets: BTC, ETH, USDC, USDT, NEXO, BNB, EUR, USD (known), xUSD (credit-line), NETH (unknown)
+    // Assets: BTC, ETH, USDC, USDT, NEXO, BNB, EUR, USD (known), xUSD (credit-line), FAKECOIN (unknown)
     const fixtureRows = [
       row("Interest", { ic: "BTC", ia: "0.001", oc: "BTC", oa: "0.001" }),
       row("Exchange", { ic: "ETH", ia: "-0.5", oc: "USDT", oa: "1500" }),
@@ -1061,24 +1076,24 @@ describe("currency classification and expectation diagnostics", () => {
       row("Withdrawal", { ic: "USDC", ia: "-500", oc: "USDC", oa: "500" }),
       row("Top up Crypto", { ic: "BNB", ia: "2.0", oc: "BNB", oa: "2.0" }),
       row("Dividend", { ic: "NEXO", ia: "50", oc: "NEXO", oa: "50" }),
-      row("Manual Sell Order", { ic: "USD", ia: "-100", oc: "USD", oa: "0" }),
-      row("Exchange Collateral", { ic: "NETH", ia: "-0.26450338", oc: "ETH", oa: "0.26450338", details: "approved / collateral swap" }),
+      row("Manual Sell Order", { ic: "EURX", ia: "-500.00", oc: "EURX", oa: "0" }),
+      row("Exchange Collateral", { ic: "FAKECOIN", ia: "-0.26450338", oc: "ETH", oa: "0.26450338", details: "approved / collateral swap" }),
     ];
     const d = analyseCsv(csv(...fixtureRows));
     const unexpectedFlags = d.types.flatMap((t) =>
       t.shapes.filter((s) => !s.expected).map((s) => ({ type: t.name, ...s }))
     );
-    // NETH is not a known asset, and is the only row that should flag
+    // FAKECOIN is not a known asset, and is the only row that should flag
     expect(unexpectedFlags).toHaveLength(1);
     expect(unexpectedFlags[0].type).toBe("Exchange Collateral");
-    expect(unexpectedFlags[0].reason).toBe("NETH is not a known asset");
+    expect(unexpectedFlags[0].reason).toBe("FAKECOIN is not a known asset");
 
     const report = formatDiagnosticReport(d, "4.5.0");
     const byteLength = new TextEncoder().encode(report).length;
     expect(byteLength).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
     expect(report).toContain("#### Sample rows");
     expect(report).toContain("# Exchange Collateral");
-    expect(report).toContain("NETH");
+    expect(report).toContain("FAKECOIN");
   });
 });
 
@@ -1764,7 +1779,7 @@ describe("Deepened unexpected shape evidence", () => {
     // 5 consecutive near-duplicates
     for (let i = 1; i <= 5; i++) {
       rows.push(
-        `NXT${i},Interest,USD,-1.0,USD,1.0,$1.00,-,-,"approved / Regular Interest",2026-01-0${i} 00:00:00`
+        `NXT${i},Interest,BTC,-1.0,BTC,1.0,$1.00,-,-,"approved / Regular Interest",2026-01-0${i} 00:00:00`
       );
     }
     // Alternative 1: different currency pair (EUR->EUR)
@@ -1773,15 +1788,15 @@ describe("Deepened unexpected shape evidence", () => {
     );
     // Alternative 2: different detail text ("Borrow Interest")
     rows.push(
-      `NXT7,Interest,USD,-1.0,USD,1.0,$1.00,-,-,"approved / Borrow Interest",2026-01-07 00:00:00`
+      `NXT7,Interest,BTC,-1.0,BTC,1.0,$1.00,-,-,"approved / Borrow Interest",2026-01-07 00:00:00`
     );
     // Alternative 3: different fee presence (nonzero fee)
     rows.push(
-      `NXT8,Interest,USD,-1.0,USD,1.0,$1.00,0.50,USD,"approved / Regular Interest",2026-01-08 00:00:00`
+      `NXT8,Interest,BTC,-1.0,BTC,1.0,$1.00,0.50,USD,"approved / Regular Interest",2026-01-08 00:00:00`
     );
     // Alternative 4: different month (2026-02)
     rows.push(
-      `NXT9,Interest,USD,-1.0,USD,1.0,$1.00,-,-,"approved / Regular Interest",2026-02-01 00:00:00`
+      `NXT9,Interest,BTC,-1.0,BTC,1.0,$1.00,-,-,"approved / Regular Interest",2026-02-01 00:00:00`
     );
 
     const d = analyseCsv(csv(...rows));
@@ -2504,6 +2519,351 @@ describe("BUSD support and currency vs sign shape diagnostics", () => {
     const unexpectedSection = report.split("#### Unexpected shapes")[1]?.split("####")[0] ?? "";
     expect(unexpectedSection).toContain("- Interest / in- out+ diff ×1");
     expect(unexpectedSection).not.toContain("- Interest / in- out+ diff (");
+  });
+});
+
+describe("credit-line interest charges and liquidation pairing diagnostics", () => {
+  describe("Contribution: credit-line interest charges excluded from counted contribution", () => {
+    it("lists negative USD interest as charges in 11- and 12-column CSVs while other negative interest stays counted and flagged", () => {
+      const csv11 = [
+        CURRENT_HEADER,
+        row("Interest", { txId: "NXT001", ic: "USDX", ia: "-10.00", oc: "USDX", oa: "-10.00", details: "approved / USD Interest", date: "2025-06-01 06:00:00" }),
+        row("Interest", { txId: "NXT002", ic: "USD", ia: "-20.00", oc: "USD", oa: "-20.00", details: "approved / interest for tid 12345", date: "2025-06-01 07:00:00" }),
+        row("Interest", { txId: "NXT003", ic: "BTC", ia: "0.50000000", oc: "BTC", oa: "0.50000000", details: "approved / BTC Interest", date: "2025-06-01 08:00:00" }),
+        row("Interest", { txId: "NXT004", ic: "USD", ia: "-5.00", oc: "USD", oa: "-5.00", details: "approved / USD Interest", date: "2025-06-01 09:00:00" }),
+        row("Interest", { txId: "NXT005", ic: "EURX", ia: "-2.00", oc: "EURX", oa: "-2.00", details: "approved / EUR Interest", date: "2025-06-01 10:00:00" }),
+      ].join("\n");
+
+      const d11 = analyseCsv(csv11);
+      expect(d11.netContributions["Interest"]).toEqual({ BTC: 0.5, EUR: -2 });
+      const interestSummary11 = d11.types.find((t) => t.name === "Interest");
+      expect(interestSummary11?.creditLineCharges).toEqual({ USD: -35 });
+      expect(interestSummary11?.creditLineChargesCount).toBe(3);
+
+      const report11 = formatDiagnosticReport(d11, "4.5.0");
+      expect(report11).toContain("- `Interest`: -2 EUR, +0.5 BTC");
+      expect(report11).toContain("- `Interest (credit-line charges)`: [ignored] USD -35 ×3");
+
+      // Charges are expected shapes; only the negative EUR row is flagged
+      const unexpectedShapes11 = interestSummary11?.shapes.filter((s) => !s.expected) ?? [];
+      expect(unexpectedShapes11).toHaveLength(1);
+      expect(unexpectedShapes11[0].pattern).toBe("in- out- same");
+      expect(unexpectedShapes11[0].count).toBe(1);
+
+      // 12-column CSV with a Credit Line value
+      const HEADER_12 = `${CURRENT_HEADER},Credit Line`;
+      const csv12 = [
+        HEADER_12,
+        `${row("Interest", { txId: "NXT005", ic: "USD", ia: "-15.00", oc: "USD", oa: "-15.00", details: "approved / USD Interest", date: "2025-06-01 10:00:00" })},Nexo loan #42`,
+        `${row("Interest", { txId: "NXT006", ic: "BTC", ia: "0.10000000", oc: "BTC", oa: "0.10000000", details: "approved / BTC Interest", date: "2025-06-01 11:00:00" })},`,
+      ].join("\n");
+
+      const d12 = analyseCsv(csv12);
+      expect(d12.netContributions["Interest"]).toEqual({ BTC: 0.1 });
+      const interestSummary12 = d12.types.find((t) => t.name === "Interest");
+      expect(interestSummary12?.creditLineCharges).toEqual({ USD: -15 });
+      expect(interestSummary12?.creditLineChargesCount).toBe(1);
+
+      const report12 = formatDiagnosticReport(d12, "4.5.0");
+      expect(report12).toContain("- `Interest`: +0.1 BTC");
+      expect(report12).toContain("- `Interest (credit-line charges)`: [ignored] USD -15 ×1");
+
+      const unexpectedShapes12 = interestSummary12?.shapes.filter((s) => !s.expected) ?? [];
+      expect(unexpectedShapes12).toHaveLength(0);
+    });
+  });
+
+  describe("Unpaired liquidation pairing", () => {
+    it("distinguishes paired and unpaired liquidations across all edge cases", () => {
+      const rows = [
+        // 1. Paired (same second)
+        row("Manual Sell Order", { txId: "NXT_MSO1", ic: "BTC", ia: "-0.50000000", oc: "BTC", oa: "0", date: "2025-06-01 12:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_LIQ1", ic: "BTC", ia: "0.50000000", oc: "xUSD", oa: "25000.00", date: "2025-06-01 12:00:00" }),
+
+        // 2. Paired (3 seconds apart)
+        row("Manual Sell Order", { txId: "NXT_MSO2", ic: "ETH", ia: "-2.00000000", oc: "ETH", oa: "0", date: "2025-06-01 12:05:03" }),
+        row("Exchange Liquidation", { txId: "NXT_LIQ2", ic: "ETH", ia: "2.00000000", oc: "xUSD", oa: "6000.00", date: "2025-06-01 12:05:00" }),
+
+        // 3. Unpaired (no Manual Sell Order at all)
+        row("Exchange Liquidation", { txId: "NXT_LIQ3", ic: "LTC", ia: "10.00000000", oc: "xUSD", oa: "1000.00", date: "2025-06-01 12:10:00" }),
+
+        // 4. Wrong currency
+        row("Manual Sell Order", { txId: "NXT_MSO4", ic: "ADA", ia: "-5.00000000", oc: "ADA", oa: "0", date: "2025-06-01 12:15:00" }),
+        row("Exchange Liquidation", { txId: "NXT_LIQ4", ic: "SOL", ia: "5.00000000", oc: "xUSD", oa: "750.00", date: "2025-06-01 12:15:00" }),
+
+        // 5. Wrong amount
+        row("Manual Sell Order", { txId: "NXT_MSO5", ic: "AVAX", ia: "-3.50000000", oc: "AVAX", oa: "0", date: "2025-06-01 12:20:00" }),
+        row("Exchange Liquidation", { txId: "NXT_LIQ5", ic: "AVAX", ia: "4.00000000", oc: "xUSD", oa: "120.00", date: "2025-06-01 12:20:00" }),
+
+        // 6. Outside window (24 h and 1 s apart)
+        row("Manual Sell Order", { txId: "NXT_MSO6", ic: "DOT", ia: "-20.00000000", oc: "DOT", oa: "0", date: "2025-06-02 12:25:01" }),
+        row("Exchange Liquidation", { txId: "NXT_LIQ6", ic: "DOT", ia: "20.00000000", oc: "xUSD", oa: "140.00", date: "2025-06-01 12:25:00" }),
+
+        // 7. Rejected Manual Sell Order does not pair
+        row("Manual Sell Order", { txId: "NXT_MSO7", ic: "LINK", ia: "-15.00000000", oc: "LINK", oa: "0", details: "rejected / cancelled order", date: "2025-06-01 12:30:00" }),
+        row("Exchange Liquidation", { txId: "NXT_LIQ7", ic: "LINK", ia: "15.00000000", oc: "xUSD", oa: "225.00", date: "2025-06-01 12:30:00" }),
+      ];
+
+      const d = analyseCsv(csv(...rows));
+      const liqSummary = d.types.find((t) => t.name === "Exchange Liquidation");
+      expect(liqSummary).toBeDefined();
+
+      const unexpectedLiq = liqSummary!.shapes.find((s) => !s.expected);
+      expect(unexpectedLiq).toBeDefined();
+      expect(unexpectedLiq!.reason).toBe("no matching Manual Sell Order");
+      // 5 unpaired liquidations (LTC, SOL, AVAX, DOT, LINK); BTC and ETH paired
+      expect(unexpectedLiq!.count).toBe(5);
+
+      const expectedLiq = liqSummary!.shapes.find((s) => s.expected);
+      expect(expectedLiq).toBeDefined();
+      expect(expectedLiq!.count).toBe(2);
+
+      // Unpaired liquidations should be sampled
+      const liqSamples = d.sampleRows.find((s) => s.type === "Exchange Liquidation");
+      expect(liqSamples).toBeDefined();
+      expect(liqSamples!.rows.length).toBeGreaterThan(0);
+
+      expect(d.relationships.liquidationPairing).toEqual({
+        liquidations: 7,
+        pairedWithin: [
+          { window: "same second", count: 1 },
+          { window: "within 5 s", count: 1 },
+          { window: "within 1 min", count: 0 },
+          { window: "within 1 h", count: 0 },
+          { window: "within 24 h", count: 0 },
+        ],
+        unpairedSameAmountElsewhere: 1,
+        unpairedNoSameAmount: 4,
+        unpairedUnreadable: 0,
+      });
+      expect(formatDiagnosticReport(d, "4.5.1")).toContain(
+        "Pairing: 2 of 7 Exchange Liquidation rows have a Manual Sell Order with the same asset and amount within 24 h (same second ×1, within 5 s ×1); unpaired: 1 with that amount further away, 4 without."
+      );
+    });
+
+    const unpairedCount = (rows: string[]) =>
+      analyseCsv(csv(...rows))
+        .types.find((t) => t.name === "Exchange Liquidation")!
+        .shapes.filter((s) => !s.expected)
+        .reduce((n, s) => n + s.count, 0);
+
+    it("pairs every liquidation when a nearer sell order is needed by a later one", () => {
+      const rows = [
+        row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-100.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:00" }),
+        row("Manual Sell Order", { txId: "NXT_M2", ic: "EURX", ia: "-100.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:06" }),
+        row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "100.00", oc: "xUSD", oa: "110.00", date: "2025-06-01 12:00:05" }),
+        row("Exchange Liquidation", { txId: "NXT_L2", ic: "EURX", ia: "100.00", oc: "xUSD", oa: "110.00", date: "2025-06-01 12:00:10" }),
+      ];
+      expect(unpairedCount(rows)).toBe(0);
+    });
+
+    it("pairs amounts equal to 8 decimals and not amounts differing in the 8th", () => {
+      const sell = row("Manual Sell Order", { txId: "NXT_M1", ic: "BTC", ia: "-0.12345678", oc: "BTC", oa: "0", date: "2025-06-01 12:00:00" });
+      const equal = row("Exchange Liquidation", { txId: "NXT_L1", ic: "BTC", ia: "0.123456780", oc: "xUSD", oa: "5000.00", date: "2025-06-01 12:00:00" });
+      const differs = row("Exchange Liquidation", { txId: "NXT_L1", ic: "BTC", ia: "0.12345679", oc: "xUSD", oa: "5000.00", date: "2025-06-01 12:00:00" });
+      expect(unpairedCount([sell, equal])).toBe(0);
+      expect(unpairedCount([sell, differs])).toBe(1);
+    });
+
+    it("pairs 10,000 liquidations sharing one timestamp, currency and amount quickly", () => {
+      const rows: string[] = [];
+      for (let i = 0; i < 10000; i++) {
+        rows.push(row("Manual Sell Order", { txId: `NXT_M${i}`, ic: "EURX", ia: "-50.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:00" }));
+        rows.push(row("Exchange Liquidation", { txId: `NXT_L${i}`, ic: "EURX", ia: "50.00", oc: "xUSD", oa: "55.00", date: "2025-06-01 12:00:00" }));
+      }
+      const started = performance.now();
+      expect(unpairedCount(rows)).toBe(0);
+      expect(performance.now() - started).toBeLessThan(2000);
+    });
+
+    const pairingOf = (rows: string[]) => analyseCsv(csv(...rows)).relationships.liquidationPairing!;
+    const countIn = (rows: string[], window: string) =>
+      pairingOf(rows).pairedWithin.find((w) => w.window === window)!.count;
+
+    it("pairs a sell order two minutes earlier without flagging the liquidation", () => {
+      const rows = [
+        row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-01 12:02:00" }),
+      ];
+      expect(countIn(rows, "within 1 h")).toBe(1);
+      expect(unpairedCount(rows)).toBe(0);
+    });
+
+    it("pairs at exactly 24 h and not beyond", () => {
+      const sell = row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:00" });
+      const at24h = row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-02 12:00:00" });
+      const past24h = row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-02 12:00:01" });
+      expect(countIn([sell, at24h], "within 24 h")).toBe(1);
+      expect(unpairedCount([sell, at24h])).toBe(0);
+      expect(pairingOf([sell, past24h]).unpairedSameAmountElsewhere).toBe(1);
+      expect(unpairedCount([sell, past24h])).toBe(1);
+    });
+
+    it("takes the closest sell order first, leaving the other for a later liquidation", () => {
+      const rows = [
+        row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-06-01 11:59:30" }),
+        row("Manual Sell Order", { txId: "NXT_M2", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-01 12:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_L2", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-01 12:00:20" }),
+      ];
+      expect(countIn(rows, "same second")).toBe(1);
+      expect(countIn(rows, "within 1 min")).toBe(1);
+      expect(unpairedCount(rows)).toBe(0);
+    });
+
+    it("measures the gap in UTC across a daylight-saving change", () => {
+      const rows = [
+        row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-03-29 08:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-03-30 08:00:01" }),
+      ];
+      expect(pairingOf(rows).unpairedSameAmountElsewhere).toBe(1);
+    });
+
+    it("counts and flags a liquidation whose currency, amount or timestamp cannot be read", () => {
+      const sell = row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-06-01 12:00:00" });
+      const rows = [
+        sell,
+        row("Exchange Liquidation", { txId: "NXT_L1", ic: "", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-01 12:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_L2", ic: "EURX", ia: "abc", oc: "USDX", oa: "220.00", date: "2025-06-01 12:00:00" }),
+        row("Exchange Liquidation", { txId: "NXT_L3", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-06-31 12:00:00" }),
+      ];
+      const d = analyseCsv(csv(...rows));
+      expect(d.relationships.liquidationPairing).toMatchObject({ liquidations: 3, unpairedUnreadable: 3 });
+      expect(formatDiagnosticReport(d, "4.5.1")).toContain(", 3 unreadable.");
+      const flagged = d.types
+        .find((t) => t.name === "Exchange Liquidation")!
+        .shapes.filter((sh) => !sh.expected)
+        .reduce((n, sh) => n + sh.count, 0);
+      expect(flagged).toBe(3);
+    });
+
+    it("reads only real calendar timestamps", () => {
+      const liquidation = row("Exchange Liquidation", { txId: "NXT_L1", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2025-03-02 12:00:00" });
+      const sellOn = (date: string) => row("Manual Sell Order", { txId: "NXT_M1", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date });
+      expect(pairingOf([sellOn("2025-02-30 12:00:00"), liquidation]).unpairedNoSameAmount).toBe(1);
+      expect(pairingOf([sellOn("2025-03-01 24:00:00"), liquidation]).unpairedNoSameAmount).toBe(1);
+      expect(countIn([sellOn("2025-03-02 11:59:59"), liquidation], "within 5 s")).toBe(1);
+      const leapDay = row("Exchange Liquidation", { txId: "NXT_L2", ic: "EURX", ia: "200.00", oc: "USDX", oa: "220.00", date: "2024-02-29 12:00:00" });
+      expect(countIn([sellOn("2024-02-29 12:00:00"), leapDay], "same second")).toBe(1);
+    });
+
+    it("omits pairing when the file has no Exchange Liquidation rows", () => {
+      const d = analyseCsv(csv(row("Manual Sell Order", { ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0" })));
+      expect(d.relationships.liquidationPairing).toBeNull();
+      expect(formatDiagnosticReport(d, "4.5.1")).not.toContain("Pairing:");
+    });
+  });
+
+  describe("credit-line interest gate on raw rows", () => {
+    it("gives the same result as calculateBalances for a currency cell with surrounding spaces", () => {
+      const input = csv(
+        row("Interest", { txId: "NXT_W1", ic: " USDX ", ia: "-3.00", oc: " USDX ", oa: "3.00", details: "approved / Interest" })
+      );
+      const [tx] = parseCSV(input);
+      const d = analyseCsv(input);
+      const interest = d.types.find((t) => t.name === "Interest")!;
+      const gatedInDiagnostics = (interest.creditLineChargesCount ?? 0) > 0;
+      expect(gatedInDiagnostics).toBe(isCreditLineInterestCharge(tx));
+    });
+  });
+
+  describe("FIATx codes in expected-currency checks", () => {
+    it("accepts USDX and EURX where credit-line is expected without flagging for currency", () => {
+      const rows = [
+        row("Credit Card Withdrawal Credit", {
+          txId: "NXT_CC1",
+          ic: "USDX",
+          ia: "-8.00",
+          oc: "USDX",
+          oa: "8.00",
+          details: "approved / card withdrawal credit",
+        }),
+        row("Manual Sell Order", {
+          txId: "NXT_MSO_EURX",
+          ic: "EURX",
+          ia: "-200.00",
+          oc: "EURX",
+          oa: "0",
+          details: "approved / manual sell",
+        }),
+        row("Exchange Liquidation", {
+          txId: "NXT_LIQ_EURX",
+          ic: "EURX",
+          ia: "200.00",
+          oc: "USDX",
+          oa: "240.00",
+          details: "approved / liquidation",
+        }),
+      ];
+
+      const d = analyseCsv(csv(...rows));
+      const ccSummary = d.types.find((t) => t.name === "Credit Card Withdrawal Credit");
+      expect(ccSummary?.shapes.every((s) => s.expected)).toBe(true);
+
+      const liqSummary = d.types.find((t) => t.name === "Exchange Liquidation");
+      expect(liqSummary?.shapes.every((s) => s.expected)).toBe(true);
+    });
+
+    it("preserves xUSD classification behaviour as credit-line", () => {
+      expect(classifyCurrency("xUSD")).toBe("credit-line");
+      expect(classifyCurrency("USDX")).toBe("known");
+      expect(classifyCurrency("EURX")).toBe("known");
+      expect(classifyCurrency("GBPX")).toBe("known");
+    });
+  });
+
+  describe("Consistency with calculateBalances", () => {
+    it("sums counted contributions per currency to the calculated balances", () => {
+      const cl = (r: string, creditLine = "") => `${r},${creditLine}`;
+      const fixture = [
+        CURRENT_HEADER + ",Credit Line",
+        cl(row("Interest", { txId: "NXT101", ic: "BTC", ia: "0.50000000", oc: "BTC", oa: "0.50000000", date: "2025-06-01 01:00:00" })),
+        // Credit-line interest charges
+        cl(row("Interest", { txId: "NXT102", ic: "USDX", ia: "-10.00", oc: "USDX", oa: "10.00", date: "2025-06-01 02:00:00" })),
+        cl(row("Interest", { txId: "NXT103", ic: "xUSD", ia: "-12.00", oc: "xUSD", oa: "12.00", date: "2025-06-01 02:30:00" })),
+        cl(row("Interest", { txId: "NXT104", ic: "USD", ia: "-15.00", oc: "USD", oa: "15.00", date: "2025-06-01 03:00:00" }), "Card"),
+        cl(row("Interest", { txId: "NXT105", ic: "USD", ia: "-20.00", oc: "-", oa: "0.00", details: "approved / 1 days interest for tid: NXT999", date: "2025-06-01 04:00:00" })),
+        // Negative interest outside USD
+        cl(row("Interest", { txId: "NXT106", ic: "EURX", ia: "-5.00", oc: "EURX", oa: "5.00", date: "2025-06-01 05:00:00" })),
+        // Paired and unpaired Exchange Liquidation
+        cl(row("Manual Sell Order", { txId: "NXT107", ic: "EURX", ia: "-200.00", oc: "EURX", oa: "0", date: "2025-06-01 06:00:00" })),
+        cl(row("Exchange Liquidation", { txId: "NXT108", ic: "EURX", ia: "200.00", oc: "USDX", oa: "240.00", date: "2025-06-01 06:00:02" })),
+        cl(row("Exchange Liquidation", { txId: "NXT109", ic: "BTC", ia: "0.10000000", oc: "xUSD", oa: "5000.00", date: "2025-06-01 07:00:00" })),
+        cl(row("Credit Card Withdrawal Credit", { txId: "NXT110", ic: "USDX", ia: "-8.00", oc: "USDX", oa: "8.00", date: "2025-06-01 08:00:00" })),
+        cl(row("Deposit", { txId: "NXT111", ic: "EUR", ia: "1000.00", oc: "EUR", oa: "1000.00", date: "2025-06-01 09:00:00" })),
+        cl(row("Loan Withdrawal", { txId: "NXT112", ic: "USD", ia: "-99.00", oc: "USDC", oa: "100.00", date: "2025-06-01 10:00:00" })),
+        cl(row("Top up Crypto", { txId: "NXT113", ic: "FAKECOIN", ia: "3.00", oc: "FAKECOIN", oa: "3.00", date: "2025-06-01 11:00:00" })),
+        // Rows neither side counts
+        cl(row("Deposit", { txId: "", ic: "EUR", ia: "500.00", oc: "EUR", oa: "500.00", date: "2025-06-01 12:00:00" })),
+        cl(row("Deposit", { txId: "NXT114", ic: "EUR", ia: "300.00", oc: "EUR", oa: "300.00", details: "rejected / Deposit", date: "2025-06-01 13:00:00" })),
+        cl(row("Deposit", { txId: "NXT115", ic: "EUR", ia: "400.00", oc: "EUR", oa: "400.00", details: "pending / Deposit", date: "2025-06-01 14:00:00" })),
+      ].join("\n");
+
+      const d = analyseCsv(fixture);
+      const calculated = calculateBalances(parseCSV(fixture));
+
+      const countedSums: Record<string, number> = {};
+      for (const t of d.types) {
+        if (t.handling === "ignored") continue;
+        for (const [cur, amt] of Object.entries(t.netContributions)) {
+          countedSums[cur] = (countedSums[cur] ?? 0) + amt;
+        }
+      }
+      const balances: Record<string, number> = {};
+      for (const c of calculated.currencies) balances[c.symbol] = c.amount;
+
+      const symbols = new Set([...Object.keys(countedSums), ...Object.keys(balances)]);
+      for (const symbol of symbols) {
+        expect(Math.abs((countedSums[symbol] ?? 0) - (balances[symbol] ?? 0))).toBeLessThan(1e-9);
+      }
+
+      expect(balances.BTC).toBeCloseTo(0.5, 8);
+      expect(balances.EUR).toBeCloseTo(795, 8);
+      expect(balances.USD ?? 0).toBe(0);
+      expect(balances.USDC).toBeCloseTo(100, 8);
+      expect(balances.FAKECOIN).toBeCloseTo(3, 8);
+      expect(balances.xUSD ?? 0).toBe(0);
+    });
   });
 });
 
