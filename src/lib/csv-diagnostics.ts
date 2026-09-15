@@ -580,12 +580,6 @@ function getHandlingInfo(typeName: string): { handling: string; why?: string } {
       why: rule.why,
     };
   }
-  if (rule.effect === "debit-input") {
-    return {
-      handling: "counted, input debited",
-      why: rule.why,
-    };
-  }
   return {
     handling: "counted",
     why: rule.why,
@@ -1099,13 +1093,12 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
           typeContr.set(oc, (typeContr.get(oc) ?? 0) + oa);
           recordFlow(oc, oa);
         }
-      } else if (effect === "debit-input") {
-        const ic = fixFiatX(row["Input Currency"]?.trim() || "-");
-        const ia = parseFloat(row["Input Amount"] ?? "0");
-        if (ic && ic !== "-" && Number.isFinite(ia)) {
-          const delta = -Math.abs(ia);
-          typeContr.set(ic, (typeContr.get(ic) ?? 0) + delta);
-          recordFlow(ic, delta);
+      } else if (effect === "credit-output") {
+        const oc = fixFiatX(row["Output Currency"]?.trim() || "-");
+        const oa = parseFloat(row["Output Amount"] ?? "0");
+        if (oc && oc !== "-" && Number.isFinite(oa)) {
+          typeContr.set(oc, (typeContr.get(oc) ?? 0) + oa);
+          recordFlow(oc, oa);
         }
       }
       netContributionsMap.set(type, typeContr);

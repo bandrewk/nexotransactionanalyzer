@@ -301,7 +301,7 @@ describe("formatDiagnosticReport", () => {
 
     expect(report).toContain("| Type | Rows | Handling | Shape |");
     expect(report).toContain("| `Exchange Credit` | 1 | ignored | in- out+ diff ×1 |");
-    expect(report).toContain("| `Exchange Liquidation` | 1 | counted, input debited | in+ out+ diff ×1 |");
+    expect(report).toContain("| `Exchange Liquidation` | 1 | ignored | in+ out+ diff ×1 |");
     expect(report).toContain("| `SomethingBrandNew` | 1 | **not recognised — counted as-is** |");
     expect(report).toContain("(unexpected)");
 
@@ -489,7 +489,7 @@ describe("Net balance contributions", () => {
     expect(d.netContributions["Interest"]).toEqual({ BTC: 0.5 });
     expect(d.netContributions["Exchange"]).toEqual({ ETH: -2, USDT: 6000 });
     expect(d.netContributions["Exchange Credit"]).toEqual({ xUSD: -14.07, EUR: 12 });
-    expect(d.netContributions["Exchange Liquidation"]).toEqual({ EUR: -500 });
+    expect(d.netContributions["Exchange Liquidation"]).toEqual({ EUR: 500, xUSD: 577.25 });
     expect(d.netContributions["Deposit To Exchange"]).toEqual({ EUR: 1000 });
     expect(d.netContributions["Deposit"]).toEqual({});
     expect(d.netContributions["Transfer In"]).toEqual({ BTC: 1 });
@@ -499,7 +499,7 @@ describe("Net balance contributions", () => {
     expect(report).toContain("- `Interest`: +0.5 BTC");
     expect(report).toContain("- `Exchange Credit`: [ignored] xUSD -14.1 → EUR +12 ×1");
     expect(report).toContain("- `Transfer In`: [ignored] BTC +1 ×1");
-    expect(report).toContain("- `Exchange Liquidation`: -500 EUR");
+    expect(report).toContain("- `Exchange Liquidation`: [ignored] EUR +500 → xUSD +577 ×1");
     expect(report).toContain("- `Deposit To Exchange`: +1,000 EUR");
     expect(report).toContain("- `Deposit`: (none)");
   });
@@ -1005,7 +1005,7 @@ describe("currency classification and expectation diagnostics", () => {
 
     const report = formatDiagnosticReport(d, "4.5.0");
     expect(report).toContain(
-      "**in+ out+ diff (xUSD) ×1 (unexpected: input xUSD is a credit-line unit)**"
+      "in+ out+ diff (xUSD) ×1 (unexpected, no effect on balances: input xUSD is a credit-line unit)"
     );
     expect(report).toContain("#### Sample rows");
     expect(report).toContain("# Exchange Liquidation");
