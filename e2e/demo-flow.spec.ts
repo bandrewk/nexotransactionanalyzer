@@ -140,6 +140,30 @@ test.describe("Credit Line card chain upload", () => {
     await expect(page.getByText("xUSD", { exact: true })).toHaveCount(0);
     await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
   });
+
+  const REPAYMENT_CSV = [
+    "Transaction,Type,Credit Line,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)",
+    'NXT1,Deposit To Exchange,,EUR,1000.00,EURX,1000.00,$1100.00,-,-,"approved / EUR deposit",2026-08-20 10:00:00',
+    'NXT2,Manual Sell Order,,EURX,-200.00,EURX,0.00,$220.00,-,-,"approved / Crypto repayment",2026-08-22 04:08:57',
+    'NXT3,Exchange Liquidation,,EURX,200.00,USDX,220.00,$220.00,-,-,"approved / Crypto repayment / Exchange EURX to USDX",2026-08-22 04:08:58',
+    'NXT4,Manual Repayment,,USDX,220.00,USDX,0.00,$220.00,-,-,"approved / Crypto repayment",2026-08-22 04:08:58',
+  ].join("\n");
+
+  test("debits a card repayment once", async ({ page }) => {
+    await page.goto("/");
+    await page.setInputFiles('input[type="file"]', {
+      name: "nexo_repayment.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(REPAYMENT_CSV),
+    });
+    await page.waitForURL("**/platform/**", { timeout: 10000 });
+
+    await page.click("a:has-text('Coinlist')");
+    await expect(page.locator("h1:has-text('Coinlist')")).toBeVisible();
+
+    await expect(page.getByText(/^800(\.0+)?$/)).toBeVisible();
+    await expect(page.getByText(/^600(\.0+)?$/)).toHaveCount(0);
+  });
 });
 
 test.describe("File Details page", () => {

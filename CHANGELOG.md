@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.5.1] - 2026-09-16
+
+### Fixed
+- Card repayments on credit-line accounts were subtracted twice. A repayment is exported as a `Manual Sell Order`, which debits the asset sold, followed by an `Exchange Liquidation` converting it for the repayment. 4.5.0 debited the `Exchange Liquidation` as well, so every repaid amount left the balance twice and assets used for repayments — typically EUR, USDT and USDC — went negative, moved to Dust & Residual Balances on the Coinlist and dropped out of the portfolio total. `Exchange Liquidation` no longer changes holdings. (#84)
+- Interest charged on a credit line no longer reduces held balances. Nexo exports it as a negative `Interest` row in USD or `xUSD`. The charge adds to the loan rather than taking coins from the wallet, but it was debited from USD and `xUSD`. A negative USD or `xUSD` interest row that is not paid out in NEXO now leaves balances unchanged and still counts towards "Charged / Reversed". Negative interest in any other currency is debited as before. **This is not confined to card accounts:** any export with a negative USD interest row shows a USD balance higher by that amount. (#84)
+- `Loan Withdrawal` debited the credit line's currency as though it were a held balance. It now credits only the asset received. (#84)
+
+### Added
+- **Compare with Nexo** on File Details: next to each asset the app holds, enter what the Nexo app shows, and add assets the app does not hold. Apply puts a comparison table into the report, with the difference per asset and any transaction-type totals of the same size as that difference. Values stay in the browser; Apply adds them to the report on the page, and they leave the device only if the report is copied or downloaded and posted. (#84)
+- The report lists the app's holdings to 8 decimals, so they no longer have to be read off screenshots. (#84)
+- `NETH`, Nexo's staked Ether, is a recognised asset priced like ETH. It was previously reported as unknown and left unpriced. (#84)
+- File Details flags an `Exchange Liquidation` that has no `Manual Sell Order` for the same asset and amount within 24 hours, since such a row is not debited anywhere. The report's Relationships section counts how many were paired within the same second, 5 seconds, 1 minute, 1 hour and 24 hours, and how many were not. (#84)
+
+### Changed
+- The report's "Net contribution breakdown" shows amounts to 8 decimals instead of 3 significant figures, splits a total that has both signs into its incoming and outgoing rows, keeps currencies whose rows cancel out, and adds the sum of the CSV's USD Equivalent column per type. (#84)
+- Currency pairs of unexpected rows show the codes as exported, so `USDX` is no longer shown as `USD`. (#84)
+- The report header names the first and latest dated CSV rows and flags a date in the future. (#84)
+- The report and its warning list what they contain — holdings, totals per type, entered balances, sample rows — and say which parts can be masked without losing what the diagnosis needs. (#84)
+- The report's "Net contribution breakdown" lists credit-line interest charges on their own `[ignored]` line, so the counted figures add up to the balances shown, apart from amounts below 0.000001 that the balance calculation treats as zero. (#84)
+- File Details accepts `USDX`, `EURX` and `GBPX` where a credit-line currency is expected. Card rows written in those currencies are no longer reported as unexpected. (#84)
+- File Details shows `Loan Withdrawal` as "counted, output only". (#84)
+- The demo fixture pairs each `Exchange Liquidation` with its `Manual Sell Order` (3,466 → 3,471 rows).
+
+### Internal
+- The historic price oracle maps one price id to every symbol that uses it and requests it once per time chunk; the live feed requests each id once.
+- The report's credit-line interest check builds each row with the parser's own function, so it matches the balances.
+
 ## [4.5.0] - 2026-09-11
 
 ### Fixed
