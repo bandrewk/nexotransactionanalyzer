@@ -13,6 +13,12 @@ import {
   isExcludedDetailStatus,
 } from "./balance-calculator";
 import { rowToTransaction } from "./csv-parser";
+import {
+  findTypeHints,
+  MAX_COMPARISON_ROWS,
+  MAX_HINT_LINES,
+  type ComparisonInput,
+} from "./balance-comparison";
 
 /**
  * Transaction type names used by Nexo exports generated before roughly 2023.
@@ -132,6 +138,9 @@ export type CreditLineDiagnostics = {
   byType: Record<string, ValueCount[]>;
 };
 
+/** Signed per-currency totals for one type, split by the sign of each leg. */
+export type FlowTotals = { posSum: number; posCount: number; negSum: number; negCount: number };
+
 export type TypeSummary = {
   name: string;
   count: number;
@@ -145,6 +154,14 @@ export type TypeSummary = {
   netContributions: Record<string, number>;
   creditLineCharges?: Record<string, number>;
   creditLineChargesCount?: number;
+  /** Legs that change holdings (generic and credit-output effects). */
+  countedFlows: Record<string, FlowTotals>;
+  /** Legs of ignored types, as a generic effect would have applied them. */
+  ignoredFlows: Record<string, FlowTotals>;
+  /** Credit-line interest charges, kept apart from counted Interest. */
+  creditLineChargeFlows: Record<string, FlowTotals>;
+  /** Sum of the USD Equivalent column over non-excluded rows with an id and a valid value. */
+  usdEquivalentSum: { sum: number; count: number };
 };
 
 export type IngestionDiagnostics = {
@@ -598,25 +615,32 @@ export function selectDiverseSamples(
   return chosen.map((c) => c.rawRow);
 }
 
+function groupThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 /**
- * Round a number to 3 significant figures and format without forcing trailing decimals.
- * Small amounts (e.g. 0.00055, 1.23e-7) retain their magnitude and scientific notation,
- * while large values (e.g. 87654.32 -> 87,700) are rounded to 3 sig figs with thousands separators.
+ * An amount to at most 8 decimals, trailing zeros trimmed, with thousands grouping.
+ * `signed` prefixes positive values with "+". Non-finite values render as "NaN".
  */
-export function formatSigFig(n: number): string {
-  if (n === 0 || !Number.isFinite(n)) return "0";
-  const val = Number(n.toPrecision(3));
-  if (val === 0) return "0";
-  const str = String(val);
-  if (str.includes("e")) {
-    return str;
-  }
-  const isNegative = str.startsWith("-");
-  const unsignedStr = isNegative ? str.slice(1) : str;
-  const [intPart, fracPart] = unsignedStr.split(".");
-  const formattedInt = Number(intPart).toLocaleString("en-US");
-  const formatted = fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
-  return (isNegative ? "-" : "") + formatted;
+export function formatAmount8(n: number, signed = false): string {
+  if (!Number.isFinite(n)) return "NaN";
+  // toFixed switches to exponent notation from 1e21 on; such values stay in that notation.
+  if (Math.abs(n) >= 1e21) return `${n < 0 ? "-" : signed ? "+" : ""}${Math.abs(n)}`;
+  const fixed = Math.abs(n).toFixed(8).replace(/\.?0+$/, "");
+  if (fixed === "0") return "0";
+  const [whole, fraction] = fixed.split(".");
+  const body = fraction === undefined ? groupThousands(whole) : `${groupThousands(whole)}.${fraction}`;
+  return `${n < 0 ? "-" : signed ? "+" : ""}${body}`;
+}
+
+/** A USD amount with two decimals and thousands grouping. */
+export function formatUsd2(n: number): string {
+  if (!Number.isFinite(n)) return "$NaN";
+  if (Math.abs(n) >= 1e21) return `${n < 0 ? "-" : ""}$${Math.abs(n)}`;
+  const [whole, fraction] = Math.abs(n).toFixed(2).split(".");
+  const isZero = whole === "0" && fraction === "00";
+  return `${n < 0 && !isZero ? "-" : ""}$${groupThousands(whole)}.${fraction}`;
 }
 
 function getHandlingInfo(typeName: string): { handling: string; why?: string } {
@@ -786,6 +810,10 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
   const creditLineByTypeCounts = new Map<string, Map<string, number>>();
 
   const netContributionsMap = new Map<string, Map<string, number>>();
+  const countedFlowMap = new Map<string, Map<string, FlowTotals>>();
+  const ignoredFlowMap = new Map<string, Map<string, FlowTotals>>();
+  const chargeFlowMap = new Map<string, Map<string, FlowTotals>>();
+  const usdSumsByType = new Map<string, { sum: number; count: number }>();
 
   // Ingestion metrics
   let csvRows = 0;
@@ -1050,12 +1078,10 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         unexpectedDetails.set(shapeFullKey, detailMap);
       }
 
-      // Normalised currency pair
+      // Currency pair as exported (USDX stays USDX), so FIATx spellings stay visible
       const icTrimmed = (row["Input Currency"] ?? "").trim();
       const ocTrimmed = (row["Output Currency"] ?? "").trim();
-      const normIc = icTrimmed && icTrimmed !== "-" ? fixFiatX(icTrimmed) : "-";
-      const normOc = ocTrimmed && ocTrimmed !== "-" ? fixFiatX(ocTrimmed) : "-";
-      const curPair = `${normIc}->${normOc}`;
+      const curPair = `${icTrimmed || "-"}->${ocTrimmed || "-"}`;
 
       const pairMap = unexpectedCurrencyPairs.get(shapeFullKey) ?? new Map<string, number>();
       pairMap.set(curPair, (pairMap.get(curPair) ?? 0) + 1);
@@ -1260,6 +1286,31 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
 
       const typeContr = netContributionsMap.get(type) ?? new Map<string, number>();
 
+      const addLeg = (bucket: Map<string, Map<string, FlowTotals>>, cur: string, delta: number) => {
+        const byCur = bucket.get(type) ?? new Map<string, FlowTotals>();
+        const totals = byCur.get(cur) ?? { posSum: 0, posCount: 0, negSum: 0, negCount: 0 };
+        if (delta > 1e-12) {
+          totals.posSum += delta;
+          totals.posCount++;
+        } else if (delta < -1e-12) {
+          totals.negSum += delta;
+          totals.negCount++;
+        }
+        byCur.set(cur, totals);
+        bucket.set(type, byCur);
+      };
+      const legBucket = effect === "ignore" ? ignoredFlowMap : countedFlowMap;
+
+      if (rawUsd && rawUsd !== "-" && !isNonStrictNumericCell(rawUsd, true)) {
+        const usd = parseFloat(rawUsd.replace(/^\$/, ""));
+        if (Number.isFinite(usd)) {
+          const usdTotals = usdSumsByType.get(type) ?? { sum: 0, count: 0 };
+          usdTotals.sum += usd;
+          usdTotals.count++;
+          usdSumsByType.set(type, usdTotals);
+        }
+      }
+
       const recordFlow = (cur: string, delta: number) => {
         const key = `${type}::${cur}`;
         const rec = flowMap.get(key) ?? {
@@ -1290,10 +1341,12 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         if (ic && ic !== "-" && Number.isFinite(ia)) {
           creditLineInterestMap.set(ic, (creditLineInterestMap.get(ic) ?? 0) + ia);
           recordFlow(ic, ia);
+          addLeg(chargeFlowMap, ic, ia);
         }
         if (oc && oc !== "-" && oc !== ic && Number.isFinite(oa)) {
           creditLineInterestMap.set(oc, (creditLineInterestMap.get(oc) ?? 0) + oa);
           recordFlow(oc, oa);
+          addLeg(chargeFlowMap, oc, oa);
         }
         creditLineInterestRowCount++;
       } else if (effect === "generic" || effect === "ignore") {
@@ -1305,10 +1358,12 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         if (ic && ic !== "-" && Number.isFinite(ia)) {
           typeContr.set(ic, (typeContr.get(ic) ?? 0) + ia);
           recordFlow(ic, ia);
+          addLeg(legBucket, ic, ia);
         }
         if (oc && oc !== "-" && oc !== ic && Number.isFinite(oa)) {
           typeContr.set(oc, (typeContr.get(oc) ?? 0) + oa);
           recordFlow(oc, oa);
+          addLeg(legBucket, oc, oa);
         }
       } else if (effect === "credit-output") {
         const oc = fixFiatX(row["Output Currency"]?.trim() || "-");
@@ -1316,6 +1371,7 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         if (oc && oc !== "-" && Number.isFinite(oa)) {
           typeContr.set(oc, (typeContr.get(oc) ?? 0) + oa);
           recordFlow(oc, oa);
+          addLeg(countedFlowMap, oc, oa);
         }
       }
       netContributionsMap.set(type, typeContr);
@@ -1349,6 +1405,14 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
       }
       creditLineChargesCount = creditLineInterestRowCount;
     }
+
+    const toRecord = (bucket: Map<string, Map<string, FlowTotals>>) => {
+      const record: Record<string, FlowTotals> = Object.create(null);
+      for (const [cur, totals] of bucket.get(name) ?? []) {
+        if (totals.posCount + totals.negCount > 0) record[cur] = { ...totals };
+      }
+      return record;
+    };
 
     const typeClMap = creditLineByTypeCounts.get(name) ?? new Map<string, number>();
     const creditLines: ValueCount[] = [...typeClMap.entries()]
@@ -1436,6 +1500,10 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
       netContributions,
       creditLineCharges,
       creditLineChargesCount,
+      countedFlows: toRecord(countedFlowMap),
+      ignoredFlows: toRecord(ignoredFlowMap),
+      creditLineChargeFlows: toRecord(chargeFlowMap),
+      usdEquivalentSum: { ...(usdSumsByType.get(name) ?? { sum: 0, count: 0 }) },
     };
   });
 
@@ -1944,20 +2012,59 @@ type OverflowConfig = {
   maxRoutineContribs: number;
 };
 
+/** Values the report gets from the app rather than from the CSV. */
+export type ReportExtras = {
+  /** Holdings as calculated by the app from this file. */
+  holdings?: { symbol: string; amount: number }[];
+  /** Balances the user entered from the Nexo app. */
+  comparison?: ComparisonInput;
+  /** Today's date (UTC, YYYY-MM-DD); defaults to the current date. */
+  today?: string;
+};
+
+/** Most holdings listed in the Analyzer holdings section. */
+export const MAX_HOLDINGS_LISTED = 200;
+
+function reportCell(text: string): string {
+  return truncateValue(text).replace(/\|/g, "\\|");
+}
+
 function buildReport(
   d: CsvDiagnostics,
   appVersion: string,
-  config: OverflowConfig
+  config: OverflowConfig,
+  extras: ReportExtras = {}
 ): { text: string; omissions: string[] } {
   const out: string[] = [];
   const omissions: string[] = [];
+  const today = extras.today ?? new Date().toISOString().slice(0, 10);
+  const holdings = (extras.holdings ?? []).filter((h) => Math.abs(h.amount) >= 1e-8);
+  const comparisonRows = extras.comparison?.rows ?? [];
 
   // --- 1. Short privacy notice; version + schema header ---
   out.push("### Nexo Transaction Analyzer — file report");
   out.push("");
-  if (hasValueBearingContent(d)) {
+  if (hasValueBearingContent(d) || holdings.length > 0 || comparisonRows.length > 0) {
+    const contents: string[] = [];
+    if (holdings.length > 0) contents.push("your exact holdings as calculated by the app");
+    if (d.types.some((t) => Object.keys(t.netContributions).length > 0 || t.creditLineCharges)) {
+      contents.push("exact totals per transaction type");
+    }
+    if (comparisonRows.length > 0) contents.push("the balances you entered from the Nexo app");
+    if (d.types.some((t) => t.shapes.some((sh) => !sh.expected && (sh.recurringDetails?.length ?? 0) > 0))) {
+      contents.push("recurring detail text");
+    }
+    if (d.sampleRows.length > 0) {
+      contents.push("sample rows with exact amounts, transaction IDs, transaction hashes, and merchant names and locations");
+    }
+    if (d.feeCensus.nonzero > 0) contents.push("fee totals");
+    if (d.creditLine.distribution.some((v) => v.value !== "(empty)" && v.count > 0)) {
+      contents.push("Credit Line values");
+    }
+    const listed =
+      contents.length > 1 ? `${contents.slice(0, -1).join(", ")} and ${contents[contents.length - 1]}` : contents[0];
     out.push(
-      "> **Check this before you post it.** This report contains net totals approximating account balances, recurring detail text, and sample rows with exact sample amounts, transaction IDs, transaction hashes, and merchant names and locations. Edit out anything private — the report remains useful without it."
+      `> **Check this before you post it.** This report contains ${listed}. Transaction IDs, hashes and merchant names can be masked without losing anything the diagnosis needs; the amounts are what make it useful.`
     );
     out.push("");
   }
@@ -1998,7 +2105,9 @@ function buildReport(
   out.push(`- Columns (${d.columnCount}): ${d.columns.join(", ")}`);
   out.push(`- Rows: ${d.rowCount}`);
   out.push(
-    `- Date range: ${d.dateRange ? `${d.dateRange.first} to ${d.dateRange.last}` : "not determinable"}`
+    d.dateRange
+      ? `- Dates: first dated CSV row ${d.dateRange.first}; latest dated CSV row ${d.dateRange.last}${d.dateRange.last > today ? " (in the future)" : ""}`
+      : "- Dates: not determinable"
   );
   if (d.looksLikeLegacyExport) {
     out.push(
@@ -2006,6 +2115,62 @@ function buildReport(
     );
   }
   out.push("");
+
+  if (extras.comparison && comparisonRows.length > 0) {
+    out.push("#### Comparison with Nexo");
+    out.push("");
+    out.push(
+      `Compared on ${extras.comparison.appliedOn} (UTC); latest dated CSV row ${d.dateRange?.last ?? "not determinable"}. Difference = Nexo - analyzer.`
+    );
+    out.push("");
+    out.push("| Asset | Analyzer | Nexo | Difference | % |");
+    out.push("| --- | ---: | ---: | ---: | ---: |");
+    const shownRows = comparisonRows.slice(0, MAX_COMPARISON_ROWS);
+    for (const r of shownRows) {
+      const pct = r.relativePercent === null ? "—" : `${r.relativePercent.toFixed(2)}%`;
+      out.push(
+        `| ${reportCell(r.label)} | ${formatAmount8(r.analyzer)} | ${formatAmount8(r.nexo)} | ${formatAmount8(r.difference, true)} | ${pct} |`
+      );
+    }
+    if (comparisonRows.length > shownRows.length) {
+      out.push(`_... and ${comparisonRows.length - shownRows.length} more assets, omitted._`);
+    }
+
+    const hintLines: string[] = [];
+    let omittedHints = 0;
+    for (const r of shownRows) {
+      for (const hint of findTypeHints(r, d.types, (name) => truncateValue(name))) {
+        if (hintLines.length >= MAX_HINT_LINES) {
+          omittedHints++;
+          continue;
+        }
+        hintLines.push(
+          `- ${reportCell(r.symbol)} ${formatAmount8(r.difference, true)}: ${hint.text}; total ${formatAmount8(hint.total, true)}, off by ${formatAmount8(hint.deviation)}.`
+        );
+      }
+    }
+    if (hintLines.length > 0) {
+      out.push("");
+      out.push("Type totals of the same size as a difference:");
+      out.push(...hintLines);
+      if (omittedHints > 0) out.push(`- ... and ${omittedHints} more, omitted.`);
+    }
+    out.push("");
+  }
+
+  if (holdings.length > 0) {
+    out.push("#### Analyzer holdings");
+    out.push("");
+    out.push("_Calculated by the app from this file, up to 8 decimals._");
+    out.push("");
+    const sortedHoldings = [...holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
+    const listed = sortedHoldings.slice(0, MAX_HOLDINGS_LISTED);
+    out.push(listed.map((h) => `${reportCell(h.symbol)} ${formatAmount8(h.amount)}`).join("; "));
+    if (sortedHoldings.length > listed.length) {
+      out.push(`_... and ${sortedHoldings.length - listed.length} more, omitted._`);
+    }
+    out.push("");
+  }
 
   // --- 2. Ingestion failures, unknown types, unconfirmed handling, unexpected shapes/currencies ---
   if (d.unknownTypes.length > 0) {
@@ -2076,7 +2241,7 @@ function buildReport(
     out.push(`Fees: ${feeParts.join("; ")}.`);
     for (const [tName, f] of Object.entries(d.feeCensus.byType)) {
       out.push(
-        `- ${truncateValue(tName)}: ${f.count} fee${f.count === 1 ? "" : "s"}, total ${formatSigFig(f.total)} ${f.currency} (${f.legMatch}).`
+        `- ${truncateValue(tName)}: ${f.count} fee${f.count === 1 ? "" : "s"}, total ${formatAmount8(f.total)} ${f.currency} (${f.legMatch}).`
       );
     }
     out.push("");
@@ -2338,7 +2503,9 @@ function buildReport(
 
   out.push("#### Net contribution breakdown");
   out.push("");
-  out.push("_([ignored] = no balance effect; amounts show internal movements):_");
+  out.push(
+    "_([ignored] = no balance effect; amounts show internal movements. Amounts to 8 decimals; (+in ×n / -out ×m) splits a total that has both signs. CSV USD Equivalent sums are transaction values, not holdings or cash flow.)_"
+  );
   out.push("");
 
   if (!config.includeNetContributions || config.maxRoutineContribs === 0) {
@@ -2354,15 +2521,30 @@ function buildReport(
     const contribTypesToRender = [...exceptionalTypes, ...allowedRoutineContribs];
     let hadCappedContribs = false;
 
+    const usdSuffix = (t: TypeSummary) =>
+      t.usdEquivalentSum.count > 0
+        ? ` — CSV USD Equivalent sum ${formatUsd2(t.usdEquivalentSum.sum)} over ${t.usdEquivalentSum.count} row${t.usdEquivalentSum.count === 1 ? "" : "s"}`
+        : "";
+    // Net per currency, including currencies whose legs cancel to zero.
+    const currencyEntries = (t: TypeSummary, flows: Record<string, FlowTotals>): [string, number][] => {
+      const keys = new Set([...Object.keys(t.netContributions), ...Object.keys(flows)]);
+      return [...keys].map((cur) => [cur, t.netContributions[cur] ?? 0]);
+    };
+    const gross = (f: FlowTotals | undefined) => (f ? f.posSum - f.negSum : 0);
+    const split = (f: FlowTotals | undefined) =>
+      f && f.posCount > 0 && f.negCount > 0
+        ? ` (${formatAmount8(f.posSum, true)} ×${f.posCount} / ${formatAmount8(f.negSum, true)} ×${f.negCount})`
+        : "";
+
     const formatMovement = (entries: [string, number][]): string => {
       if (entries.length === 2) {
         const sorted = [...entries].sort((a, b) => a[1] - b[1]);
-        const leg1 = `${truncateValue(sorted[0][0])} ${sorted[0][1] > 0 ? "+" : ""}${formatSigFig(sorted[0][1])}`;
-        const leg2 = `${truncateValue(sorted[1][0])} ${sorted[1][1] > 0 ? "+" : ""}${formatSigFig(sorted[1][1])}`;
+        const leg1 = `${truncateValue(sorted[0][0])} ${formatAmount8(sorted[0][1], true)}`;
+        const leg2 = `${truncateValue(sorted[1][0])} ${formatAmount8(sorted[1][1], true)}`;
         return `${leg1} → ${leg2}`;
       }
       if (entries.length === 1) {
-        return `${truncateValue(entries[0][0])} ${entries[0][1] > 0 ? "+" : ""}${formatSigFig(entries[0][1])}`;
+        return `${truncateValue(entries[0][0])} ${formatAmount8(entries[0][1], true)}`;
       }
       const sorted = [...entries].sort(
         (a, b) => Math.abs(b[1]) - Math.abs(a[1]) || a[0].localeCompare(b[0])
@@ -2370,40 +2552,40 @@ function buildReport(
       const displayed = sorted.slice(0, MAX_CONTRIBUTIONS_PER_TYPE);
       if (entries.length > MAX_CONTRIBUTIONS_PER_TYPE) hadCappedContribs = true;
       return displayed
-        .map(([cur, amt]) => `${truncateValue(cur)} ${amt > 0 ? "+" : ""}${formatSigFig(amt)}`)
+        .map(([cur, amt]) => `${truncateValue(cur)} ${formatAmount8(amt, true)}`)
         .join(", ");
     };
 
     for (const t of contribTypesToRender) {
-      const entries = Object.entries(t.netContributions);
       if (t.handling === "ignored") {
+        const entries = currencyEntries(t, t.ignoredFlows);
         if (entries.length === 0) {
-          out.push(`- \`${truncateValue(t.name)}\`: [ignored] (none)`);
+          out.push(`- \`${truncateValue(t.name)}\`: [ignored] (none)${usdSuffix(t)}`);
         } else {
           const movementStr = formatMovement(entries);
-          out.push(`- \`${truncateValue(t.name)}\`: [ignored] ${movementStr} ×${t.count}`);
+          out.push(`- \`${truncateValue(t.name)}\`: [ignored] ${movementStr} ×${t.count}${usdSuffix(t)}`);
         }
       } else {
+        const entries = currencyEntries(t, t.countedFlows);
         if (entries.length === 0) {
-          out.push(`- \`${truncateValue(t.name)}\`: (none)`);
+          out.push(`- \`${truncateValue(t.name)}\`: (none)${usdSuffix(t)}`);
         } else {
           const sorted = [...entries].sort(
-            (a, b) => Math.abs(b[1]) - Math.abs(a[1]) || a[0].localeCompare(b[0])
+            (a, b) =>
+              Math.abs(b[1]) - Math.abs(a[1]) ||
+              gross(t.countedFlows[b[0]]) - gross(t.countedFlows[a[0]]) ||
+              a[0].localeCompare(b[0])
           );
           const displayed = sorted.slice(0, MAX_CONTRIBUTIONS_PER_TYPE);
           const formatted = displayed
-            .map(([cur, amt]) => {
-              const signPrefix = amt > 0 ? "+" : "";
-              const str = formatSigFig(amt);
-              return `${signPrefix}${str} ${truncateValue(cur)}`;
-            })
+            .map(([cur, amt]) => `${formatAmount8(amt, true)} ${truncateValue(cur)}${split(t.countedFlows[cur])}`)
             .join(", ");
           const suffix =
             entries.length > MAX_CONTRIBUTIONS_PER_TYPE
               ? `, ... and ${entries.length - MAX_CONTRIBUTIONS_PER_TYPE} more, omitted`
               : "";
           if (entries.length > MAX_CONTRIBUTIONS_PER_TYPE) hadCappedContribs = true;
-          out.push(`- \`${truncateValue(t.name)}\`: ${formatted}${suffix}`);
+          out.push(`- \`${truncateValue(t.name)}\`: ${formatted}${suffix}${usdSuffix(t)}`);
         }
       }
 
@@ -2415,7 +2597,7 @@ function buildReport(
           );
         } else {
           const movementStr = clEntries
-            .map(([cur, amt]) => `${truncateValue(cur)} ${amt > 0 ? "+" : ""}${formatSigFig(amt)}`)
+            .map(([cur, amt]) => `${truncateValue(cur)} ${formatAmount8(amt, true)}`)
             .join(", ");
           out.push(
             `- \`Interest (credit-line charges)\`: [ignored] ${movementStr} ×${t.creditLineChargesCount}`
@@ -2594,7 +2776,11 @@ function truncateDeterministically(text: string, maxBytes: number): string {
  * The report is shown in full before it can be copied, and sample rows are
  * unaltered, so what gets published is always something the user could read first.
  */
-export function formatDiagnosticReport(d: CsvDiagnostics, appVersion: string): string {
+export function formatDiagnosticReport(
+  d: CsvDiagnostics,
+  appVersion: string,
+  extras: ReportExtras = {}
+): string {
   const encoder = new TextEncoder();
 
   // Progressive reduction pipeline obeying the overflow policy:
@@ -2679,7 +2865,7 @@ export function formatDiagnosticReport(d: CsvDiagnostics, appVersion: string): s
 
   let lastReport = "";
   for (let i = 0; i < stages.length; i++) {
-    const res = buildReport(d, appVersion, stages[i]);
+    const res = buildReport(d, appVersion, stages[i], extras);
     lastReport = res.text;
     if (encoder.encode(res.text).length <= MAX_REPORT_SIZE_BYTES) {
       return res.text;

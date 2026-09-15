@@ -6,8 +6,9 @@ import {
   classifyCurrency,
   extractDetailRemainder,
   extractRowStatus,
+  formatAmount8,
   formatDiagnosticReport,
-  formatSigFig,
+  formatUsd2,
   hasValueBearingContent,
   isExceptionalType,
   LEGACY_TYPE_NAMES,
@@ -18,9 +19,11 @@ import {
   MAX_CONTRIBUTIONS_PER_TYPE,
   MAX_CREDIT_LINE_VALUES_GLOBAL,
   MAX_CREDIT_LINE_VALUES_PER_TYPE,
+  MAX_HOLDINGS_LISTED,
   MAX_REPORT_SIZE_BYTES,
   shapeOf,
 } from "./csv-diagnostics";
+import { buildComparison } from "./balance-comparison";
 import { TransactionType, TYPE_RULES } from "../data/transaction-types";
 import { fixFiatX } from "../data/currencies";
 import { calculateBalances, isCreditLineInterestCharge } from "./balance-calculator";
@@ -55,21 +58,6 @@ const row = (
 };
 
 const csv = (...rows: string[]) => [CURRENT_HEADER, ...rows].join("\n");
-
-describe("formatSigFig", () => {
-  it("formats numbers to 3 significant figures without forcing trailing decimals", () => {
-    expect(formatSigFig(0.00055)).toBe("0.00055");
-    expect(formatSigFig(0.0000001234)).toBe("1.23e-7");
-    expect(formatSigFig(1.23e-7)).toBe("1.23e-7");
-    expect(formatSigFig(87654.32)).toBe("87,700");
-    expect(formatSigFig(35000)).toBe("35,000");
-    expect(formatSigFig(-87654.32)).toBe("-87,700");
-    expect(formatSigFig(0)).toBe("0");
-    expect(formatSigFig(1)).toBe("1");
-    expect(formatSigFig(12.3456789)).toBe("12.3");
-    expect(formatSigFig(-14.07)).toBe("-14.1");
-  });
-});
 
 describe("analyseCsv", () => {
   it("accepts the current 11-column schema", () => {
@@ -236,14 +224,14 @@ describe("formatDiagnosticReport", () => {
     expect(emptyReport).not.toContain("Check this before you post it");
   });
 
-  it("carries a warning on a one-row file with expected shape that publishes monetary totals (+12.3 BTC)", () => {
+  it("carries a warning on a one-row file with expected shape that publishes monetary totals (+12.3456789 BTC)", () => {
     const d = analyseCsv(csv(row("Interest", { ia: "12.3456789", oa: "12.3456789" })));
     expect(d.sampleRows).toHaveLength(0);
     expect(hasValueBearingContent(d)).toBe(true);
     const report = formatDiagnosticReport(d, "4.4.0");
-    expect(report).toContain("+12.3 BTC");
+    expect(report).toContain("+12.3456789 BTC");
     expect(report).toContain("Check this before you post it");
-    expect(report).toContain("net totals approximating account balances");
+    expect(report).toContain("exact totals per transaction type");
   });
 
   it("carries a warning when a recognised type has an unexpected shape to sample", () => {
@@ -499,12 +487,12 @@ describe("Net balance contributions", () => {
 
     const report = formatDiagnosticReport(d, "4.4.0");
     expect(report).toContain("#### Net contribution breakdown");
-    expect(report).toContain("- `Interest`: +0.5 BTC");
-    expect(report).toContain("- `Exchange Credit`: [ignored] xUSD -14.1 → EUR +12 ×1");
+    expect(report).toContain("- `Interest`: +0.5 BTC — CSV USD Equivalent sum $1.00 over 1 row\n");
+    expect(report).toContain("- `Exchange Credit`: [ignored] xUSD -14.07 → EUR +12 ×1 — CSV USD Equivalent sum $1.00 over 1 row");
     expect(report).toContain("- `Transfer In`: [ignored] BTC +1 ×1");
-    expect(report).toContain("- `Exchange Liquidation`: [ignored] EUR +500 → xUSD +577 ×1");
+    expect(report).toContain("- `Exchange Liquidation`: [ignored] EUR +500 → xUSD +577.25 ×1");
     expect(report).toContain("- `Deposit To Exchange`: +1,000 EUR");
-    expect(report).toContain("- `Deposit`: (none)");
+    expect(report).toContain("- `Deposit`: (none)\n");
   });
 });
 
@@ -1743,10 +1731,11 @@ describe("Deepened unexpected shape evidence", () => {
     expect(unexpected100).not.toContain("SingleOccurrence");
   });
 
-  it("reports normalised currency pairs (EURX as EUR)", () => {
+  it("reports currency pairs as exported, keeping EURX apart from EUR", () => {
     const rows = [
       row("Interest", { ic: "EURX", ia: "-1.00000000", oc: "EURX", oa: "1.00000000" }),
       row("Interest", { ic: "EURX", ia: "-1.00000000", oc: "EURX", oa: "1.00000000" }),
+      row("Interest", { ic: "EUR", ia: "-1.00000000", oc: "EUR", oa: "1.00000000" }),
     ];
     const d = analyseCsv(csv(...rows));
     const report = formatDiagnosticReport(d, "4.5.0");
@@ -1754,8 +1743,8 @@ describe("Deepened unexpected shape evidence", () => {
       report.indexOf("#### Unexpected shapes"),
       report.indexOf("#### Sample rows")
     );
-    expect(unexpectedSection).toContain("pairs: EUR->EUR ×2");
-    expect(unexpectedSection).not.toContain("EURX");
+    expect(unexpectedSection).toContain("EURX->EURX ×2");
+    expect(unexpectedSection).toContain("EUR->EUR ×1");
   });
 
   it("renders first and last dates for an unexpected shape spanning a period", () => {
@@ -1838,11 +1827,18 @@ describe("Deepened unexpected shape evidence", () => {
     expect(report).not.toContain("no recurring detail text");
   });
 
-  it("mentions recurring detail text in the privacy warning", () => {
-    const d = analyseCsv(csv(row("Interest", { ia: "-1.0" })));
-    const report = formatDiagnosticReport(d, "4.5.0");
-    expect(report).toContain("Check this before you post it");
-    expect(report).toContain("recurring detail text");
+  it("mentions recurring detail text in the privacy warning only when some is published", () => {
+    const recurring = analyseCsv(
+      csv(...Array.from({ length: 12 }, (_, i) => row("Interest", { txId: `NXT${i}`, ia: "-1.0", details: "approved / Same text" })))
+    );
+    const withText = formatDiagnosticReport(recurring, "4.5.0");
+    expect(withText).toContain("details: \"Same text\" ×12");
+    expect(withText).toContain("recurring detail text");
+
+    const single = formatDiagnosticReport(analyseCsv(csv(row("Interest", { ia: "-1.0" }))), "4.5.0");
+    expect(single).toContain("Check this before you post it");
+    expect(single).toContain("none recurring");
+    expect(single).not.toContain("recurring detail text");
   });
 });
 
@@ -2868,3 +2864,235 @@ describe("credit-line interest charges and liquidation pairing diagnostics", () 
 });
 
 
+
+describe("precise figures and comparison with Nexo", () => {
+  const raw = (id: string, type: string, ic: string, ia: string, oc: string, oa: string, usd = "$1.00", details = "approved / x", date = "2026-01-15 00:00:00") =>
+    `${id},${type},${ic},${ia},${oc},${oa},${usd},-,-,"${details}",${date}`;
+  const section = (text: string, heading: string) => text.split(heading)[1]?.split("\n#### ")[0] ?? "";
+
+  it("formats amounts to 8 decimals with grouping, sign and NaN", () => {
+    expect(formatAmount8(60.6171246)).toBe("60.6171246");
+    expect(formatAmount8(34515.7, true)).toBe("+34,515.7");
+    expect(formatAmount8(-0.000000014)).toBe("-0.00000001");
+    expect(formatAmount8(0.000000004)).toBe("0");
+    expect(formatAmount8(-0)).toBe("0");
+    expect(formatAmount8(1234567.123456789)).toBe("1,234,567.12345679");
+    expect(formatAmount8(Number.NaN)).toBe("NaN");
+    expect(formatAmount8(Number.POSITIVE_INFINITY)).toBe("NaN");
+    expect(formatUsd2(68127.314)).toBe("$68,127.31");
+    expect(formatUsd2(-5)).toBe("-$5.00");
+    expect(formatUsd2(-0.001)).toBe("$0.00");
+    expect(formatAmount8(1e30)).toBe("1e+30");
+    expect(formatAmount8(-1e30, true)).toBe("-1e+30");
+    expect(formatUsd2(1e21)).toBe("$1e+21");
+  });
+
+  it("splits a counted total with both signs and keeps zero-net currencies", () => {
+    const d = analyseCsv(
+      csv(
+        row("Cashback", { txId: "NXT1", ic: "NEXO", ia: "5.00000000", oc: "NEXO", oa: "5.00000000" }),
+        row("Cashback", { txId: "NXT2", ic: "NEXO", ia: "-2.00000000", oc: "NEXO", oa: "2.00000000" }),
+        row("Cashback", { txId: "NXT3", ic: "BTC", ia: "0.10000000", oc: "BTC", oa: "0.10000000" }),
+        row("Cashback", { txId: "NXT4", ic: "BTC", ia: "-0.10000000", oc: "BTC", oa: "0.10000000" })
+      )
+    );
+    const report = formatDiagnosticReport(d, "4.5.1");
+    expect(report).toContain(
+      "- `Cashback`: +3 NEXO (+5 ×1 / -2 ×1), 0 BTC (+0.1 ×1 / -0.1 ×1) — CSV USD Equivalent sum $4.00 over 4 rows"
+    );
+  });
+
+  it("keeps credit-line charges out of counted Interest flows", () => {
+    const d = analyseCsv(
+      csv(
+        row("Interest", { txId: "NXT1", ic: "BTC", ia: "0.50000000", oc: "BTC", oa: "0.50000000" }),
+        row("Interest", { txId: "NXT2", ic: "USDX", ia: "-0.17000000", oc: "-", oa: "0.00000000", details: "approved / Interest" })
+      )
+    );
+    const interest = d.types.find((t) => t.name === "Interest")!;
+    expect(Object.keys(interest.countedFlows)).toEqual(["BTC"]);
+    expect(interest.creditLineChargeFlows.USD).toEqual({ posSum: 0, posCount: 0, negSum: -0.17, negCount: 1 });
+    const report = formatDiagnosticReport(d, "4.5.1");
+    expect(report).toContain("- `Interest`: +0.5 BTC — CSV USD Equivalent sum $2.00 over 2 rows");
+    expect(report).toContain("- `Interest (credit-line charges)`: [ignored] USD -0.17 ×1");
+  });
+
+  it("records credit-output and same-currency legs the way the calculator applies them", () => {
+    const d = analyseCsv(
+      csv(
+        row("Loan Withdrawal", { txId: "NXT1", ic: "USD", ia: "-99.00000000", oc: "USDC", oa: "100.00000000" }),
+        row("Top up Crypto", { txId: "NXT2", ic: "USDT", ia: "25.00000000", oc: "USDT", oa: "25.00000000" }),
+        row("Transfer Out", { txId: "NXT3", ic: "USDT", ia: "-5.00000000", oc: "USDT", oa: "5.00000000" })
+      )
+    );
+    const byName = (n: string) => d.types.find((t) => t.name === n)!;
+    expect(byName("Loan Withdrawal").countedFlows).toEqual({ USDC: { posSum: 100, posCount: 1, negSum: 0, negCount: 0 } });
+    expect(byName("Top up Crypto").countedFlows).toEqual({ USDT: { posSum: 25, posCount: 1, negSum: 0, negCount: 0 } });
+    expect(byName("Transfer Out").ignoredFlows).toEqual({ USDT: { posSum: 0, posCount: 0, negSum: -5, negCount: 1 } });
+    expect(byName("Transfer Out").countedFlows).toEqual({});
+  });
+
+  it("sums USD Equivalent only over non-excluded rows with an id and a valid value", () => {
+    const d = analyseCsv(
+      [
+        CURRENT_HEADER,
+        raw("NXT1", "Top up Crypto", "BTC", "0.1", "BTC", "0.1", "$1000.50"),
+        raw("NXT2", "Top up Crypto", "BTC", "0.1", "BTC", "0.1", "$2000.25"),
+        raw("NXT3", "Top up Crypto", "BTC", "0.1", "BTC", "0.1", "$999.00", "rejected / x"),
+        raw("", "Top up Crypto", "BTC", "0.1", "BTC", "0.1", "$999.00"),
+        raw("NXT5", "Top up Crypto", "BTC", "0.1", "BTC", "0.1", "$abc"),
+        raw("NXT6", "Top up Crypto", "BTC", "0.1", "BTC", "0.1", "-"),
+      ].join("\n")
+    );
+    expect(d.types.find((t) => t.name === "Top up Crypto")!.usdEquivalentSum).toEqual({ sum: 3000.75, count: 2 });
+  });
+
+  it("states the latest dated CSV row and flags a date in the future", () => {
+    const d = analyseCsv(
+      csv(
+        row("Interest", { txId: "NXT1", date: "2026-01-10 00:00:00" }),
+        row("Interest", { txId: "NXT2", date: "2026-03-01 12:00:00", details: "rejected / x" })
+      )
+    );
+    expect(formatDiagnosticReport(d, "4.5.1", { today: "2026-09-15" })).toContain(
+      "- Dates: first dated CSV row 2026-01-10; latest dated CSV row 2026-03-01\n"
+    );
+    expect(formatDiagnosticReport(d, "4.5.1", { today: "2026-02-01" })).toContain(
+      "latest dated CSV row 2026-03-01 (in the future)"
+    );
+    const undated = analyseCsv(csv(row("Interest", { txId: "NXT1", date: "not a date" })));
+    expect(formatDiagnosticReport(undated, "4.5.1")).toContain("- Dates: not determinable");
+  });
+
+  it("renders holdings and the warning even when the file alone carries no amounts", () => {
+    const d = analyseCsv(CURRENT_HEADER);
+    expect(formatDiagnosticReport(d, "4.5.1")).not.toContain("Check this before you post it");
+    const report = formatDiagnosticReport(d, "4.5.1", {
+      holdings: [
+        { symbol: "BTC", amount: 0.09115988 },
+        { symbol: "USDT", amount: -2939.3828764 },
+        { symbol: "DUST", amount: 0.000000001 },
+      ],
+    });
+    expect(report).toContain("Check this before you post it");
+    expect(report).toContain("exact holdings");
+    expect(section(report, "#### Analyzer holdings")).toContain("BTC 0.09115988; USDT -2,939.3828764");
+    expect(report).not.toContain("DUST");
+    expect(report).not.toContain("#### Comparison with Nexo");
+  });
+
+  it("keeps an oversized type name from pushing the new sections out of the report", () => {
+    const name = "T".repeat(110_000);
+    const d = analyseCsv(csv(row(name, { txId: "NXT1", ic: "BTC", ia: "1.00000000", oc: "BTC", oa: "1.00000000" })));
+    const holdings = [{ symbol: "BTC", amount: 1 }];
+    const rows = buildComparison(holdings, [{ symbol: "BTC", value: 0 }]);
+    const report = formatDiagnosticReport(d, "4.5.1", { holdings, comparison: { rows, appliedOn: "2026-09-15" } });
+    expect(new TextEncoder().encode(report).length).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
+    expect(section(report, "#### Comparison with Nexo")).toContain(`matches the counted \`${"T".repeat(32)}…\` total (1 row)`);
+    expect(report).toContain("#### Analyzer holdings");
+  });
+
+  it("caps the holdings list", () => {
+    const holdings = Array.from({ length: MAX_HOLDINGS_LISTED + 5 }, (_, i) => ({ symbol: `C${String(i).padStart(3, "0")}`, amount: 1 }));
+    const report = formatDiagnosticReport(analyseCsv(CURRENT_HEADER), "4.5.1", { holdings });
+    expect(report).toContain("_... and 5 more, omitted._");
+  });
+
+  it("renders the comparison table, the dates and type-level hints", () => {
+    const d = analyseCsv(
+      csv(
+        row("Top up Crypto", { txId: "NXT1", ic: "USDT", ia: "100.00000000", oc: "USDT", oa: "100.00000000", date: "2026-08-20 10:00:00" }),
+        row("Loan Withdrawal", { txId: "NXT2", ic: "USD", ia: "-60.48073607", oc: "USDT", oa: "60.61712460", date: "2026-08-22 10:00:00" })
+      )
+    );
+    const holdings = [{ symbol: "USDT", amount: 160.6171246 }];
+    const rows = buildComparison(holdings, [
+      { symbol: "USDT", value: 100 },
+      { symbol: "USD", value: 0 },
+    ]);
+    const report = formatDiagnosticReport(d, "4.5.1", { holdings, comparison: { rows, appliedOn: "2026-09-15" } });
+    const comparison = section(report, "#### Comparison with Nexo");
+    expect(comparison).toContain("Compared on 2026-09-15 (UTC); latest dated CSV row 2026-08-22. Difference = Nexo - analyzer.");
+    expect(comparison).toContain("| USDT | 160.6171246 | 100 | -60.6171246 | -60.62% |");
+    expect(comparison).toContain("| USD (Nexo: USDx) | 0 | 0 | 0 | — |");
+    expect(comparison).toContain(
+      "- USDT -60.6171246: matches the counted `Loan Withdrawal` total (1 row); total +60.6171246, off by 0."
+    );
+    expect(report.indexOf("#### Comparison with Nexo")).toBeLessThan(report.indexOf("#### Analyzer holdings"));
+    expect(report).toContain("the balances you entered from the Nexo app");
+  });
+
+  it("stays within the size bound with extras on a pathological file", () => {
+    const rows: string[] = [];
+    for (let i = 0; i < 2000; i++) {
+      rows.push(row("Interest", { txId: `NXT${i}`, ic: `SYN${i}`, ia: "1.12345678", oc: `SYN${i}`, oa: "1.12345678" }));
+    }
+    const d = analyseCsv(csv(...rows));
+    const holdings = Array.from({ length: 2000 }, (_, i) => ({ symbol: `SYN${i}`, amount: 1.12345678 }));
+    const comparisonRows = buildComparison(holdings, holdings.map((h) => ({ symbol: h.symbol, value: 0 })));
+    const report = formatDiagnosticReport(d, "4.5.1", { holdings, comparison: { rows: comparisonRows, appliedOn: "2026-09-15" } });
+    expect(new TextEncoder().encode(report).length).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
+    expect(report).toContain("#### Comparison with Nexo");
+    expect(report).toContain("more assets, omitted");
+  });
+
+  it("keeps the precise breakdown for a realistically large credit-line export", () => {
+    const types = [
+      ["Interest", "BTC", "0.00001234", "BTC", "0.00001234"],
+      ["Interest", "USDX", "-0.01000000", "-", "0.00000000"],
+      ["Cashback", "NEXO", "0.12345678", "NEXO", "0.12345678"],
+      ["Exchange Credit", "USDX", "-7.40000000", "EURX", "6.40000000"],
+      ["Credit Card Withdrawal Credit", "USDX", "-7.40000000", "USDX", "7.40000000"],
+      ["Nexo Card Purchase", "USDX", "-7.40000000", "EUR", "6.40000000"],
+      ["Transfer Out", "USDC", "-12.00000000", "USDC", "12.00000000"],
+      ["Transfer In", "USDC", "10.00000000", "USDC", "10.00000000"],
+      ["Locking Term Deposit", "ETH", "-0.10000000", "ETH", "0.10000000"],
+      ["Unlocking Term Deposit", "ETH", "0.10000000", "ETH", "0.10000000"],
+      ["Manual Sell Order", "EURX", "-200.00000000", "EURX", "0.00000000"],
+      ["Manual Repayment", "USDX", "230.84000000", "USDX", "0.00000000"],
+      ["Exchange", "EURX", "-50.00000000", "USDT", "55.00000000"],
+      ["Deposit To Exchange", "EUR", "250.00000000", "EURX", "250.00000000"],
+      ["Top up Crypto", "USDT", "100.00000000", "USDT", "100.00000000"],
+      ["Withdrawal", "NEXO", "-10.00000000", "NEXO", "10.00000000"],
+    ];
+    const rows: string[] = [];
+    for (let i = 0; i < 21600; i++) {
+      const [type, ic, ia, oc, oa] = types[i % types.length];
+      const day = String((i % 28) + 1).padStart(2, "0");
+      rows.push(row(type, { txId: `NXT${i}`, ic, ia, oc, oa, date: `2025-0${(i % 9) + 1}-${day} 10:00:00` }));
+    }
+    const d = analyseCsv(csv(...rows));
+    const holdings = Object.entries(calculateBalances(parseCSV(csv(...rows))).currencies)
+      .map(([, c]) => ({ symbol: c.symbol, amount: c.amount }))
+      .filter((h) => Math.abs(h.amount) >= 1e-8);
+    const comparisonRows = buildComparison(holdings, holdings.map((h) => ({ symbol: h.symbol, value: h.amount + 1 })));
+    const report = formatDiagnosticReport(d, "4.5.1", { holdings, comparison: { rows: comparisonRows, appliedOn: "2026-09-15" } });
+    expect(new TextEncoder().encode(report).length).toBeLessThanOrEqual(MAX_REPORT_SIZE_BYTES);
+    expect(report).not.toContain("Net contribution breakdown omitted");
+    expect(report).toContain("- `Exchange`: ");
+  });
+
+  it("sums counted flows to the calculated holdings", () => {
+    const fixture = csv(
+      row("Top up Crypto", { txId: "NXT1", ic: "USDT", ia: "100.00000000", oc: "USDT", oa: "100.00000000" }),
+      row("Exchange", { txId: "NXT2", ic: "USDT", ia: "-40.00000000", oc: "BTC", oa: "0.00100000" }),
+      row("Loan Withdrawal", { txId: "NXT3", ic: "USD", ia: "-60.48073607", oc: "USDT", oa: "60.61712460" }),
+      row("Interest", { txId: "NXT4", ic: "USDX", ia: "-0.17000000", oc: "-", oa: "0.00000000" }),
+      row("Interest", { txId: "NXT5", ic: "USDX", ia: "3.00000000", oc: "USDX", oa: "3.00000000" }),
+      row("Cashback", { txId: "NXT6", ic: "NEXO", ia: "5.00000000", oc: "NEXO", oa: "5.00000000" }),
+      row("Cashback", { txId: "NXT7", ic: "NEXO", ia: "-2.00000000", oc: "NEXO", oa: "2.00000000" }),
+      row("Transfer Out", { txId: "NXT8", ic: "BTC", ia: "-0.00100000", oc: "BTC", oa: "0.00100000" }),
+      row("Exchange Liquidation", { txId: "NXT9", ic: "EURX", ia: "200.00", oc: "USDX", oa: "230.84" })
+    );
+    const d = analyseCsv(fixture);
+    const counted: Record<string, number> = {};
+    for (const t of d.types) {
+      for (const [cur, f] of Object.entries(t.countedFlows)) counted[cur] = (counted[cur] ?? 0) + f.posSum + f.negSum;
+    }
+    const balances: Record<string, number> = {};
+    for (const c of calculateBalances(parseCSV(fixture)).currencies) balances[c.symbol] = c.amount;
+    for (const symbol of new Set([...Object.keys(counted), ...Object.keys(balances)])) {
+      expect(Math.abs((counted[symbol] ?? 0) - (balances[symbol] ?? 0))).toBeLessThan(1e-9);
+    }
+  });
+});
