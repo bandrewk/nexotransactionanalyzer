@@ -17,6 +17,7 @@ export default function FileDetailsPage() {
   const diagnostics = useAppStore((s) => s.diagnostics);
   const transactions = useAppStore((s) => s.transactions);
   const currencies = useAppStore((s) => s.currencies);
+  const statistics = useAppStore((s) => s.statistics);
 
   // Loading another file requires leaving the platform, which unmounts this page and
   // discards the comparison with it.
@@ -26,11 +27,18 @@ export default function FileDetailsPage() {
   const holdingsKey = JSON.stringify(
     currencies.filter((c) => Math.abs(c.amount) >= 1e-8).map((c) => [c.symbol, c.amount])
   );
+  const flow = statistics.depositAndWithdrawalData;
+  const deposited = flow.reduce((sum, d) => sum + d.deposit, 0);
+  const withdrawn = flow.reduce((sum, d) => sum + Math.abs(d.withdrawal), 0);
   const extras = useMemo<ReportExtras>(() => {
     const entries = JSON.parse(holdingsKey) as [string, number][];
     const holdings = entries.map(([symbol, amount]) => ({ symbol, amount }));
-    return { holdings, comparison: comparison ?? undefined };
-  }, [holdingsKey, comparison]);
+    return {
+      holdings,
+      comparison: comparison ?? undefined,
+      contributions: { deposited, withdrawn },
+    };
+  }, [holdingsKey, comparison, deposited, withdrawn]);
 
   return (
     <div className="space-y-6 animate-in">

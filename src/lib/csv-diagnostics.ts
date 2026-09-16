@@ -14,6 +14,7 @@ import {
 } from "./balance-calculator";
 import { rowToTransaction } from "./csv-parser";
 import {
+  belowNexoDisplayPrecision,
   findTypeHints,
   MAX_COMPARISON_ROWS,
   MAX_HINT_LINES,
@@ -2020,6 +2021,8 @@ export type ReportExtras = {
   comparison?: ComparisonInput;
   /** Today's date (UTC, YYYY-MM-DD); defaults to the current date. */
   today?: string;
+  /** The capital-flow figures the app shows on Overview, in USD. */
+  contributions?: { deposited: number; withdrawn: number };
 };
 
 /** Most holdings listed in the Analyzer holdings section. */
@@ -2137,6 +2140,34 @@ function buildReport(
       out.push(`_... and ${comparisonRows.length - shownRows.length} more assets, omitted._`);
     }
 
+    // A holding with no entered value was not checked against Nexo. Naming those is the
+    // difference between "these agree" and "these are the ones anybody looked at".
+    if (extras.holdings) {
+      const compared = new Set(comparisonRows.map((r) => r.symbol));
+      const unchecked = extras.holdings
+        .filter((h) => Math.abs(h.amount) >= 1e-8 && !compared.has(h.symbol))
+        .map((h) => h.symbol)
+        .sort((a, b) => a.localeCompare(b));
+      const rounded = comparisonRows.filter((r) => belowNexoDisplayPrecision(r.symbol, r.difference));
+      if (rounded.length > 0) {
+        out.push("");
+        out.push(
+          `_${rounded.map((r) => reportCell(r.symbol)).join(", ")}: the difference is under a cent, which Nexo's two-decimal display drops._`
+        );
+      }
+      out.push("");
+      if (unchecked.length === 0) {
+        out.push("**Every holding was compared.** No row was left blank.");
+      } else {
+        const shown = unchecked.slice(0, MAX_COMPARISON_ROWS);
+        out.push(
+          `**Not compared (${unchecked.length}):** ${shown.map(reportCell).join(", ")}` +
+            (unchecked.length > shown.length ? `, and ${unchecked.length - shown.length} more` : "") +
+            ". No value was entered for these, so nothing here says whether they agree."
+        );
+      }
+    }
+
     const hintLines: string[] = [];
     let omittedHints = 0;
     for (const r of shownRows) {
@@ -2170,6 +2201,23 @@ function buildReport(
     if (sortedHoldings.length > listed.length) {
       out.push(`_... and ${sortedHoldings.length - listed.length} more, omitted._`);
     }
+    out.push("");
+  }
+
+  // The figures behind the Overview capital-flow tile. A wrong total here is invisible in
+  // the per-type breakdown below, which reports contributions per currency rather than the
+  // USD sums the tile adds up.
+  if (extras.contributions) {
+    const { deposited, withdrawn } = extras.contributions;
+    out.push("#### Capital flow as the app reports it");
+    out.push("");
+    out.push("_What Overview shows. Deposits and withdrawals are summed from the CSV's USD Equivalent column, so they are transaction values at the time, not today's value._");
+    out.push("");
+    out.push(`| Figure | USD |`);
+    out.push(`| --- | ---: |`);
+    out.push(`| Deposited | ${formatUsd2(deposited)} |`);
+    out.push(`| Withdrawn | ${formatUsd2(Math.abs(withdrawn))} |`);
+    out.push(`| Net invested | ${formatUsd2(deposited - Math.abs(withdrawn))} |`);
     out.push("");
   }
 
