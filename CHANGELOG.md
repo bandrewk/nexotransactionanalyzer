@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.5.2] - 2026-09-16
+
+### Fixed
+- Compare with Nexo asked for a sum that does not need adding up. It said to enter savings, fixed-term principal and Credit Line wallet collateral per asset, but the Nexo app already presents one `Total balance` per asset covering all three, and the "Credit Line" column on its asset list is borrowing power rather than a holding. Following the old wording produced an inflated figure and a difference the app then tried to explain. It now asks for the `Total balance` Nexo shows. (#84)
+
 ## [4.5.1] - 2026-09-16
 
 ### Fixed
