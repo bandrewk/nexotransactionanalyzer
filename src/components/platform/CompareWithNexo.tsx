@@ -122,8 +122,8 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
           Nexo app at the same time.
         </li>
         <li>
-          Per asset, enter Nexo&apos;s <strong>total holdings</strong>: savings, fixed-term principal and
-          collateral in the Credit Line wallet. Leave out loan debt and interest not yet paid out.
+          Per asset, enter the <strong>Total balance</strong> Nexo shows for it. That figure already
+          covers the Savings Wallet, Fixed-terms and the Credit Wallet, so there is nothing to add up.
         </li>
         <li>Leave empty what you don&apos;t want to compare. Amounts like 60.62, 60,62 or 9,800.17 work.</li>
         <li>
