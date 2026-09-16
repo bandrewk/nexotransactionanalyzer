@@ -3022,6 +3022,16 @@ describe("precise figures and comparison with Nexo", () => {
     expect(report).toContain("the balances you entered from the Nexo app");
   });
 
+  it("keeps a cell on one row when a symbol contains a backslash or a pipe", () => {
+    const d = analyseCsv(csv(row("Top up Crypto", { txId: "NXT1", ic: "USDT", ia: "1.00000000", oc: "USDT", oa: "1.00000000" })));
+    const holdings = [{ symbol: "A\\|B", amount: 2 }];
+    const rows = buildComparison(holdings, [{ symbol: "A\\|B", value: 1 }]);
+    const report = formatDiagnosticReport(d, "4.5.1", { holdings, comparison: { rows, appliedOn: "2026-09-15" } });
+
+    expect(section(report, "#### Comparison with Nexo")).toContain("| A\\\\\\|B | 2 | 1 | -1 | -100.00% |");
+    expect(section(report, "#### Analyzer holdings")).toContain("A\\\\\\|B 2");
+  });
+
   it("stays within the size bound with extras on a pathological file", () => {
     const rows: string[] = [];
     for (let i = 0; i < 2000; i++) {

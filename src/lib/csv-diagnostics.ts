@@ -2025,8 +2025,9 @@ export type ReportExtras = {
 /** Most holdings listed in the Analyzer holdings section. */
 export const MAX_HOLDINGS_LISTED = 200;
 
+/** A value for a Markdown table cell. Backslash is escaped too, or it would consume the pipe's. */
 function reportCell(text: string): string {
-  return truncateValue(text).replace(/\|/g, "\\|");
+  return truncateValue(text).replace(/([\\|])/g, "\\$1");
 }
 
 function buildReport(
