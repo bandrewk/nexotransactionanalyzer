@@ -85,6 +85,20 @@ export function isComparableSymbol(symbol: string): boolean {
 
 const NEXO_SPELLING: Record<string, string> = { USD: "USDx", EUR: "EURx", GBP: "GBPx" };
 
+/**
+ * Nexo shows fiat and FIATx to two decimals and truncates rather than rounds: a holding of
+ * 0.00687503 EURx displays as 0.00, where rounding would give 0.01. So anything below a
+ * whole cent is invisible there, and a difference that small is what the display drops, not
+ * a disagreement. Reporting it as a finding sends the reader after nothing.
+ */
+export const NEXO_FIAT_DISPLAY_STEP = 0.01;
+
+export function belowNexoDisplayPrecision(symbol: string, difference: number): boolean {
+  if (!(symbol in NEXO_SPELLING)) return false;
+  const d = Math.abs(difference);
+  return d > 0 && d < NEXO_FIAT_DISPLAY_STEP;
+}
+
 /** The asset label shown to the user, with Nexo's spelling where it differs. */
 export function assetLabel(symbol: string): string {
   const nexo = NEXO_SPELLING[symbol];
