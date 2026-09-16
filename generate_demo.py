@@ -276,6 +276,8 @@ for i in range(5):
     eur_amt = round(random.uniform(50, 200), 2)
     usd_val = round(eur_amt * random.uniform(1.05, 1.12), 2)
     dt = start_date + timedelta(days=random.randint(60, 360))
+    add_row("Manual Sell Order", "EURX", -eur_amt, "EURX", 0, usd_val,
+            "approved / Crypto repayment", dt)
     add_row("Exchange Liquidation", "EURX", eur_amt, "xUSD", usd_val, usd_val,
             "approved / Crypto repayment / Exchange EURX to xUSD", dt, credit_line="Card")
 

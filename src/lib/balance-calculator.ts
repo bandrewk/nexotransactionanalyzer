@@ -42,6 +42,21 @@ export function isExcludedDetailStatus(details: string | undefined | null): bool
   return EXCLUDED_DETAIL_STATUSES.has(extractDetailStatus(details));
 }
 
+/**
+ * Checks whether an Interest transaction is interest charged on a credit line:
+ * a negative USD or xUSD input not paid out in NEXO. The charge adds to the loan
+ * rather than taking coins from the wallet, so it does not debit held balances.
+ */
+export function isCreditLineInterestCharge(t: Transaction): boolean {
+  return (
+    t.type === TransactionType.INTEREST &&
+    (t.inputCurrency === "USD" || t.inputCurrency === "xUSD") &&
+    t.outputCurrency !== "NEXO" &&
+    Number.isFinite(t.inputAmount) &&
+    t.inputAmount < 0
+  );
+}
+
 function isAlmostZero(val: number): boolean {
   return Math.abs(val) < 0.000001;
 }
@@ -114,15 +129,20 @@ export function calculateBalances(transactions: Transaction[]): BalanceResult {
 
     // Update currency amounts based on holding effect
     if (effect === "generic") {
-      const ic = t.inputCurrency;
-      const oc = t.outputCurrency;
+      if (!isCreditLineInterestCharge(t)) {
+        const ic = t.inputCurrency;
+        const oc = t.outputCurrency;
 
-      credit(ic, t.inputAmount);
-      if (oc && oc !== "-" && oc !== ic) {
+        credit(ic, t.inputAmount);
+        if (oc && oc !== "-" && oc !== ic) {
+          credit(oc, t.outputAmount);
+        }
+      }
+    } else if (effect === "credit-output") {
+      const oc = t.outputCurrency;
+      if (oc && oc !== "-") {
         credit(oc, t.outputAmount);
       }
-    } else if (effect === "debit-input") {
-      credit(t.inputCurrency, -Math.abs(t.inputAmount));
     }
 
     // Snapshot balances at end of each date

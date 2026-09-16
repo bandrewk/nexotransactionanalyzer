@@ -97,6 +97,36 @@ describe("fetchHistoricPrices", () => {
     expect(result.unpricedSymbols).toEqual([]);
   });
 
+  it("gives every symbol that shares an id the same series and requests the id once", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        coins: {
+          "coingecko:ethereum": {
+            symbol: "ETH",
+            confidence: 0.99,
+            prices: [{ timestamp: 1619145819, price: 2400 }],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchHistoricPrices(
+      [
+        { symbol: "ETH", coingeckoId: "ethereum" },
+        { symbol: "NETH", coingeckoId: "ethereum" },
+      ],
+      "2021-04-23",
+      "2021-04-23"
+    );
+
+    expect(result.prices.get("ETH")?.get("2021-04-23")).toBe(2400);
+    expect(result.prices.get("NETH")?.get("2021-04-23")).toBe(2400);
+    expect(result.unpricedSymbols).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("reports symbols the API omitted as unpriced rather than pricing them at zero", async () => {
     vi.stubGlobal(
       "fetch",

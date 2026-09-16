@@ -28,7 +28,7 @@ describe("transaction-types", () => {
         );
       }
       expect(["observed", "inferred"]).toContain(rule.confidence);
-      expect(["ignore", "generic", "debit-input"]).toContain(rule.effect);
+      expect(["ignore", "generic", "credit-output"]).toContain(rule.effect);
     }
   });
 
@@ -101,5 +101,19 @@ describe("transaction-types", () => {
         ).toBeUndefined();
       }
     }
+  });
+
+  it("configures Exchange Liquidation as ignore and Loan Withdrawal as credit-output", () => {
+    const liquidationRule = getTypeRule(TransactionType.EXCHANGELIQUIDATION);
+    expect(liquidationRule).toBeDefined();
+    expect(liquidationRule?.effect).toBe("ignore");
+    expect(liquidationRule?.confidence).toBe("observed");
+    expect(liquidationRule?.why).toContain("does not change holdings");
+
+    const loanRule = getTypeRule(TransactionType.LOANWITHDRAWAL);
+    expect(loanRule).toBeDefined();
+    expect(loanRule?.effect).toBe("credit-output");
+    expect(loanRule?.confidence).toBe("inferred");
+    expect(loanRule?.expectedShapes).toEqual(["in- out+ diff"]);
   });
 });
