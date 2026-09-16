@@ -189,14 +189,14 @@ export const TYPE_RULES: Record<TransactionTypeValue, TypeRule> = {
   },
   [TransactionType.DEPOSITTOEXCHANGE]: {
     effect: "generic",
-    why: "Fiat deposit converted to platform FIATx asset (e.g. EUR to EURx). Credited once to the balance after normalisation.",
-    expectedShapes: ["in+ out+ same"],
+    why: "Fiat deposit converted to platform FIATx asset (e.g. EUR to EURx). Credited once to the balance after normalisation. Some card top-ups leave the FIATx leg at zero; the deposit is credited from the input either way, since the output normalises to the same currency and would double-count.",
+    expectedShapes: ["in+ out+ same", "in+ out0 same"],
     confidence: "observed",
   },
   [TransactionType.EXCHANGEDEPOSITEDON]: {
     effect: "ignore",
-    why: "Paired internal conversion leg for fiat deposit. Ignored to avoid double-counting the deposit.",
-    expectedShapes: ["in- out+ same"],
+    why: "Paired internal conversion leg for fiat deposit. Ignored to avoid double-counting the deposit. Mirrors the zero-output variant of its Deposit To Exchange partner.",
+    expectedShapes: ["in- out+ same", "in- out0 same"],
     confidence: "observed",
   },
   [TransactionType.WITHDRAWEXCHANGED]: {

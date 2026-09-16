@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, Check, Plus, X } from "lucide-react";
 import type { Currency } from "../../types";
 import {
   assetLabel,
@@ -43,6 +43,21 @@ type Props = {
 export default function CompareWithNexo({ currencies, latestDate, applied, onApply }: Props) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [added, setAdded] = useState<string[]>([]);
+  const [absent, setAbsent] = useState<Record<string, boolean>>({});
+  const [activeRow, setActiveRow] = useState<string | null>(null);
+  const [missing, setMissing] = useState<string[]>([]);
+  const missingTimer = useRef<number | null>(null);
+
+  // The rows that blocked Apply flash, then settle: a list of symbols in a status line is
+  // easy to skim past when the table is long.
+  useEffect(() => {
+    if (missing.length === 0) return;
+    if (missingTimer.current) window.clearTimeout(missingTimer.current);
+    missingTimer.current = window.setTimeout(() => setMissing([]), 2600);
+    return () => {
+      if (missingTimer.current) window.clearTimeout(missingTimer.current);
+    };
+  }, [missing]);
   const [newSymbol, setNewSymbol] = useState("");
   const [addMessage, setAddMessage] = useState("");
   const [applyMessage, setApplyMessage] = useState("");
@@ -56,7 +71,8 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
 
   const today = new Date().toISOString().slice(0, 10);
   const staleDays = latestDate ? daysBetween(latestDate, today) : null;
-  const dirty = appliedInputs !== null && JSON.stringify(appliedInputs) !== JSON.stringify(inputs);
+  const dirty =
+    appliedInputs !== null && JSON.stringify(appliedInputs) !== JSON.stringify({ inputs, absent });
 
   const addAsset = () => {
     const symbol = normaliseSymbol(newSymbol);
@@ -76,6 +92,11 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
 
   const removeAdded = (symbol: string) => {
     setAdded((prev) => prev.filter((s) => s !== symbol));
+    setAbsent((prev) => {
+      const next = { ...prev };
+      delete next[symbol];
+      return next;
+    });
     setInputs((prev) => {
       const next = { ...prev };
       delete next[symbol];
@@ -86,16 +107,42 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
   const apply = () => {
     const entered: { symbol: string; value: number }[] = [];
     let invalid = 0;
+    const unanswered: string[] = [];
     for (const symbol of listed) {
       if (!isComparableSymbol(symbol)) continue;
+      if (absent[symbol]) {
+        entered.push({ symbol, value: 0 });
+        continue;
+      }
       const parsed = parseUserAmount(inputs[symbol] ?? "");
       if (parsed.kind === "value") entered.push({ symbol, value: parsed.value });
       else if (parsed.kind === "invalid") invalid++;
+      else unanswered.push(symbol);
+    }
+    // A partial comparison reads as agreement for the rows nobody filled in, and those are
+    // exactly where a holding the app has and Nexo does not would be found.
+    if (unanswered.length > 0 || invalid > 0) {
+      onApply(null);
+      setAppliedInputs(null);
+      setMissing(unanswered);
+      const shown = unanswered.slice(0, 8).join(", ");
+      setApplyMessage(
+        [
+          unanswered.length > 0
+            ? `Every asset needs an answer: a balance, or Not on Nexo. Still open: ${shown}` +
+              (unanswered.length > 8 ? ` and ${unanswered.length - 8} more` : "") + "."
+            : "",
+          invalid > 0 ? `${invalid} marked ${invalid === 1 ? "value is" : "values are"} not a number.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+      return;
     }
     const holdings = [...amounts].map(([symbol, amount]) => ({ symbol, amount }));
     const rows = buildComparison(holdings, entered);
     const appliedOn = new Date().toISOString().slice(0, 10);
-    setAppliedInputs({ ...inputs });
+    setAppliedInputs({ inputs: { ...inputs }, absent: { ...absent } } as unknown as Record<string, string>);
     if (rows.length === 0) {
       onApply(null);
       setApplyMessage(invalid > 0 ? "Nothing applied: fix the marked values first." : "Enter at least one value to compare.");
@@ -103,8 +150,7 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
     }
     onApply({ rows, appliedOn });
     setApplyMessage(
-      `Applied on ${appliedOn}: ${rows.length} ${rows.length === 1 ? "asset" : "assets"} in the report` +
-        (invalid > 0 ? `; ${invalid} marked ${invalid === 1 ? "value was" : "values were"} left out.` : ".")
+      `Applied on ${appliedOn}: all ${rows.length} ${rows.length === 1 ? "asset" : "assets"} compared.`
     );
   };
 
@@ -125,7 +171,18 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
           Per asset, enter the <strong>Total balance</strong> Nexo shows for it. That figure already
           covers the Savings Wallet, Fixed-terms and the Credit Wallet, so there is nothing to add up.
         </li>
-        <li>Leave empty what you don&apos;t want to compare. Amounts like 60.62, 60,62 or 9,800.17 work.</li>
+        <li>
+          Nexo shows fiat to two decimals, so a small EURx or USDx holding reads as 0.00 there.
+          Enter what it shows.
+        </li>
+        <li>
+          If Nexo does not list an asset at all, tick <strong>Not on Nexo</strong>. That compares it
+          against zero.
+        </li>
+        <li>
+          Every asset needs an answer before Apply: a balance, or Not on Nexo. Amounts like
+          60.62, 60,62 or 9,800.17 work.
+        </li>
         <li>
           Values stay in your browser. Apply adds them to the report below; they leave your device only if
           you copy or download the report and post it.
@@ -148,10 +205,12 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
           <table className="w-full border-collapse text-[1.25rem]">
             <thead>
               <tr className="bg-slate-50 dark:bg-white/[0.02]">
-                {["Asset", "Analyzer holdings", "Nexo shows"].map((h) => (
+                {["Asset", "Analyzer holdings", "Nexo shows", "Not on Nexo"].map((h) => (
                   <th
                     key={h}
-                    className="text-left py-3 px-4 text-[1.15rem] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap"
+                    className={`py-3 px-4 text-[1.15rem] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap ${
+                      h === "Not on Nexo" ? "text-center" : "text-left"
+                    }`}
                   >
                     {h}
                   </th>
@@ -165,8 +224,29 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
                 const parsed = parseUserAmount(text);
                 const isAdded = added.includes(symbol);
                 return (
-                  <tr key={symbol} className="border-t border-slate-50 dark:border-white/[0.04] align-top">
-                    <td className="py-2.5 px-4 font-mono text-[1.15rem] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  <tr
+                    key={symbol}
+                    onFocusCapture={() => setActiveRow(symbol)}
+                    onBlurCapture={() => setActiveRow((cur) => (cur === symbol ? null : cur))}
+                    onMouseEnter={() => setActiveRow((cur) => cur ?? symbol)}
+                    onMouseLeave={() => setActiveRow((cur) => (cur === symbol ? null : cur))}
+                    className={`border-t border-slate-50 dark:border-white/[0.04] align-top transition-colors ${
+                      missing.includes(symbol)
+                        ? "bg-red-500/15 dark:bg-red-500/25"
+                        : activeRow === symbol
+                          ? "bg-accent/[0.07] dark:bg-accent/[0.12]"
+                          : "hover:bg-slate-50/60 dark:hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <td
+                      className={`py-2.5 px-4 font-mono text-[1.15rem] text-slate-700 dark:text-slate-200 whitespace-nowrap border-l-2 ${
+                        missing.includes(symbol)
+                          ? "border-red-400"
+                          : activeRow === symbol
+                            ? "border-accent"
+                            : "border-transparent"
+                      }`}
+                    >
                       {assetLabel(symbol)}
                       {isAdded && (
                         <button
@@ -189,17 +269,24 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
                             type="text"
                             inputMode="decimal"
                             aria-label={`Nexo shows ${symbol}`}
-                            aria-invalid={parsed.kind === "invalid"}
-                            aria-describedby={parsed.kind === "invalid" ? `compare-error-${index}` : undefined}
-                            value={text}
-                            onChange={(e) => setInputs((prev) => ({ ...prev, [symbol]: e.target.value }))}
-                            className={`${INPUT} ${
-                              parsed.kind === "invalid"
+                            aria-invalid={parsed.kind === "invalid" && !absent[symbol]}
+                            aria-describedby={
+                              parsed.kind === "invalid" && !absent[symbol] ? `compare-error-${index}` : undefined
+                            }
+                            value={absent[symbol] ? "" : text}
+                            disabled={!!absent[symbol]}
+                            placeholder={absent[symbol] ? "0" : undefined}
+                            onChange={(e) => {
+                              setMissing((m) => m.filter((x) => x !== symbol));
+                              setInputs((prev) => ({ ...prev, [symbol]: e.target.value }));
+                            }}
+                            className={`${INPUT} ${absent[symbol] ? "opacity-50" : ""} ${
+                              parsed.kind === "invalid" && !absent[symbol]
                                 ? "border-red-400"
                                 : "border-slate-200 dark:border-white/10"
                             }`}
                           />
-                          {parsed.kind === "invalid" && (
+                          {parsed.kind === "invalid" && !absent[symbol] && (
                             <p id={`compare-error-${index}`} className="text-[1.1rem] text-red-400 mt-1">
                               {parsed.reason === "ambiguous"
                                 ? "Ambiguous: write 2800, 2,800.00 or 2.8"
@@ -209,6 +296,38 @@ export default function CompareWithNexo({ currencies, latestDate, applied, onApp
                         </>
                       ) : (
                         <span className="text-[1.15rem] text-slate-400">not comparable (credit line)</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-4">
+                      {comparable && (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={!!absent[symbol]}
+                          aria-label={`${symbol} is not on Nexo`}
+                          onClick={() => {
+                            setMissing((m) => m.filter((x) => x !== symbol));
+                            setAbsent((prev) => ({ ...prev, [symbol]: !prev[symbol] }));
+                          }}
+                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-[1.2rem] border
+                            cursor-pointer transition-colors whitespace-nowrap ${
+                              absent[symbol]
+                                ? "bg-accent/10 border-accent/60 text-accent"
+                                : "bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 " +
+                                  "text-slate-500 dark:text-slate-400 hover:border-accent/40"
+                            }`}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                              absent[symbol]
+                                ? "bg-accent border-accent"
+                                : "border-slate-300 dark:border-white/20"
+                            }`}
+                          >
+                            {absent[symbol] && <Check size={14} className="text-white" />}
+                          </span>
+                          Not on Nexo
+                        </button>
                       )}
                     </td>
                   </tr>

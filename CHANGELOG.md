@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.5.3] - 2026-09-16
+
+### Added
+- The file report states the capital-flow figures Overview shows: Deposited, Withdrawn and Net invested. (#84)
+- Compare with Nexo requires an answer for every asset before Apply: a balance, or the new **Not on Nexo** control, which compares that asset against zero. Unanswered rows are marked. The report states that every holding was compared. (#84)
+- The report names a fiat difference under a cent as Nexo's display. Nexo truncates fiat to two decimals, so a holding of 0.00687503 EURx shows there as 0.00. (#84)
+
+### Fixed
+- A `Deposit To Exchange` whose FIATx leg is zero is an expected shape, as is its paired `Exchange Deposited On`. Some card top-ups are written that way. The deposit is credited from the input; the output normalises to the same currency and crediting it would double-count. Balances are unchanged. (#84)
+
 ## [4.5.2] - 2026-09-16
 
 ### Fixed

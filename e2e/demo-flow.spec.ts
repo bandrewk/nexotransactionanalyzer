@@ -182,6 +182,25 @@ test.describe("File Details page", () => {
     await expect(page.locator("pre")).toContainText("Nexo Transaction Analyzer");
   });
 
+  test("marks an asset as not on Nexo and compares it against zero", async ({ page }) => {
+    await page.goto("/");
+    await page.click("text=Try Demo");
+    await page.waitForURL("**/platform/**", { timeout: 10000 });
+    await page.click("nav a:has-text('File Details')");
+    await expect(page.locator("text=Compare with Nexo").first()).toBeVisible();
+
+    const table = page.locator('table:has(th:text-is("Not on Nexo"))');
+    const switches = table.getByRole("switch");
+    const count = await switches.count();
+    // Answer every row the only other way: none of them are on Nexo.
+    for (let i = 0; i < count; i++) await switches.nth(i).click();
+    await expect(table.locator("tbody tr").first().getByRole("textbox")).toBeDisabled();
+
+    await page.click("button:has-text('Apply comparison')");
+    await expect(page.getByText(new RegExp(`all ${count} assets compared`))).toBeVisible();
+    await expect(page.locator("pre")).toContainText("**Every holding was compared.**");
+  });
+
   test("puts applied Nexo balances into the report and resets them for a new file", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const upload = async (rows: string[]) => {
@@ -212,15 +231,25 @@ test.describe("File Details page", () => {
     await expect(report).not.toContainText("#### Comparison with Nexo");
 
     await page.getByLabel("Nexo shows BTC").fill("0.015");
+
+    // A row with no answer blocks Apply: a blank must not read as agreement.
+    await page.click("button:has-text('Apply comparison')");
+    await expect(page.locator('[role="status"]').filter({ hasText: /Every asset needs an answer/ })).toBeVisible();
+    await expect(report).not.toContainText("#### Comparison with Nexo");
+
     const eth = page.getByLabel("Nexo shows ETH");
     await eth.fill("2,800");
     await expect(eth).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByText("Ambiguous: write 2800, 2,800.00 or 2.8", { exact: true })).toBeVisible();
     await page.click("button:has-text('Apply comparison')");
+    await expect(page.getByText(/not a number/)).toBeVisible();
+    await expect(report).not.toContainText("#### Comparison with Nexo");
 
-    await expect(page.getByText(/1 asset in the report; 1 marked value was left out/)).toBeVisible();
+    await eth.fill("1.5");
+    await page.click("button:has-text('Apply comparison')");
+    await expect(page.getByText(/all 2 assets compared/)).toBeVisible();
     await expect(report).toContainText("| BTC | 0.01 | 0.015 | +0.005 | 33.33% |");
-    await expect(report).not.toContainText("| ETH |");
+    await expect(report).toContainText("**Every holding was compared.**");
 
     const shown = await report.textContent();
     await page.click("button:has-text('Copy report')");

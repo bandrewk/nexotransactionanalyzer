@@ -34,7 +34,8 @@ A privacy-first analytical tool for the [Nexo](https://www.nexo.com) crypto lend
 - Reports what the app read from your export: column names, row count, date range, and every transaction type with the shape of its rows and how it is handled
 - Flags rows whose shape or currencies the app has no rule for, including types it otherwise recognises, and samples them
 - States what each transaction type contributes to each balance, exactly and split into incoming and outgoing rows, so a wrong total can be traced to the rows that caused it
-- Compare with Nexo: enter what the Nexo app shows per asset, and the report shows the difference and the transaction types of the same size
+- Compare with Nexo: enter what the Nexo app shows per asset, and the report shows the difference and the transaction types of the same size. Every asset needs an answer, either a balance or **Not on Nexo**, so the report says which holdings were checked rather than leaving that open
+- States the capital-flow figures the Dashboard shows, Deposited, Withdrawn and Net invested, so a wrong total there can be traced to the types behind it
 - Names transaction types the app does not recognise, and says so on the Dashboard too, since figures derived from them cannot be trusted
 - Generates a report to paste into a GitHub issue, so a data problem can be looked at without sending your CSV. It says which parts (transaction IDs, hashes, merchant names) can be masked without losing what the diagnosis needs
 - A CSV that cannot be read explains why, naming the missing columns

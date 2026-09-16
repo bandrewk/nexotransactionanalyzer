@@ -3032,6 +3032,101 @@ describe("precise figures and comparison with Nexo", () => {
     expect(section(report, "#### Analyzer holdings")).toContain("A\\\\\\|B 2");
   });
 
+  it("names holdings that were left blank rather than implying they agree", () => {
+    const d = analyseCsv(
+      csv(
+        row("Top up Crypto", { txId: "NXT1", ic: "BTC", ia: "1.00000000", oc: "BTC", oa: "1.00000000" }),
+        row("Top up Crypto", { txId: "NXT2", ic: "ETHW", ia: "5.00000000", oc: "ETHW", oa: "5.00000000" })
+      )
+    );
+    const holdings = [
+      { symbol: "BTC", amount: 1 },
+      { symbol: "ETHW", amount: 5 },
+    ];
+    const rows = buildComparison(holdings, [{ symbol: "BTC", value: 1 }]);
+    const report = formatDiagnosticReport(d, "4.5.3", {
+      holdings,
+      comparison: { rows, appliedOn: "2026-09-16" },
+    });
+    const compared = section(report, "#### Comparison with Nexo");
+    expect(compared).toContain("**Not compared (1):** ETHW");
+    expect(compared).not.toContain("Every holding was compared.");
+  });
+
+  it("says so when every holding was compared", () => {
+    const d = analyseCsv(csv(row("Top up Crypto", { txId: "NXT1", ic: "BTC", ia: "1.00000000", oc: "BTC", oa: "1.00000000" })));
+    const holdings = [{ symbol: "BTC", amount: 1 }];
+    const rows = buildComparison(holdings, [{ symbol: "BTC", value: 1 }]);
+    const report = formatDiagnosticReport(d, "4.5.3", {
+      holdings,
+      comparison: { rows, appliedOn: "2026-09-16" },
+    });
+    expect(section(report, "#### Comparison with Nexo")).toContain("**Every holding was compared.**");
+  });
+
+  it("marks a fiat difference that is only Nexo's two-decimal rounding", () => {
+    const d = analyseCsv(csv(row("Deposit To Exchange", { txId: "NXT1", ic: "EUR", ia: "0.00687383", oc: "EURX", oa: "0.00687383" })));
+    const holdings = [{ symbol: "EUR", amount: 0.00687383 }];
+    // Nexo's own wallet page displays 0.00 for this holding, so that is what a user enters.
+    const rows = buildComparison(holdings, [{ symbol: "EUR", value: 0 }]);
+    const report = formatDiagnosticReport(d, "4.5.3", { holdings, comparison: { rows, appliedOn: "2026-09-16" } });
+    expect(section(report, "#### Comparison with Nexo")).toContain(
+      "the difference is under a cent"
+    );
+  });
+
+  it("keeps the rounding note and the completeness line in separate paragraphs", () => {
+    const d = analyseCsv(csv(row("Deposit To Exchange", { txId: "NXT1", ic: "EUR", ia: "0.00687383", oc: "EURX", oa: "0.00687383" })));
+    const holdings = [{ symbol: "EUR", amount: 0.00687383 }];
+    const rows = buildComparison(holdings, [{ symbol: "EUR", value: 0 }]);
+    const report = formatDiagnosticReport(d, "4.5.3", { holdings, comparison: { rows, appliedOn: "2026-09-16" } });
+    // Without the blank line Markdown renders the two as one paragraph.
+    expect(report).toContain("display drops._\n\n**Every holding was compared.**");
+    expect(report).not.toContain("\n\n\n_EUR:");
+  });
+
+  it("does not excuse a fiat difference large enough for Nexo to show", () => {
+    const d = analyseCsv(csv(row("Deposit To Exchange", { txId: "NXT1", ic: "EUR", ia: "5.00000000", oc: "EURX", oa: "5.00000000" })));
+    const holdings = [{ symbol: "EUR", amount: 5 }];
+    const rows = buildComparison(holdings, [{ symbol: "EUR", value: 0 }]);
+    const report = formatDiagnosticReport(d, "4.5.3", { holdings, comparison: { rows, appliedOn: "2026-09-16" } });
+    expect(section(report, "#### Comparison with Nexo")).not.toContain("under a cent");
+  });
+
+  it("reports the capital flow figures Overview shows", () => {
+    const d = analyseCsv(csv(row("Top up Crypto", { txId: "NXT1", ic: "BTC", ia: "1.00000000", oc: "BTC", oa: "1.00000000" })));
+    const report = formatDiagnosticReport(d, "4.5.3", {
+      contributions: { deposited: 99616.67, withdrawn: -28654.43 },
+    });
+    const section = report.slice(report.indexOf("#### Capital flow"));
+    expect(section).toContain("| Deposited | $99,616.67 |");
+    // The sign the store carries must not leak into the report.
+    expect(section).toContain("| Withdrawn | $28,654.43 |");
+    expect(section).toContain("| Net invested | $70,962.24 |");
+  });
+
+  it("omits the capital flow section when the figures are not supplied", () => {
+    const d = analyseCsv(csv(row("Top up Crypto", { txId: "NXT1", ic: "BTC", ia: "1.00000000", oc: "BTC", oa: "1.00000000" })));
+    expect(formatDiagnosticReport(d, "4.5.3")).not.toContain("#### Capital flow");
+  });
+
+  it("accepts a Deposit To Exchange whose FIATx leg is zero", () => {
+    // Observed on a 2023 card top-up: Nexo left the EURX leg at 0.00. The deposit is
+    // credited from the input, so the shape is harmless and should not be flagged.
+    const d = analyseCsv(
+      csv(
+        row("Deposit To Exchange", { txId: "NXT1", ic: "EUR", ia: "50.00000000", oc: "EURX", oa: "0.00" }),
+        row("Exchange Deposited On", { txId: "NXT2", ic: "EUR", ia: "-50.00000000", oc: "EURX", oa: "0.00" })
+      )
+    );
+    for (const name of ["Deposit To Exchange", "Exchange Deposited On"]) {
+      const t = d.types.find((x) => x.name === name);
+      expect(t?.shapes.every((sh) => sh.expected)).toBe(true);
+    }
+    expect(formatDiagnosticReport(d, "4.5.3")).not.toContain("#### Unexpected shapes");
+    expect(d.currencies?.EUR ?? d.netContributions["Deposit To Exchange"]?.EUR).toBeDefined();
+  });
+
   it("stays within the size bound with extras on a pathological file", () => {
     const rows: string[] = [];
     for (let i = 0; i < 2000; i++) {
