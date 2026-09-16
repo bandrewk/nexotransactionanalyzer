@@ -1,12 +1,18 @@
 import { useMemo, useState } from "react";
 import { Copy, Check, Download, ShieldAlert } from "lucide-react";
-import { formatDiagnosticReport, type CsvDiagnostics } from "../../lib/csv-diagnostics";
+import {
+  formatDiagnosticReport,
+  type CsvDiagnostics,
+  type ReportExtras,
+} from "../../lib/csv-diagnostics";
 import { APP_VERSION } from "../../lib/storage";
 
 type Props = {
   diagnostics: CsvDiagnostics;
   /** Rendered on its own page rather than inside an error box. */
   standalone?: boolean;
+  /** Holdings and entered Nexo balances, when the app has them. */
+  extras?: ReportExtras;
 };
 
 /**
@@ -17,12 +23,14 @@ type Props = {
  * before either button can be pressed, which is what makes checking possible
  * at all.
  */
-export default function DiagnosticReport({ diagnostics, standalone = false }: Props) {
+export default function DiagnosticReport({ diagnostics, standalone = false, extras }: Props) {
   const [copied, setCopied] = useState(false);
   const report = useMemo(
-    () => formatDiagnosticReport(diagnostics, APP_VERSION),
-    [diagnostics]
+    () => formatDiagnosticReport(diagnostics, APP_VERSION, extras),
+    [diagnostics, extras]
   );
+  const hasHoldings = (extras?.holdings?.length ?? 0) > 0;
+  const hasComparison = (extras?.comparison?.rows.length ?? 0) > 0;
 
   const onCopy = () => {
     navigator.clipboard
@@ -45,7 +53,7 @@ export default function DiagnosticReport({ diagnostics, standalone = false }: Pr
 
   return (
     <div className={standalone ? "" : "mt-5"}>
-      {diagnostics.sampleRows.length > 0 && (
+      {(diagnostics.sampleRows.length > 0 || hasHoldings || hasComparison) && (
         <div className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
           <div className="flex items-start gap-3">
             <ShieldAlert size={18} className="text-amber-500 shrink-0 mt-0.5" />
@@ -54,17 +62,24 @@ export default function DiagnosticReport({ diagnostics, standalone = false }: Pr
                 Read this before you post it
               </p>
               <p className="text-[1.2rem] text-slate-600 dark:text-slate-300 mt-1">
-                The sample rows are taken from your file <strong>unaltered</strong>. Depending on
-                your transactions they may contain:
+                The report contains
+                {hasHoldings ? " your exact holdings as calculated by the app," : ""} exact totals per
+                transaction type{hasComparison ? ", the balances you entered from the Nexo app" : ""}
+                {diagnostics.sampleRows.length > 0
+                  ? ", and sample rows taken from your file unaltered, which may show:"
+                  : "."}
               </p>
-              <ul className="text-[1.2rem] text-slate-600 dark:text-slate-300 mt-2 space-y-1 list-disc list-inside">
-                <li>blockchain transaction hashes, which identify a wallet</li>
-                <li>card purchases showing merchant names and locations</li>
-                <li>amounts, balances and transaction IDs</li>
-              </ul>
+              {diagnostics.sampleRows.length > 0 && (
+                <ul className="text-[1.2rem] text-slate-600 dark:text-slate-300 mt-2 space-y-1 list-disc list-inside">
+                  <li>blockchain transaction hashes, which identify a wallet</li>
+                  <li>card purchases showing merchant names and locations</li>
+                  <li>amounts and transaction IDs</li>
+                </ul>
+              )}
               <p className="text-[1.2rem] text-slate-600 dark:text-slate-300 mt-2">
-                Edit out anything you would rather not make public. The report is still useful
-                without it — the transaction type and the shape of each row are what matter.
+                Transaction IDs, hashes and merchant names can be masked without losing anything the
+                diagnosis needs. The amounts are what make the report useful. If you would rather not
+                post them publicly, say so in the issue and ask for another way to send them.
               </p>
             </div>
           </div>

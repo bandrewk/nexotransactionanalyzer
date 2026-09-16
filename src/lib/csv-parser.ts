@@ -73,6 +73,27 @@ export interface ParsedTransactions extends Array<Transaction> {
   nonStrictNumericCount: number;
 }
 
+/** Builds a Transaction from one CSV row, normalising EURX/GBPX/USDX. */
+export function rowToTransaction(row: Record<string, string>, hasCreditLine: boolean): Transaction {
+  const tx: Transaction = {
+    id: row.Transaction?.trim() ?? "",
+    type: row.Type,
+    inputCurrency: fixFiatX(row["Input Currency"]),
+    inputAmount: parseFloat(row["Input Amount"]),
+    outputCurrency: fixFiatX(row["Output Currency"]),
+    outputAmount: parseFloat(row["Output Amount"]),
+    usdEquivalent: parseFloat(row["USD Equivalent"].substring(1)),
+    fee: row.Fee,
+    feeCurrency: row["Fee Currency"],
+    details: row.Details,
+    dateTime: row["Date / Time (UTC)"],
+  };
+  if (hasCreditLine) {
+    tx.creditLine = row["Credit Line"];
+  }
+  return tx;
+}
+
 /**
  * Parse a Nexo CSV export into an array of Transaction objects.
  * Handles EURX/GBPX/USDX normalization, repayment sign flip, and liquidation output fix.
@@ -128,23 +149,7 @@ export function parseCSV(content: string): ParsedTransactions {
       row["Output Amount"] = row["USD Equivalent"].substring(1);
     }
 
-    const tx: Transaction = {
-      id: txId,
-      type: row.Type,
-      inputCurrency: fixFiatX(row["Input Currency"]),
-      inputAmount: parseFloat(row["Input Amount"]),
-      outputCurrency: fixFiatX(row["Output Currency"]),
-      outputAmount: parseFloat(row["Output Amount"]),
-      usdEquivalent: parseFloat(row["USD Equivalent"].substring(1)),
-      fee: row.Fee,
-      feeCurrency: row["Fee Currency"],
-      details: row.Details,
-      dateTime: row["Date / Time (UTC)"],
-    };
-    if (hasCreditLine) {
-      tx.creditLine = row["Credit Line"];
-    }
-
+    const tx = rowToTransaction(row, hasCreditLine);
     transactions.push(tx);
   }
 

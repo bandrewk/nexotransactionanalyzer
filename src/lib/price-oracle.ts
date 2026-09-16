@@ -90,13 +90,18 @@ export async function fetchHistoricPrices(
   }
 
   // DefiLlama keys the response by the id we asked for, so keep a reverse index.
-  const keyToSymbol = new Map<string, string>();
-  for (const c of priceable) keyToSymbol.set(`coingecko:${c.coingeckoId}`, c.symbol);
+  // Several symbols can share one id; each receives the same series.
+  const keyToSymbols = new Map<string, string[]>();
+  for (const c of priceable) {
+    const coinKey = `coingecko:${c.coingeckoId}`;
+    const symbols = keyToSymbols.get(coinKey) ?? [];
+    if (!symbols.includes(c.symbol)) symbols.push(c.symbol);
+    keyToSymbols.set(coinKey, symbols);
+  }
 
   const chunks = planChunks(startDate, endDate);
   const requests: { coinKey: string; startUnix: number; span: number }[] = [];
-  for (const c of priceable) {
-    const coinKey = `coingecko:${c.coingeckoId}`;
+  for (const coinKey of keyToSymbols.keys()) {
     for (const chunk of chunks) {
       requests.push({ coinKey, startUnix: chunk.startUnix, span: chunk.span });
     }
@@ -114,15 +119,17 @@ export async function fetchHistoricPrices(
           if (!coinsPayload) return;
 
           for (const [key, entry] of Object.entries(coinsPayload)) {
-            const symbol = keyToSymbol.get(key);
-            if (!symbol) continue;
+            const symbols = keyToSymbols.get(key);
+            if (!symbols) continue;
             const points = (entry as { prices?: { timestamp: number; price: number }[] }).prices ?? [];
-            let byDate = prices.get(symbol);
-            if (!byDate) {
-              byDate = new Map<string, number>();
-              prices.set(symbol, byDate);
+            for (const symbol of symbols) {
+              let byDate = prices.get(symbol);
+              if (!byDate) {
+                byDate = new Map<string, number>();
+                prices.set(symbol, byDate);
+              }
+              for (const p of points) byDate.set(toDateKey(p.timestamp), p.price);
             }
-            for (const p of points) byDate.set(toDateKey(p.timestamp), p.price);
           }
         } catch {
           // A failed request leaves a gap; buildPortfolioSeries caps carry-forward

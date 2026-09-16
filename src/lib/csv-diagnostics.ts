@@ -9,8 +9,16 @@ import { currencyData, fixFiatX } from "../data/currencies";
 import {
   EXCLUDED_DETAIL_STATUSES,
   extractDetailStatus,
+  isCreditLineInterestCharge,
   isExcludedDetailStatus,
 } from "./balance-calculator";
+import { rowToTransaction } from "./csv-parser";
+import {
+  findTypeHints,
+  MAX_COMPARISON_ROWS,
+  MAX_HINT_LINES,
+  type ComparisonInput,
+} from "./balance-comparison";
 
 /**
  * Transaction type names used by Nexo exports generated before roughly 2023.
@@ -130,6 +138,9 @@ export type CreditLineDiagnostics = {
   byType: Record<string, ValueCount[]>;
 };
 
+/** Signed per-currency totals for one type, split by the sign of each leg. */
+export type FlowTotals = { posSum: number; posCount: number; negSum: number; negCount: number };
+
 export type TypeSummary = {
   name: string;
   count: number;
@@ -141,6 +152,16 @@ export type TypeSummary = {
   shapes: TypeShape[];
   creditLines: ValueCount[];
   netContributions: Record<string, number>;
+  creditLineCharges?: Record<string, number>;
+  creditLineChargesCount?: number;
+  /** Legs that change holdings (generic and credit-output effects). */
+  countedFlows: Record<string, FlowTotals>;
+  /** Legs of ignored types, as a generic effect would have applied them. */
+  ignoredFlows: Record<string, FlowTotals>;
+  /** Credit-line interest charges, kept apart from counted Interest. */
+  creditLineChargeFlows: Record<string, FlowTotals>;
+  /** Sum of the USD Equivalent column over non-excluded rows with an id and a valid value. */
+  usdEquivalentSum: { sum: number; count: number };
 };
 
 export type IngestionDiagnostics = {
@@ -164,9 +185,23 @@ export type RelationshipMatch = {
   ambiguousGroups: number;
 };
 
+export type LiquidationPairingDiagnostics = {
+  liquidations: number;
+  /** Liquidations paired with a Manual Sell Order, by the narrowest window that paired them. */
+  pairedWithin: { window: string; count: number }[];
+  /** Unpaired, although a Manual Sell Order with the same asset and amount exists further away. */
+  unpairedSameAmountElsewhere: number;
+  /** Unpaired, with no Manual Sell Order of the same asset and amount and a readable timestamp. */
+  unpairedNoSameAmount: number;
+  /** Unpaired because the liquidation's currency, amount or timestamp cannot be read. */
+  unpairedUnreadable: number;
+};
+
 export type RelationshipDiagnostics = {
   allRowsShareTimestamp: boolean;
   matches: RelationshipMatch[];
+  /** Null when the file has no Exchange Liquidation rows. */
+  liquidationPairing: LiquidationPairingDiagnostics | null;
 };
 
 export type TypeFeeSummary = {
@@ -266,9 +301,12 @@ export type { CurrencyClass };
  * Classify a currency string for diagnostic validation:
  * - normalise with FIATx rule (EURX -> EUR, GBPX -> GBP, USDX -> USD) BEFORE classifying;
  * - "credit-line" = matches /^x[A-Z]{3}$/ (xUSD observed; xEUR/xGBP plausible);
- * - "known"       = present in currencyData (115 assets);
+ * - "known"       = present in currencyData;
  * - "unknown"     = anything else;
  * - treat "" and "-" as absent, not unknown.
+ *
+ * For expectedCurrencies checks, raw FIATx codes (USDX, EURX, GBPX) also satisfy
+ * an expected credit-line class while remaining known.
  */
 export function classifyCurrency(raw: string | undefined): CurrencyClass {
   const trimmed = (raw ?? "").trim();
@@ -285,6 +323,22 @@ export function classifyCurrency(raw: string | undefined): CurrencyClass {
   return "unknown";
 }
 
+const RAW_FIAT_X = new Set(["USDX", "EURX", "GBPX"]);
+
+function satisfiesExpectedCurrencyClass(
+  rawCur: string,
+  cClass: CurrencyClass,
+  allowedClasses: CurrencyClass[]
+): boolean {
+  if (allowedClasses.includes(cClass)) {
+    return true;
+  }
+  if (RAW_FIAT_X.has(rawCur.trim()) && allowedClasses.includes("credit-line")) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Check whether a row meets the expected shape and currency constraints for its type.
  * Returns expected: boolean, and if unexpected, a short human-readable reason under 60 chars.
@@ -293,7 +347,11 @@ export function checkRowExpectation(
   type: string,
   shape: string,
   rawInputCurrency: string | undefined,
-  rawOutputCurrency: string | undefined
+  rawOutputCurrency: string | undefined,
+  context?: {
+    isCreditLineInterest?: boolean;
+    unpairedLiquidation?: boolean;
+  }
 ): {
   expected: boolean;
   reason?: string;
@@ -310,25 +368,34 @@ export function checkRowExpectation(
   const icClass = classifyCurrency(rawIc);
   const ocClass = classifyCurrency(rawOc);
 
-  const shapeMatches = rule.expectedShapes.includes(shape);
+  const shapeMatches =
+    rule.expectedShapes.includes(shape) ||
+    (context?.isCreditLineInterest === true && type === TransactionType.INTEREST);
   const icUnknown = icClass === "unknown";
   const ocUnknown = ocClass === "unknown";
 
   let inputViolated = false;
   if (rule.expectedCurrencies?.input) {
-    if (!rule.expectedCurrencies.input.includes(icClass)) {
+    if (!satisfiesExpectedCurrencyClass(rawIc, icClass, rule.expectedCurrencies.input)) {
       inputViolated = true;
     }
   }
 
   let outputViolated = false;
   if (rule.expectedCurrencies?.output) {
-    if (!rule.expectedCurrencies.output.includes(ocClass)) {
+    if (!satisfiesExpectedCurrencyClass(rawOc, ocClass, rule.expectedCurrencies.output)) {
       outputViolated = true;
     }
   }
 
   if (shapeMatches && !icUnknown && !ocUnknown && !inputViolated && !outputViolated) {
+    if (context?.unpairedLiquidation) {
+      return {
+        expected: false,
+        reason: "no matching Manual Sell Order",
+        currencyReason: false,
+      };
+    }
     return { expected: true };
   }
 
@@ -364,7 +431,9 @@ export function checkRowExpectation(
       reason = `output ${offendingCurrency} is not a credit-line unit`;
     }
   } else if (!shapeMatches) {
-    reason = undefined;
+    reason = context?.unpairedLiquidation
+      ? "no matching Manual Sell Order"
+      : undefined;
   }
 
   const currencyReason =
@@ -546,25 +615,32 @@ export function selectDiverseSamples(
   return chosen.map((c) => c.rawRow);
 }
 
+function groupThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 /**
- * Round a number to 3 significant figures and format without forcing trailing decimals.
- * Small amounts (e.g. 0.00055, 1.23e-7) retain their magnitude and scientific notation,
- * while large values (e.g. 87654.32 -> 87,700) are rounded to 3 sig figs with thousands separators.
+ * An amount to at most 8 decimals, trailing zeros trimmed, with thousands grouping.
+ * `signed` prefixes positive values with "+". Non-finite values render as "NaN".
  */
-export function formatSigFig(n: number): string {
-  if (n === 0 || !Number.isFinite(n)) return "0";
-  const val = Number(n.toPrecision(3));
-  if (val === 0) return "0";
-  const str = String(val);
-  if (str.includes("e")) {
-    return str;
-  }
-  const isNegative = str.startsWith("-");
-  const unsignedStr = isNegative ? str.slice(1) : str;
-  const [intPart, fracPart] = unsignedStr.split(".");
-  const formattedInt = Number(intPart).toLocaleString("en-US");
-  const formatted = fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
-  return (isNegative ? "-" : "") + formatted;
+export function formatAmount8(n: number, signed = false): string {
+  if (!Number.isFinite(n)) return "NaN";
+  // toFixed switches to exponent notation from 1e21 on; such values stay in that notation.
+  if (Math.abs(n) >= 1e21) return `${n < 0 ? "-" : signed ? "+" : ""}${Math.abs(n)}`;
+  const fixed = Math.abs(n).toFixed(8).replace(/\.?0+$/, "");
+  if (fixed === "0") return "0";
+  const [whole, fraction] = fixed.split(".");
+  const body = fraction === undefined ? groupThousands(whole) : `${groupThousands(whole)}.${fraction}`;
+  return `${n < 0 ? "-" : signed ? "+" : ""}${body}`;
+}
+
+/** A USD amount with two decimals and thousands grouping. */
+export function formatUsd2(n: number): string {
+  if (!Number.isFinite(n)) return "$NaN";
+  if (Math.abs(n) >= 1e21) return `${n < 0 ? "-" : ""}$${Math.abs(n)}`;
+  const [whole, fraction] = Math.abs(n).toFixed(2).split(".");
+  const isZero = whole === "0" && fraction === "00";
+  return `${n < 0 && !isZero ? "-" : ""}$${groupThousands(whole)}.${fraction}`;
 }
 
 function getHandlingInfo(typeName: string): { handling: string; why?: string } {
@@ -580,9 +656,9 @@ function getHandlingInfo(typeName: string): { handling: string; why?: string } {
       why: rule.why,
     };
   }
-  if (rule.effect === "debit-input") {
+  if (rule.effect === "credit-output") {
     return {
-      handling: "counted, input debited",
+      handling: "counted, output only",
       why: rule.why,
     };
   }
@@ -619,6 +695,53 @@ export function shapeOf(row: Record<string, string>): string {
   const oc = fixFiatX((row["Output Currency"] ?? "").trim());
   const same = ic === oc ? "same" : "diff";
   return `in${sign(row["Input Amount"])} out${sign(row["Output Amount"])} ${same}`;
+}
+
+/**
+ * `isCreditLineInterestCharge` for a raw row, built the way parseCSV builds it.
+ * A row parseCSV cannot build is not a charge.
+ */
+function isCreditLineInterestChargeRow(row: Record<string, string>, hasCreditLine: boolean): boolean {
+  try {
+    return isCreditLineInterestCharge(rowToTransaction(row, hasCreditLine));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Time windows for pairing an Exchange Liquidation with its Manual Sell Order, narrowest
+ * first. Each window pairs only what the narrower ones left; the widest is the limit.
+ */
+const LIQUIDATION_PAIR_WINDOWS: { label: string; ms: number }[] = [
+  { label: "same second", ms: 0 },
+  { label: "within 5 s", ms: 5_000 },
+  { label: "within 1 min", ms: 60_000 },
+  { label: "within 1 h", ms: 3_600_000 },
+  { label: "within 24 h", ms: 86_400_000 },
+];
+
+/** Decimal places compared when pairing liquidation and sell-order amounts. */
+const LIQUIDATION_PAIR_AMOUNT_DECIMALS = 8;
+
+/**
+ * Milliseconds for a `YYYY-MM-DD HH:MM:SS` export timestamp, which Nexo writes in UTC.
+ * Null unless every component is a real calendar date and time.
+ */
+function parseDateToMs(rawDate: string | undefined): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec((rawDate ?? "").trim());
+  if (!match) return null;
+  const [year, month, day, hour, minute, second] = match.slice(1).map(Number);
+  const ms = Date.UTC(year, month - 1, day, hour, minute, second);
+  const d = new Date(ms);
+  const roundTrips =
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day &&
+    d.getUTCHours() === hour &&
+    d.getUTCMinutes() === minute &&
+    d.getUTCSeconds() === second;
+  return roundTrips ? ms : null;
 }
 
 /**
@@ -687,6 +810,10 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
   const creditLineByTypeCounts = new Map<string, Map<string, number>>();
 
   const netContributionsMap = new Map<string, Map<string, number>>();
+  const countedFlowMap = new Map<string, Map<string, FlowTotals>>();
+  const ignoredFlowMap = new Map<string, Map<string, FlowTotals>>();
+  const chargeFlowMap = new Map<string, Map<string, FlowTotals>>();
+  const usdSumsByType = new Map<string, { sum: number; count: number }>();
 
   // Ingestion metrics
   let csvRows = 0;
@@ -754,6 +881,96 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
   let usdMalformed = 0;
   const usdValueCounts = new Map<string, number>();
 
+  // Pre-pass: pair each Exchange Liquidation with a Manual Sell Order of the same
+  // currency and amount.
+  const msoTimesByKey = new Map<string, number[]>();
+  // key and timeMs are null when the row's currency, amount or timestamp cannot be read.
+  const liquidations: { ordinal: number; key: string | null; timeMs: number | null }[] = [];
+
+  let preOrdinal = 0;
+  for (const row of result.data) {
+    if (isRowEntirelyBlank(row)) continue;
+    preOrdinal++;
+    const txId = row["Transaction"]?.trim();
+    if (!txId || isExcludedDetailStatus(row["Details"] ?? "")) continue;
+
+    const rowType = row["Type"]?.trim() ?? "";
+    if (rowType !== TransactionType.MANUALSELLORDER && rowType !== TransactionType.EXCHANGELIQUIDATION) {
+      continue;
+    }
+    const ic = fixFiatX(row["Input Currency"]?.trim() || "-");
+    const ia = Math.abs(parseFloat(row["Input Amount"] ?? ""));
+    const key = ic !== "-" && Number.isFinite(ia) ? `${ic}|${ia.toFixed(LIQUIDATION_PAIR_AMOUNT_DECIMALS)}` : null;
+    const timeMs = parseDateToMs(dateColumn ? row[dateColumn] : undefined);
+    if (rowType === TransactionType.MANUALSELLORDER) {
+      if (key === null || timeMs === null) continue;
+      const times = msoTimesByKey.get(key) ?? [];
+      times.push(timeMs);
+      msoTimesByKey.set(key, times);
+    } else {
+      liquidations.push({ ordinal: preOrdinal, key, timeMs });
+    }
+  }
+
+  for (const times of msoTimesByKey.values()) times.sort((a, b) => a - b);
+  liquidations.sort((a, b) => (a.timeMs ?? Infinity) - (b.timeMs ?? Infinity) || a.ordinal - b.ordinal);
+
+  // Both sides are in time order; each pass takes the oldest unused candidate still
+  // inside its window.
+  const usedByKey = new Map<string, boolean[]>();
+  for (const [key, times] of msoTimesByKey) usedByKey.set(key, times.map(() => false));
+  const isPairable = (liq: (typeof liquidations)[number]) =>
+    liq.key !== null && liq.timeMs !== null && msoTimesByKey.has(liq.key);
+  const unpairable = liquidations.filter((liq) => !isPairable(liq));
+  let remaining = liquidations.filter(isPairable);
+  const pairedWithin: { window: string; count: number }[] = [];
+  for (const window of LIQUIDATION_PAIR_WINDOWS) {
+    const nextCandidate = new Map<string, number>();
+    const stillUnpaired: typeof remaining = [];
+    let count = 0;
+    for (const liq of remaining) {
+      const times = msoTimesByKey.get(liq.key!)!;
+      const used = usedByKey.get(liq.key!)!;
+      const liqTime = liq.timeMs!;
+      let idx = nextCandidate.get(liq.key!) ?? 0;
+      while (idx < times.length && (used[idx] || times[idx] < liqTime - window.ms)) idx++;
+      if (idx < times.length && times[idx] <= liqTime + window.ms) {
+        used[idx] = true;
+        idx++;
+        count++;
+      } else {
+        stillUnpaired.push(liq);
+      }
+      nextCandidate.set(liq.key!, idx);
+    }
+    pairedWithin.push({ window: window.label, count });
+    remaining = stillUnpaired;
+  }
+
+  const unpairedLiquidationOrdinals = new Set<number>();
+  let unpairedSameAmountElsewhere = 0;
+  let unpairedNoSameAmount = 0;
+  let unpairedUnreadable = 0;
+  for (const liq of [...unpairable, ...remaining]) {
+    unpairedLiquidationOrdinals.add(liq.ordinal);
+    if (liq.key === null || liq.timeMs === null) unpairedUnreadable++;
+    else if (msoTimesByKey.has(liq.key)) unpairedSameAmountElsewhere++;
+    else unpairedNoSameAmount++;
+  }
+  const liquidationPairing: LiquidationPairingDiagnostics | null =
+    liquidations.length > 0
+      ? {
+          liquidations: liquidations.length,
+          pairedWithin,
+          unpairedSameAmountElsewhere,
+          unpairedNoSameAmount,
+          unpairedUnreadable,
+        }
+      : null;
+
+  const creditLineInterestMap = new Map<string, number>();
+  let creditLineInterestRowCount = 0;
+
   let first: string | undefined;
   let last: string | undefined;
   let dataRowOrdinal = 0;
@@ -810,6 +1027,9 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
     const type = row["Type"]?.trim() || "(empty)";
     counts.set(type, (counts.get(type) ?? 0) + 1);
 
+    const isCreditLineInterest = isCreditLineInterestChargeRow(row, hasCreditLine);
+    const isUnpairedLiq = unpairedLiquidationOrdinals.has(dataRowOrdinal);
+
     const shape = shapeOf(row);
     const {
       expected: isRowExpected,
@@ -820,7 +1040,11 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
       type,
       shape,
       row["Input Currency"],
-      row["Output Currency"]
+      row["Output Currency"],
+      {
+        isCreditLineInterest,
+        unpairedLiquidation: isUnpairedLiq,
+      }
     );
 
     const byShape = shapes.get(type) ?? new Map<string, TypeShape>();
@@ -854,12 +1078,10 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         unexpectedDetails.set(shapeFullKey, detailMap);
       }
 
-      // Normalised currency pair
+      // Currency pair as exported (USDX stays USDX), so FIATx spellings stay visible
       const icTrimmed = (row["Input Currency"] ?? "").trim();
       const ocTrimmed = (row["Output Currency"] ?? "").trim();
-      const normIc = icTrimmed && icTrimmed !== "-" ? fixFiatX(icTrimmed) : "-";
-      const normOc = ocTrimmed && ocTrimmed !== "-" ? fixFiatX(ocTrimmed) : "-";
-      const curPair = `${normIc}->${normOc}`;
+      const curPair = `${icTrimmed || "-"}->${ocTrimmed || "-"}`;
 
       const pairMap = unexpectedCurrencyPairs.get(shapeFullKey) ?? new Map<string, number>();
       pairMap.set(curPair, (pairMap.get(curPair) ?? 0) + 1);
@@ -1064,6 +1286,31 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
 
       const typeContr = netContributionsMap.get(type) ?? new Map<string, number>();
 
+      const addLeg = (bucket: Map<string, Map<string, FlowTotals>>, cur: string, delta: number) => {
+        const byCur = bucket.get(type) ?? new Map<string, FlowTotals>();
+        const totals = byCur.get(cur) ?? { posSum: 0, posCount: 0, negSum: 0, negCount: 0 };
+        if (delta > 1e-12) {
+          totals.posSum += delta;
+          totals.posCount++;
+        } else if (delta < -1e-12) {
+          totals.negSum += delta;
+          totals.negCount++;
+        }
+        byCur.set(cur, totals);
+        bucket.set(type, byCur);
+      };
+      const legBucket = effect === "ignore" ? ignoredFlowMap : countedFlowMap;
+
+      if (rawUsd && rawUsd !== "-" && !isNonStrictNumericCell(rawUsd, true)) {
+        const usd = parseFloat(rawUsd.replace(/^\$/, ""));
+        if (Number.isFinite(usd)) {
+          const usdTotals = usdSumsByType.get(type) ?? { sum: 0, count: 0 };
+          usdTotals.sum += usd;
+          usdTotals.count++;
+          usdSumsByType.set(type, usdTotals);
+        }
+      }
+
       const recordFlow = (cur: string, delta: number) => {
         const key = `${type}::${cur}`;
         const rec = flowMap.get(key) ?? {
@@ -1085,7 +1332,24 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         flowMap.set(key, rec);
       };
 
-      if (effect === "generic" || effect === "ignore") {
+      if (type === TransactionType.INTEREST && isCreditLineInterest) {
+        const ic = fixFiatX(row["Input Currency"]?.trim() || "-");
+        const oc = fixFiatX(row["Output Currency"]?.trim() || "-");
+        const ia = parseFloat(row["Input Amount"] ?? "0");
+        const oa = parseFloat(row["Output Amount"] ?? "0");
+
+        if (ic && ic !== "-" && Number.isFinite(ia)) {
+          creditLineInterestMap.set(ic, (creditLineInterestMap.get(ic) ?? 0) + ia);
+          recordFlow(ic, ia);
+          addLeg(chargeFlowMap, ic, ia);
+        }
+        if (oc && oc !== "-" && oc !== ic && Number.isFinite(oa)) {
+          creditLineInterestMap.set(oc, (creditLineInterestMap.get(oc) ?? 0) + oa);
+          recordFlow(oc, oa);
+          addLeg(chargeFlowMap, oc, oa);
+        }
+        creditLineInterestRowCount++;
+      } else if (effect === "generic" || effect === "ignore") {
         const ic = fixFiatX(row["Input Currency"]?.trim() || "-");
         const oc = fixFiatX(row["Output Currency"]?.trim() || "-");
         const ia = parseFloat(row["Input Amount"] ?? "0");
@@ -1094,18 +1358,20 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         if (ic && ic !== "-" && Number.isFinite(ia)) {
           typeContr.set(ic, (typeContr.get(ic) ?? 0) + ia);
           recordFlow(ic, ia);
+          addLeg(legBucket, ic, ia);
         }
         if (oc && oc !== "-" && oc !== ic && Number.isFinite(oa)) {
           typeContr.set(oc, (typeContr.get(oc) ?? 0) + oa);
           recordFlow(oc, oa);
+          addLeg(legBucket, oc, oa);
         }
-      } else if (effect === "debit-input") {
-        const ic = fixFiatX(row["Input Currency"]?.trim() || "-");
-        const ia = parseFloat(row["Input Amount"] ?? "0");
-        if (ic && ic !== "-" && Number.isFinite(ia)) {
-          const delta = -Math.abs(ia);
-          typeContr.set(ic, (typeContr.get(ic) ?? 0) + delta);
-          recordFlow(ic, delta);
+      } else if (effect === "credit-output") {
+        const oc = fixFiatX(row["Output Currency"]?.trim() || "-");
+        const oa = parseFloat(row["Output Amount"] ?? "0");
+        if (oc && oc !== "-" && Number.isFinite(oa)) {
+          typeContr.set(oc, (typeContr.get(oc) ?? 0) + oa);
+          recordFlow(oc, oa);
+          addLeg(countedFlowMap, oc, oa);
         }
       }
       netContributionsMap.set(type, typeContr);
@@ -1126,6 +1392,27 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
         netContributions[cur] = rounded;
       }
     }
+
+    let creditLineCharges: Record<string, number> | undefined;
+    let creditLineChargesCount: number | undefined;
+    if (name === TransactionType.INTEREST && creditLineInterestMap.size > 0) {
+      creditLineCharges = Object.create(null);
+      for (const [cur, amt] of creditLineInterestMap.entries()) {
+        const rounded = Math.abs(amt) < 1e-12 ? 0 : amt;
+        if (rounded !== 0) {
+          creditLineCharges![cur] = rounded;
+        }
+      }
+      creditLineChargesCount = creditLineInterestRowCount;
+    }
+
+    const toRecord = (bucket: Map<string, Map<string, FlowTotals>>) => {
+      const record: Record<string, FlowTotals> = Object.create(null);
+      for (const [cur, totals] of bucket.get(name) ?? []) {
+        if (totals.posCount + totals.negCount > 0) record[cur] = { ...totals };
+      }
+      return record;
+    };
 
     const typeClMap = creditLineByTypeCounts.get(name) ?? new Map<string, number>();
     const creditLines: ValueCount[] = [...typeClMap.entries()]
@@ -1211,6 +1498,12 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
       ),
       creditLines,
       netContributions,
+      creditLineCharges,
+      creditLineChargesCount,
+      countedFlows: toRecord(countedFlowMap),
+      ignoredFlows: toRecord(ignoredFlowMap),
+      creditLineChargeFlows: toRecord(chargeFlowMap),
+      usdEquivalentSum: { ...(usdSumsByType.get(name) ?? { sum: 0, count: 0 }) },
     };
   });
 
@@ -1348,6 +1641,7 @@ export function analyseCsv(rawText: string): CsvDiagnostics {
   const relationships: RelationshipDiagnostics = {
     allRowsShareTimestamp,
     matches: relationshipMatches,
+    liquidationPairing,
   };
 
   // Fee census summary
@@ -1573,7 +1867,14 @@ export function hasValueBearingContent(d: CsvDiagnostics): boolean {
   ) {
     return true;
   }
-  if (d.types && d.types.some((t) => Object.keys(t.netContributions).length > 0)) {
+  if (
+    d.types &&
+    d.types.some(
+      (t) =>
+        Object.keys(t.netContributions).length > 0 ||
+        (t.creditLineCharges && Object.keys(t.creditLineCharges).length > 0)
+    )
+  ) {
     return true;
   }
   if (d.netContributions) {
@@ -1711,20 +2012,59 @@ type OverflowConfig = {
   maxRoutineContribs: number;
 };
 
+/** Values the report gets from the app rather than from the CSV. */
+export type ReportExtras = {
+  /** Holdings as calculated by the app from this file. */
+  holdings?: { symbol: string; amount: number }[];
+  /** Balances the user entered from the Nexo app. */
+  comparison?: ComparisonInput;
+  /** Today's date (UTC, YYYY-MM-DD); defaults to the current date. */
+  today?: string;
+};
+
+/** Most holdings listed in the Analyzer holdings section. */
+export const MAX_HOLDINGS_LISTED = 200;
+
+function reportCell(text: string): string {
+  return truncateValue(text).replace(/\|/g, "\\|");
+}
+
 function buildReport(
   d: CsvDiagnostics,
   appVersion: string,
-  config: OverflowConfig
+  config: OverflowConfig,
+  extras: ReportExtras = {}
 ): { text: string; omissions: string[] } {
   const out: string[] = [];
   const omissions: string[] = [];
+  const today = extras.today ?? new Date().toISOString().slice(0, 10);
+  const holdings = (extras.holdings ?? []).filter((h) => Math.abs(h.amount) >= 1e-8);
+  const comparisonRows = extras.comparison?.rows ?? [];
 
   // --- 1. Short privacy notice; version + schema header ---
   out.push("### Nexo Transaction Analyzer — file report");
   out.push("");
-  if (hasValueBearingContent(d)) {
+  if (hasValueBearingContent(d) || holdings.length > 0 || comparisonRows.length > 0) {
+    const contents: string[] = [];
+    if (holdings.length > 0) contents.push("your exact holdings as calculated by the app");
+    if (d.types.some((t) => Object.keys(t.netContributions).length > 0 || t.creditLineCharges)) {
+      contents.push("exact totals per transaction type");
+    }
+    if (comparisonRows.length > 0) contents.push("the balances you entered from the Nexo app");
+    if (d.types.some((t) => t.shapes.some((sh) => !sh.expected && (sh.recurringDetails?.length ?? 0) > 0))) {
+      contents.push("recurring detail text");
+    }
+    if (d.sampleRows.length > 0) {
+      contents.push("sample rows with exact amounts, transaction IDs, transaction hashes, and merchant names and locations");
+    }
+    if (d.feeCensus.nonzero > 0) contents.push("fee totals");
+    if (d.creditLine.distribution.some((v) => v.value !== "(empty)" && v.count > 0)) {
+      contents.push("Credit Line values");
+    }
+    const listed =
+      contents.length > 1 ? `${contents.slice(0, -1).join(", ")} and ${contents[contents.length - 1]}` : contents[0];
     out.push(
-      "> **Check this before you post it.** This report contains net totals approximating account balances, recurring detail text, and sample rows with exact sample amounts, transaction IDs, transaction hashes, and merchant names and locations. Edit out anything private — the report remains useful without it."
+      `> **Check this before you post it.** This report contains ${listed}. Transaction IDs, hashes and merchant names can be masked without losing anything the diagnosis needs; the amounts are what make it useful.`
     );
     out.push("");
   }
@@ -1765,7 +2105,9 @@ function buildReport(
   out.push(`- Columns (${d.columnCount}): ${d.columns.join(", ")}`);
   out.push(`- Rows: ${d.rowCount}`);
   out.push(
-    `- Date range: ${d.dateRange ? `${d.dateRange.first} to ${d.dateRange.last}` : "not determinable"}`
+    d.dateRange
+      ? `- Dates: first dated CSV row ${d.dateRange.first}; latest dated CSV row ${d.dateRange.last}${d.dateRange.last > today ? " (in the future)" : ""}`
+      : "- Dates: not determinable"
   );
   if (d.looksLikeLegacyExport) {
     out.push(
@@ -1773,6 +2115,62 @@ function buildReport(
     );
   }
   out.push("");
+
+  if (extras.comparison && comparisonRows.length > 0) {
+    out.push("#### Comparison with Nexo");
+    out.push("");
+    out.push(
+      `Compared on ${extras.comparison.appliedOn} (UTC); latest dated CSV row ${d.dateRange?.last ?? "not determinable"}. Difference = Nexo - analyzer.`
+    );
+    out.push("");
+    out.push("| Asset | Analyzer | Nexo | Difference | % |");
+    out.push("| --- | ---: | ---: | ---: | ---: |");
+    const shownRows = comparisonRows.slice(0, MAX_COMPARISON_ROWS);
+    for (const r of shownRows) {
+      const pct = r.relativePercent === null ? "—" : `${r.relativePercent.toFixed(2)}%`;
+      out.push(
+        `| ${reportCell(r.label)} | ${formatAmount8(r.analyzer)} | ${formatAmount8(r.nexo)} | ${formatAmount8(r.difference, true)} | ${pct} |`
+      );
+    }
+    if (comparisonRows.length > shownRows.length) {
+      out.push(`_... and ${comparisonRows.length - shownRows.length} more assets, omitted._`);
+    }
+
+    const hintLines: string[] = [];
+    let omittedHints = 0;
+    for (const r of shownRows) {
+      for (const hint of findTypeHints(r, d.types, (name) => truncateValue(name))) {
+        if (hintLines.length >= MAX_HINT_LINES) {
+          omittedHints++;
+          continue;
+        }
+        hintLines.push(
+          `- ${reportCell(r.symbol)} ${formatAmount8(r.difference, true)}: ${hint.text}; total ${formatAmount8(hint.total, true)}, off by ${formatAmount8(hint.deviation)}.`
+        );
+      }
+    }
+    if (hintLines.length > 0) {
+      out.push("");
+      out.push("Type totals of the same size as a difference:");
+      out.push(...hintLines);
+      if (omittedHints > 0) out.push(`- ... and ${omittedHints} more, omitted.`);
+    }
+    out.push("");
+  }
+
+  if (holdings.length > 0) {
+    out.push("#### Analyzer holdings");
+    out.push("");
+    out.push("_Calculated by the app from this file, up to 8 decimals._");
+    out.push("");
+    const sortedHoldings = [...holdings].sort((a, b) => a.symbol.localeCompare(b.symbol));
+    const listed = sortedHoldings.slice(0, MAX_HOLDINGS_LISTED);
+    out.push(listed.map((h) => `${reportCell(h.symbol)} ${formatAmount8(h.amount)}`).join("; "));
+    if (sortedHoldings.length > listed.length) {
+      out.push(`_... and ${sortedHoldings.length - listed.length} more, omitted._`);
+    }
+    out.push("");
+  }
 
   // --- 2. Ingestion failures, unknown types, unconfirmed handling, unexpected shapes/currencies ---
   if (d.unknownTypes.length > 0) {
@@ -1794,10 +2192,24 @@ function buildReport(
   }
 
   // --- 3. Relationship, fee, status, temporal and duplicate exceptions, with sample rows ADJACENT ---
-  if (d.relationships.matches.length > 0) {
+  const pairing = d.relationships.liquidationPairing;
+  if (d.relationships.matches.length > 0 || pairing) {
     if (config.includeRelationships) {
       out.push("#### Relationships");
       out.push("");
+      if (pairing) {
+        const paired = pairing.pairedWithin.reduce((n, w) => n + w.count, 0);
+        const windows = pairing.pairedWithin
+          .filter((w) => w.count > 0)
+          .map((w) => `${w.window} ×${w.count}`)
+          .join(", ");
+        out.push(
+          `Pairing: ${paired} of ${pairing.liquidations} Exchange Liquidation rows have a Manual Sell Order with the same asset and amount within 24 h` +
+            (windows ? ` (${windows})` : "") +
+            `; unpaired: ${pairing.unpairedSameAmountElsewhere} with that amount further away, ${pairing.unpairedNoSameAmount} without` +
+            (pairing.unpairedUnreadable > 0 ? `, ${pairing.unpairedUnreadable} unreadable.` : ".")
+        );
+      }
       for (const m of d.relationships.matches) {
         let matchText = `${m.matchedCount} matched`;
         if (m.unmatchedCount > 0) {
@@ -1829,7 +2241,7 @@ function buildReport(
     out.push(`Fees: ${feeParts.join("; ")}.`);
     for (const [tName, f] of Object.entries(d.feeCensus.byType)) {
       out.push(
-        `- ${truncateValue(tName)}: ${f.count} fee${f.count === 1 ? "" : "s"}, total ${formatSigFig(f.total)} ${f.currency} (${f.legMatch}).`
+        `- ${truncateValue(tName)}: ${f.count} fee${f.count === 1 ? "" : "s"}, total ${formatAmount8(f.total)} ${f.currency} (${f.legMatch}).`
       );
     }
     out.push("");
@@ -2091,7 +2503,9 @@ function buildReport(
 
   out.push("#### Net contribution breakdown");
   out.push("");
-  out.push("_([ignored] = no balance effect; amounts show internal movements):_");
+  out.push(
+    "_([ignored] = no balance effect; amounts show internal movements. Amounts to 8 decimals; (+in ×n / -out ×m) splits a total that has both signs. CSV USD Equivalent sums are transaction values, not holdings or cash flow.)_"
+  );
   out.push("");
 
   if (!config.includeNetContributions || config.maxRoutineContribs === 0) {
@@ -2107,53 +2521,87 @@ function buildReport(
     const contribTypesToRender = [...exceptionalTypes, ...allowedRoutineContribs];
     let hadCappedContribs = false;
 
+    const usdSuffix = (t: TypeSummary) =>
+      t.usdEquivalentSum.count > 0
+        ? ` — CSV USD Equivalent sum ${formatUsd2(t.usdEquivalentSum.sum)} over ${t.usdEquivalentSum.count} row${t.usdEquivalentSum.count === 1 ? "" : "s"}`
+        : "";
+    // Net per currency, including currencies whose legs cancel to zero.
+    const currencyEntries = (t: TypeSummary, flows: Record<string, FlowTotals>): [string, number][] => {
+      const keys = new Set([...Object.keys(t.netContributions), ...Object.keys(flows)]);
+      return [...keys].map((cur) => [cur, t.netContributions[cur] ?? 0]);
+    };
+    const gross = (f: FlowTotals | undefined) => (f ? f.posSum - f.negSum : 0);
+    const split = (f: FlowTotals | undefined) =>
+      f && f.posCount > 0 && f.negCount > 0
+        ? ` (${formatAmount8(f.posSum, true)} ×${f.posCount} / ${formatAmount8(f.negSum, true)} ×${f.negCount})`
+        : "";
+
+    const formatMovement = (entries: [string, number][]): string => {
+      if (entries.length === 2) {
+        const sorted = [...entries].sort((a, b) => a[1] - b[1]);
+        const leg1 = `${truncateValue(sorted[0][0])} ${formatAmount8(sorted[0][1], true)}`;
+        const leg2 = `${truncateValue(sorted[1][0])} ${formatAmount8(sorted[1][1], true)}`;
+        return `${leg1} → ${leg2}`;
+      }
+      if (entries.length === 1) {
+        return `${truncateValue(entries[0][0])} ${formatAmount8(entries[0][1], true)}`;
+      }
+      const sorted = [...entries].sort(
+        (a, b) => Math.abs(b[1]) - Math.abs(a[1]) || a[0].localeCompare(b[0])
+      );
+      const displayed = sorted.slice(0, MAX_CONTRIBUTIONS_PER_TYPE);
+      if (entries.length > MAX_CONTRIBUTIONS_PER_TYPE) hadCappedContribs = true;
+      return displayed
+        .map(([cur, amt]) => `${truncateValue(cur)} ${formatAmount8(amt, true)}`)
+        .join(", ");
+    };
+
     for (const t of contribTypesToRender) {
-      const entries = Object.entries(t.netContributions);
       if (t.handling === "ignored") {
+        const entries = currencyEntries(t, t.ignoredFlows);
         if (entries.length === 0) {
-          out.push(`- \`${truncateValue(t.name)}\`: [ignored] (none)`);
+          out.push(`- \`${truncateValue(t.name)}\`: [ignored] (none)${usdSuffix(t)}`);
         } else {
-          let movementStr = "";
-          if (entries.length === 2) {
-            const sorted = [...entries].sort((a, b) => a[1] - b[1]);
-            const leg1 = `${truncateValue(sorted[0][0])} ${sorted[0][1] > 0 ? "+" : ""}${formatSigFig(sorted[0][1])}`;
-            const leg2 = `${truncateValue(sorted[1][0])} ${sorted[1][1] > 0 ? "+" : ""}${formatSigFig(sorted[1][1])}`;
-            movementStr = `${leg1} → ${leg2}`;
-          } else if (entries.length === 1) {
-            movementStr = `${truncateValue(entries[0][0])} ${entries[0][1] > 0 ? "+" : ""}${formatSigFig(entries[0][1])}`;
-          } else {
-            const sorted = [...entries].sort(
-              (a, b) => Math.abs(b[1]) - Math.abs(a[1]) || a[0].localeCompare(b[0])
-            );
-            const displayed = sorted.slice(0, MAX_CONTRIBUTIONS_PER_TYPE);
-            movementStr = displayed
-              .map(([cur, amt]) => `${truncateValue(cur)} ${amt > 0 ? "+" : ""}${formatSigFig(amt)}`)
-              .join(", ");
-            if (entries.length > MAX_CONTRIBUTIONS_PER_TYPE) hadCappedContribs = true;
-          }
-          out.push(`- \`${truncateValue(t.name)}\`: [ignored] ${movementStr} ×${t.count}`);
+          const movementStr = formatMovement(entries);
+          out.push(`- \`${truncateValue(t.name)}\`: [ignored] ${movementStr} ×${t.count}${usdSuffix(t)}`);
         }
       } else {
+        const entries = currencyEntries(t, t.countedFlows);
         if (entries.length === 0) {
-          out.push(`- \`${truncateValue(t.name)}\`: (none)`);
+          out.push(`- \`${truncateValue(t.name)}\`: (none)${usdSuffix(t)}`);
         } else {
           const sorted = [...entries].sort(
-            (a, b) => Math.abs(b[1]) - Math.abs(a[1]) || a[0].localeCompare(b[0])
+            (a, b) =>
+              Math.abs(b[1]) - Math.abs(a[1]) ||
+              gross(t.countedFlows[b[0]]) - gross(t.countedFlows[a[0]]) ||
+              a[0].localeCompare(b[0])
           );
           const displayed = sorted.slice(0, MAX_CONTRIBUTIONS_PER_TYPE);
           const formatted = displayed
-            .map(([cur, amt]) => {
-              const signPrefix = amt > 0 ? "+" : "";
-              const str = formatSigFig(amt);
-              return `${signPrefix}${str} ${truncateValue(cur)}`;
-            })
+            .map(([cur, amt]) => `${formatAmount8(amt, true)} ${truncateValue(cur)}${split(t.countedFlows[cur])}`)
             .join(", ");
           const suffix =
             entries.length > MAX_CONTRIBUTIONS_PER_TYPE
               ? `, ... and ${entries.length - MAX_CONTRIBUTIONS_PER_TYPE} more, omitted`
               : "";
           if (entries.length > MAX_CONTRIBUTIONS_PER_TYPE) hadCappedContribs = true;
-          out.push(`- \`${truncateValue(t.name)}\`: ${formatted}${suffix}`);
+          out.push(`- \`${truncateValue(t.name)}\`: ${formatted}${suffix}${usdSuffix(t)}`);
+        }
+      }
+
+      if (t.name === TransactionType.INTEREST && t.creditLineCharges && (t.creditLineChargesCount ?? 0) > 0) {
+        const clEntries = Object.entries(t.creditLineCharges);
+        if (clEntries.length === 0) {
+          out.push(
+            `- \`Interest (credit-line charges)\`: [ignored] (none) ×${t.creditLineChargesCount}`
+          );
+        } else {
+          const movementStr = clEntries
+            .map(([cur, amt]) => `${truncateValue(cur)} ${formatAmount8(amt, true)}`)
+            .join(", ");
+          out.push(
+            `- \`Interest (credit-line charges)\`: [ignored] ${movementStr} ×${t.creditLineChargesCount}`
+          );
         }
       }
     }
@@ -2328,7 +2776,11 @@ function truncateDeterministically(text: string, maxBytes: number): string {
  * The report is shown in full before it can be copied, and sample rows are
  * unaltered, so what gets published is always something the user could read first.
  */
-export function formatDiagnosticReport(d: CsvDiagnostics, appVersion: string): string {
+export function formatDiagnosticReport(
+  d: CsvDiagnostics,
+  appVersion: string,
+  extras: ReportExtras = {}
+): string {
   const encoder = new TextEncoder();
 
   // Progressive reduction pipeline obeying the overflow policy:
@@ -2413,7 +2865,7 @@ export function formatDiagnosticReport(d: CsvDiagnostics, appVersion: string): s
 
   let lastReport = "";
   for (let i = 0; i < stages.length; i++) {
-    const res = buildReport(d, appVersion, stages[i]);
+    const res = buildReport(d, appVersion, stages[i], extras);
     lastReport = res.text;
     if (encoder.encode(res.text).length <= MAX_REPORT_SIZE_BYTES) {
       return res.text;

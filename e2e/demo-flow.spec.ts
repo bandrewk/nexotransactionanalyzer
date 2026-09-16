@@ -140,6 +140,30 @@ test.describe("Credit Line card chain upload", () => {
     await expect(page.getByText("xUSD", { exact: true })).toHaveCount(0);
     await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
   });
+
+  const REPAYMENT_CSV = [
+    "Transaction,Type,Credit Line,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)",
+    'NXT1,Deposit To Exchange,,EUR,1000.00,EURX,1000.00,$1100.00,-,-,"approved / EUR deposit",2026-08-20 10:00:00',
+    'NXT2,Manual Sell Order,,EURX,-200.00,EURX,0.00,$220.00,-,-,"approved / Crypto repayment",2026-08-22 04:08:57',
+    'NXT3,Exchange Liquidation,,EURX,200.00,USDX,220.00,$220.00,-,-,"approved / Crypto repayment / Exchange EURX to USDX",2026-08-22 04:08:58',
+    'NXT4,Manual Repayment,,USDX,220.00,USDX,0.00,$220.00,-,-,"approved / Crypto repayment",2026-08-22 04:08:58',
+  ].join("\n");
+
+  test("debits a card repayment once", async ({ page }) => {
+    await page.goto("/");
+    await page.setInputFiles('input[type="file"]', {
+      name: "nexo_repayment.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(REPAYMENT_CSV),
+    });
+    await page.waitForURL("**/platform/**", { timeout: 10000 });
+
+    await page.click("a:has-text('Coinlist')");
+    await expect(page.locator("h1:has-text('Coinlist')")).toBeVisible();
+
+    await expect(page.getByText(/^800(\.0+)?$/)).toBeVisible();
+    await expect(page.getByText(/^600(\.0+)?$/)).toHaveCount(0);
+  });
 });
 
 test.describe("File Details page", () => {
@@ -151,11 +175,72 @@ test.describe("File Details page", () => {
 
     await expect(page.locator("h1:has-text('File Details')")).toBeVisible();
     await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
-    await expect(page.locator("table")).toContainText("Interest");
+    await expect(page.locator("table", { hasText: "Handling" })).toContainText("Interest");
     // Demo data is current-format, so nothing should be flagged.
     await expect(page.locator("text=/unrecognised transaction/i")).toHaveCount(0);
     await expect(page.locator("text=/unexpected/i")).toHaveCount(0);
     await expect(page.locator("pre")).toContainText("Nexo Transaction Analyzer");
+  });
+
+  test("puts applied Nexo balances into the report and resets them for a new file", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const upload = async (rows: string[]) => {
+      await page.goto("/");
+      await page.setInputFiles('input[type="file"]', {
+        name: "nexo_compare.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          [
+            "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount,USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)",
+            ...rows,
+          ].join("\n")
+        ),
+      });
+      await page.waitForURL("**/platform/**", { timeout: 10000 });
+      await page.click("a:has-text('File Details')");
+    };
+
+    await upload([
+      'NXT1,Top up Crypto,BTC,0.01000000,BTC,0.01000000,$600.00,-,-,"approved / 0xabc",2026-08-20 10:00:00',
+      'NXT2,Top up Crypto,ETH,1.50000000,ETH,1.50000000,$3000.00,-,-,"approved / 0xdef",2026-08-21 10:00:00',
+    ]);
+
+    await expect(page.getByRole("heading", { name: "Compare with Nexo" })).toBeVisible();
+    await expect(page.getByText("Read this before you post it")).toBeVisible();
+    const report = page.locator("pre");
+    await expect(report).toContainText("BTC 0.01; ETH 1.5");
+    await expect(report).not.toContainText("#### Comparison with Nexo");
+
+    await page.getByLabel("Nexo shows BTC").fill("0.015");
+    const eth = page.getByLabel("Nexo shows ETH");
+    await eth.fill("2,800");
+    await expect(eth).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByText("Ambiguous: write 2800, 2,800.00 or 2.8", { exact: true })).toBeVisible();
+    await page.click("button:has-text('Apply comparison')");
+
+    await expect(page.getByText(/1 asset in the report; 1 marked value was left out/)).toBeVisible();
+    await expect(report).toContainText("| BTC | 0.01 | 0.015 | +0.005 | 33.33% |");
+    await expect(report).not.toContainText("| ETH |");
+
+    const shown = await report.textContent();
+    await page.click("button:has-text('Copy report')");
+    await expect(page.getByText("Copied", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(shown);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.click("button:has-text('Download')"),
+    ]);
+    const chunks: Buffer[] = [];
+    for await (const chunk of await download.createReadStream()) chunks.push(chunk as Buffer);
+    expect(Buffer.concat(chunks).toString("utf8")).toBe(shown);
+
+    await page.click("button:has-text('Exit')");
+    await page.waitForURL("/", { timeout: 5000 });
+    await upload(['NXT3,Top up Crypto,BTC,0.02000000,BTC,0.02000000,$1200.00,-,-,"approved / 0x123",2026-08-22 10:00:00']);
+    await expect(page.locator("pre")).toContainText("BTC 0.02");
+    await expect(page.locator("pre")).not.toContainText("#### Comparison with Nexo");
+    await expect(page.getByLabel("Nexo shows BTC")).toHaveValue("");
   });
 });
 

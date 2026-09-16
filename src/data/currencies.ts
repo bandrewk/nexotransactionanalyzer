@@ -26,6 +26,8 @@ export const currencyData: Currency[] = [
   // === Fully Supported ===
   c("Bitcoin", "BTC", "bitcoin"),
   c("Ethereum", "ETH", "ethereum"),
+  // Nexo's staked Ether, exchanged 1:1 with ETH, so it takes the ETH price.
+  c("Nexo Staked Ethereum", "NETH", "ethereum"),
   c("NEXO Token", "NEXO", "nexo"),
   c("XRP", "XRP", "ripple"),
   c("Tether", "USDT", "tether"),

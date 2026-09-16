@@ -1,7 +1,10 @@
+import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import DiagnosticReport from "../landing/DiagnosticReport";
-import { formatShapePattern, truncateValue } from "../../lib/csv-diagnostics";
+import CompareWithNexo from "./CompareWithNexo";
+import { formatShapePattern, truncateValue, type ReportExtras } from "../../lib/csv-diagnostics";
+import type { ComparisonInput } from "../../lib/balance-comparison";
 
 const CARD =
   "p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06]";
@@ -13,6 +16,21 @@ const VALUE = "text-[1.35rem] font-semibold tabular-nums text-slate-600 dark:tex
 export default function FileDetailsPage() {
   const diagnostics = useAppStore((s) => s.diagnostics);
   const transactions = useAppStore((s) => s.transactions);
+  const currencies = useAppStore((s) => s.currencies);
+
+  // Loading another file requires leaving the platform, which unmounts this page and
+  // discards the comparison with it.
+  const [comparison, setComparison] = useState<ComparisonInput | null>(null);
+
+  // Price updates replace currency objects without changing amounts; key on the amounts.
+  const holdingsKey = JSON.stringify(
+    currencies.filter((c) => Math.abs(c.amount) >= 1e-8).map((c) => [c.symbol, c.amount])
+  );
+  const extras = useMemo<ReportExtras>(() => {
+    const entries = JSON.parse(holdingsKey) as [string, number][];
+    const holdings = entries.map(([symbol, amount]) => ({ symbol, amount }));
+    return { holdings, comparison: comparison ?? undefined };
+  }, [holdingsKey, comparison]);
 
   return (
     <div className="space-y-6 animate-in">
@@ -76,7 +94,7 @@ export default function FileDetailsPage() {
                 <p className={VALUE}>{diagnostics.columnCount}</p>
               </div>
               <div>
-                <p className={LABEL}>Date range</p>
+                <p className={LABEL}>First to latest dated row</p>
                 <p className={VALUE}>
                   {diagnostics.dateRange
                     ? `${diagnostics.dateRange.first} to ${diagnostics.dateRange.last}`
@@ -214,14 +232,28 @@ export default function FileDetailsPage() {
           </section>
 
           <section className={CARD}>
+            <h2 className={CARD_TITLE}>Compare with Nexo</h2>
+            <p className="text-[1.15rem] text-slate-400 mb-4">
+              Optional. Entering what the Nexo app shows lets a single report show where the app
+              disagrees with Nexo, and by how much.
+            </p>
+            <CompareWithNexo
+              currencies={currencies}
+              latestDate={diagnostics.dateRange?.last ?? null}
+              applied={comparison}
+              onApply={setComparison}
+            />
+          </section>
+
+          <section className={CARD}>
             <h2 className={CARD_TITLE}>Report</h2>
             <p className="text-[1.15rem] text-slate-400 mb-6">
               Everything above in one block, ready to paste into a GitHub issue instead of
-              your CSV. The report includes net amounts per currency per transaction type,
-              recurring detail text, and any unaltered sample rows, which together approximate
-              the account&apos;s balances — read the report below and edit it before you post it.
+              your CSV. It includes your holdings as calculated by the app, exact totals per
+              transaction type, recurring detail text, any unaltered sample rows, and the
+              comparison with Nexo once applied. Read it before you post it.
             </p>
-            <DiagnosticReport diagnostics={diagnostics} standalone />
+            <DiagnosticReport diagnostics={diagnostics} standalone extras={extras} />
           </section>
         </>
       )}

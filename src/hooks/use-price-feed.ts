@@ -23,7 +23,7 @@ export function usePriceFeed() {
     );
     if (cryptos.length === 0) return;
 
-    const ids = cryptos.map((c) => c.coingeckoId);
+    const ids = [...new Set(cryptos.map((c) => c.coingeckoId))];
 
     /**
      * CoinGecko first, DefiLlama for whatever it did not return.

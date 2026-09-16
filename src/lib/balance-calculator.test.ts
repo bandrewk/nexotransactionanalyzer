@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { parseCSV } from "./csv-parser";
 import {
   calculateBalances,
+  isCreditLineInterestCharge,
   EXCLUDED_DETAIL_STATUSES,
   extractDetailStatus,
   isExcludedDetailStatus,
@@ -302,7 +303,7 @@ describe("card credit line and rule effects (Phases 1-2)", () => {
     expect(snapshot?.has("EUR")).toBe(false);
   });
 
-  it("conserves value across deposit, 10x card chain, and exchange liquidation", () => {
+  it("conserves value across deposit, 10x card chain, and repayment", () => {
     const rows = [
       `NXT0,Deposit To Exchange,Card,EUR,1000.00,EURX,1000.00,$1000.00,-,-,"approved / Deposit EUR",2026-08-20 00:00:00`,
     ];
@@ -315,7 +316,9 @@ describe("card credit line and rule effects (Phases 1-2)", () => {
       );
     }
     rows.push(
-      `NXT_L1,Exchange Liquidation,Card,EURX,500.00,xUSD,577.25,$577.25,-,-,"approved / Crypto repayment / Exchange EURX to xUSD",2026-08-22 00:00:00`
+      `NXT_S1,Manual Sell Order,Card,EURX,-500.00,EURX,0.00,$577.25,-,-,"approved / Sell EURX",2026-08-22 00:00:00`,
+      `NXT_L1,Exchange Liquidation,Card,EURX,500.00,xUSD,577.25,$577.25,-,-,"approved / Crypto repayment / Exchange EURX to xUSD",2026-08-22 00:00:00`,
+      `NXT_R1,Manual Repayment,Card,xUSD,577.25,xUSD,0.00,$577.25,-,-,"approved / Repayment",2026-08-22 00:00:00`
     );
     const csv = `${HEADER_WITH_CREDIT_LINE}\n${rows.join("\n")}\n`;
     const result = calculateBalances(parseCSV(csv));
@@ -324,7 +327,7 @@ describe("card credit line and rule effects (Phases 1-2)", () => {
     expect(result.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
   });
 
-  it("handles multi-currency Exchange Liquidation (USDT and BTC) without crediting output or creating xUSD", () => {
+  it("handles multi-currency Exchange Liquidation (USDT and BTC) without holding changes or creating xUSD", () => {
     const csv =
       `${HEADER}\n` +
       `NXT1,Exchange Liquidation,USDT,200.00,xUSD,200.00,$200.00,-,-,"approved / Repayment",2026-08-22 00:00:00\n` +
@@ -332,40 +335,61 @@ describe("card credit line and rule effects (Phases 1-2)", () => {
     const result = calculateBalances(parseCSV(csv));
     const usdt = result.currencies.find((c) => c.symbol === "USDT");
     const btc = result.currencies.find((c) => c.symbol === "BTC");
-    expect(usdt?.amount).toBe(-200);
-    expect(btc?.amount).toBe(-0.05);
+    expect(usdt?.amount ?? 0).toBe(0);
+    expect(btc?.amount ?? 0).toBe(0);
     expect(result.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
   });
 
-  it("Exchange Liquidation alone debits input and does not create xUSD", () => {
+  it("Exchange Liquidation alone makes no holding change and does not create xUSD", () => {
     const csv = `${HEADER}\nNXT1,Exchange Liquidation,EURX,500.00,xUSD,577.25,$577.25,-,-,"approved / Repayment",2026-08-22 00:00:00\n`;
     const result = calculateBalances(parseCSV(csv));
     const eur = result.currencies.find((c) => c.symbol === "EUR");
-    expect(eur?.amount).toBe(-500);
+    expect(eur?.amount ?? 0).toBe(0);
     expect(result.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
   });
 
-  it("Exchange Liquidation with negative input amount remains negative (-Math.abs)", () => {
+  it("Exchange Liquidation with negative input amount makes no holding change", () => {
     const csv = `${HEADER}\nNXT1,Exchange Liquidation,EURX,-500.00,xUSD,577.25,$577.25,-,-,"approved / Repayment",2026-08-22 00:00:00\n`;
     const result = calculateBalances(parseCSV(csv));
     const eur = result.currencies.find((c) => c.symbol === "EUR");
-    expect(eur?.amount).toBe(-500);
+    expect(eur?.amount ?? 0).toBe(0);
     expect(result.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
   });
 
-  // Characterisation, not validation. Whether these two rows can describe one
-  // repayment is unresolved; if they can, this double-debits and the expected
-  // value below is the defect rather than the contract.
-  it("debits both legs when Manual Sell Order and Exchange Liquidation coincide (open question)", () => {
-    // Manual Sell Order debits BTC -0.05 generically. Exchange Liquidation debits BTC -0.05 via debit-input.
-    const csv =
+  it("debits asset once when Manual Sell Order, Exchange Liquidation and Manual Repayment coincide", () => {
+    // Repayment sequence for EUR: Sell Order (-200 EURX), Liquidation (200 EURX -> 240.00 USDX), Manual Repayment (240.00 USDX)
+    const eurCsv =
       `${HEADER}\n` +
-      `NXT1,Manual Sell Order,BTC,-0.05,BTC,0.00,$3000.00,-,-,"approved / Sell BTC",2026-08-22 00:00:00\n` +
-      `NXT2,Exchange Liquidation,BTC,0.05,xUSD,3000.00,$3000.00,-,-,"approved / Repayment",2026-08-22 00:00:00\n`;
-    const result = calculateBalances(parseCSV(csv));
-    const btc = result.currencies.find((c) => c.symbol === "BTC");
-    expect(btc?.amount).toBe(-0.10);
-    expect(result.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
+      `NXT1,Manual Sell Order,EURX,-200.00,EURX,0.00,$240.00,-,-,"approved / Sell EURX",2026-08-22 00:00:00\n` +
+      `NXT2,Exchange Liquidation,EURX,200.00,USDX,240.00,$240.00,-,-,"approved / Crypto repayment / Exchange EURX to USDX",2026-08-22 00:00:00\n` +
+      `NXT3,Manual Repayment,USDX,240.00,USDX,0.00,$240.00,-,-,"approved / Repayment",2026-08-22 00:00:00\n`;
+    const eurResult = calculateBalances(parseCSV(eurCsv));
+    const eur = eurResult.currencies.find((c) => c.symbol === "EUR");
+    expect(eur?.amount).toBe(-200);
+    expect(eurResult.currencies.find((c) => c.symbol === "USDX")).toBeUndefined();
+    expect(eurResult.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
+
+    // Repayment sequence for USDT: Sell Order (-2000 USDT), Liquidation (2000 USDT -> 1995.00 USDX), Manual Repayment (1995.00 USDX)
+    const usdtCsv =
+      `${HEADER}\n` +
+      `NXT4,Manual Sell Order,USDT,-2000.00,USDT,0.00,$1995.00,-,-,"approved / Sell USDT",2026-08-22 00:00:00\n` +
+      `NXT5,Exchange Liquidation,USDT,2000.00,USDX,1995.00,$1995.00,-,-,"approved / Crypto repayment / Exchange USDT to USDX",2026-08-22 00:00:00\n` +
+      `NXT6,Manual Repayment,USDX,1995.00,USDX,0.00,$1995.00,-,-,"approved / Repayment",2026-08-22 00:00:00\n`;
+    const usdtResult = calculateBalances(parseCSV(usdtCsv));
+    const usdt = usdtResult.currencies.find((c) => c.symbol === "USDT");
+    expect(usdt?.amount).toBe(-2000);
+    expect(usdtResult.currencies.find((c) => c.symbol === "USDX")).toBeUndefined();
+
+    // Repayment sequence for USDC: Sell Order (-500 USDC), Liquidation (500 USDC -> 500 USDX), Manual Repayment (500 USDX)
+    const usdcCsv =
+      `${HEADER}\n` +
+      `NXT7,Manual Sell Order,USDC,-500.00,USDC,0.00,$500.00,-,-,"approved / Sell USDC",2026-08-22 00:00:00\n` +
+      `NXT8,Exchange Liquidation,USDC,500.00,USDX,500.00,$500.00,-,-,"approved / Crypto repayment / Exchange USDC to USDX",2026-08-22 00:00:00\n` +
+      `NXT9,Manual Repayment,USDX,500.00,USDX,0.00,$500.00,-,-,"approved / Repayment",2026-08-22 00:00:00\n`;
+    const usdcResult = calculateBalances(parseCSV(usdcCsv));
+    const usdc = usdcResult.currencies.find((c) => c.symbol === "USDC");
+    expect(usdc?.amount).toBe(-500);
+    expect(usdcResult.currencies.find((c) => c.symbol === "USDX")).toBeUndefined();
   });
 
   it("does not mutate parsed fields for any of the 12 new transaction types", () => {
@@ -463,11 +487,11 @@ describe("card credit line and rule effects (Phases 1-2)", () => {
     expect(result.dailySnapshots.has("2026-08-22")).toBe(true);
   });
 
-  it("preserves balance debit effect for negative Interest rows", () => {
+  it("leaves held balances unchanged for a negative USD Interest row", () => {
     const csv = `${HEADER}\nNXT1,Interest,USD,-9.00,USD,9.00,$9.00,-,-,"approved / Interest",2026-08-22 00:00:00\n`;
     const result = calculateBalances(parseCSV(csv));
     const usd = result.currencies.find((c) => c.symbol === "USD");
-    expect(usd?.amount).toBe(-9);
+    expect(usd?.amount).toBe(0);
     expect(result.interestChargedUsd).toBe(9);
     expect(result.interestData).toHaveLength(1);
     expect(result.interestData[0]).toEqual({
@@ -527,11 +551,11 @@ describe("card credit line and rule effects (Phases 1-2)", () => {
     expect(result.earnedInterestBreakdown[0].inKindAmount).toBe(0.0001);
     // Excluded row is accumulated in interestChargedUsd
     expect(result.interestChargedUsd).toBe(9);
-    // Balance effects: BTC credited 0.0001, USD debited -9
+    // Balance effects: BTC credited 0.0001; the USD charge leaves USD unchanged
     const btc = result.currencies.find((c) => c.symbol === "BTC");
     const usd = result.currencies.find((c) => c.symbol === "USD");
     expect(btc?.amount).toBe(0.0001);
-    expect(usd?.amount).toBe(-9);
+    expect(usd?.amount).toBe(0);
   });
 
   it("handles in-NEXO interest and verifies inKind/inNexo quantities stay positive", () => {
@@ -606,11 +630,11 @@ describe("accounts with no credit line and no new types", () => {
 
   const result = calculateBalances(parseCSV(ordinary));
 
-  it("leaves holdings exactly as the pre-rule-table code did", () => {
-    // BTC gains the top-up and the in-kind interest; USD is debited by the negative
-    // row exactly as before -- the balance path never distinguished the two.
+  it("credits BTC as before and leaves USD unchanged by the negative interest row", () => {
+    // BTC gains the top-up and the in-kind interest; the negative USD interest row
+    // is a credit-line charge and does not debit USD.
     expect(result.currencies.find((c) => c.symbol === "BTC")!.amount).toBeCloseTo(1.001, 10);
-    expect(result.currencies.find((c) => c.symbol === "USD")!.amount).toBeCloseTo(-9, 10);
+    expect(result.currencies.find((c) => c.symbol === "USD")!.amount).toBe(0);
   });
 
   it("does change the interest figures, splitting rather than netting", () => {
@@ -752,5 +776,97 @@ describe("BUG 2: pending and rejected status matching by prefix", () => {
     const r = calculateBalances(parseCSV(csv));
     const btc = r.currencies.find((c) => c.symbol === "BTC")!;
     expect(btc.amount).toBe(2.0);
+  });
+});
+
+describe("negative USD interest and Loan Withdrawal", () => {
+  const HEADER_11 =
+    "Transaction,Type,Input Currency,Input Amount,Output Currency,Output Amount," +
+    "USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)";
+  const HEADER_12 =
+    "Transaction,Type,Credit Line,Input Currency,Input Amount,Output Currency,Output Amount," +
+    "USD Equivalent,Fee,Fee Currency,Details,Date / Time (UTC)";
+
+  const balanceOf = (result: ReturnType<typeof calculateBalances>, symbol: string) =>
+    result.currencies.find((c) => c.symbol === symbol)?.amount ?? 0;
+
+  describe("negative USD or xUSD interest leaves balances unchanged and counts as charged", () => {
+    it.each([
+      ["12-column xUSD", `${HEADER_12}\nNXT001,Interest,Card,xUSD,-0.25,xUSD,0.25,$0.25,-,-,"approved / Interest",2026-08-22 00:00:00\n`, 0.25],
+      ["11-column xUSD", `${HEADER_11}\nNXT001,Interest,xUSD,-0.25,xUSD,0.25,$0.25,-,-,"approved / Interest",2026-08-22 00:00:00\n`, 0.25],
+      ["USDX with no output currency", `${HEADER_12}\nNXT002,Interest,,USDX,-0.01,-,0.00,$0.01,-,-,"approved / 1 days interest for tid: NXT987654",2026-08-22 00:00:00\n`, 0.01],
+      ["USDX mirrored", `${HEADER_11}\nNXT003,Interest,USDX,-0.04,USDX,0.04,$0.04,-,-,"approved / Interest",2026-08-22 00:00:00\n`, 0.04],
+      ["USD with no output currency", `${HEADER_11}\nNXT004,Interest,USD,-0.03,-,0.00,$0.03,-,-,"approved / Interest",2026-08-22 00:00:00\n`, 0.03],
+    ])("%s", (_label, csv, charged) => {
+      const result = calculateBalances(parseCSV(csv));
+      expect(balanceOf(result, "USD")).toBe(0);
+      expect(result.currencies.find((c) => c.symbol === "xUSD")).toBeUndefined();
+      expect(result.interestChargedUsd).toBe(charged);
+      expect(result.dailySnapshots.get("2026-08-22")?.get("USD") ?? 0).toBe(0);
+    });
+  });
+
+  describe("other interest rows are unchanged", () => {
+    it("debits negative EURX interest", () => {
+      const csv = `${HEADER_11}\nNXT010,Interest,EURX,-2.00,EURX,2.00,$2.20,-,-,"approved / Interest",2026-08-22 00:00:00\n`;
+      const result = calculateBalances(parseCSV(csv));
+      expect(balanceOf(result, "EUR")).toBe(-2);
+      expect(result.interestChargedUsd).toBe(2.2);
+    });
+
+    it("debits negative crypto interest", () => {
+      const csv = `${HEADER_12}\nNXT011,Interest,Card,BTC,-0.001,BTC,0.001,$50.00,-,-,"approved / interest for tid: 123",2026-08-22 00:00:00\n`;
+      expect(balanceOf(calculateBalances(parseCSV(csv)), "BTC")).toBe(-0.001);
+    });
+
+    it("credits positive USDX interest", () => {
+      const csv = `${HEADER_11}\nNXT012,Interest,USDX,50.00,USDX,50.00,$50.00,-,-,"approved / USD Interest",2026-08-22 00:00:00\n`;
+      const result = calculateBalances(parseCSV(csv));
+      expect(balanceOf(result, "USD")).toBe(50);
+      expect(result.interestChargedUsd).toBe(0);
+    });
+
+    it("credits positive EURX interest", () => {
+      const csv = `${HEADER_11}\nNXT013,Interest,EURX,20.00,EURX,20.00,$22.00,-,-,"approved / EUR Interest",2026-08-22 00:00:00\n`;
+      const result = calculateBalances(parseCSV(csv));
+      expect(balanceOf(result, "EUR")).toBe(20);
+      expect(result.interestChargedUsd).toBe(0);
+    });
+  });
+
+  describe("Loan Withdrawal", () => {
+    it("credits USDC +100 and leaves USD unchanged (11-column)", () => {
+      const csv = `${HEADER_11}\nNXT_LW,Loan Withdrawal,USD,-99.00,USDC,100.00,$100.00,-,-,"approved / Loan",2026-08-22 00:00:00\n`;
+      const result = calculateBalances(parseCSV(csv));
+      expect(balanceOf(result, "USDC")).toBe(100);
+      expect(balanceOf(result, "USD")).toBe(0);
+      expect(result.dailySnapshots.get("2026-08-22")?.get("USDC")).toBe(100);
+      expect(result.dailySnapshots.get("2026-08-22")?.get("USD") ?? 0).toBe(0);
+    });
+
+    it("credits USDC and leaves USD unchanged (12-column)", () => {
+      const csv = `${HEADER_12}\nNXT_LW2,Loan Withdrawal,Card,USD,-99.00,USDC,100.00,$100.00,-,-,"approved / Loan",2026-08-22 00:00:00\n`;
+      const result = calculateBalances(parseCSV(csv));
+      expect(balanceOf(result, "USDC")).toBe(100);
+      expect(balanceOf(result, "USD")).toBe(0);
+    });
+  });
+
+  describe("isCreditLineInterestCharge predicate", () => {
+    const tx = (line: string) => parseCSV(`${HEADER_12}\n${line}\n`)[0];
+
+    it("does not match interest paid out in NEXO", () => {
+      expect(isCreditLineInterestCharge(tx(`NXT1,Interest,,USDX,-1.00,NEXO,1.00,$1.00,-,-,"approved / Interest",2026-08-22 00:00:00`))).toBe(false);
+      expect(isCreditLineInterestCharge(tx(`NXT1,Interest,,USDX,1.00,NEXO,-1.00,$1.00,-,-,"approved / Interest",2026-08-22 00:00:00`))).toBe(false);
+    });
+
+    it("does not match zero or positive amounts", () => {
+      expect(isCreditLineInterestCharge(tx(`NXT1,Interest,,USD,0.00,-,0.00,$0.00,-,-,"approved / Interest",2026-08-22 00:00:00`))).toBe(false);
+      expect(isCreditLineInterestCharge(tx(`NXT1,Interest,Card,xUSD,1.00,xUSD,1.00,$1.00,-,-,"approved / Interest",2026-08-22 00:00:00`))).toBe(false);
+    });
+
+    it("does not match other types", () => {
+      expect(isCreditLineInterestCharge(tx(`NXT1,Fixed Term Interest,Card,xUSD,-1.00,xUSD,1.00,$1.00,-,-,"approved / Interest",2026-08-22 00:00:00`))).toBe(false);
+    });
   });
 });

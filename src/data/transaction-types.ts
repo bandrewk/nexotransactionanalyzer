@@ -72,7 +72,7 @@ export type TransactionTypeValue =
 export type HoldingEffect =
   | "ignore"        // no holding moves: internal, credit-line, or wrapper
   | "generic"       // input +=, and output += when currencies differ
-  | "debit-input";  // input written positive but means an outflow; output is not a holding
+  | "credit-output"; // input is a credit-line leg; only the output is credited
 
 export type CurrencyClass = "credit-line" | "known" | "unknown" | "absent";
 
@@ -95,7 +95,7 @@ export const TYPE_RULES: Record<TransactionTypeValue, TypeRule> = {
   // Already recognised (22)
   [TransactionType.INTEREST]: {
     effect: "generic",
-    why: "Interest earned on held crypto or fiat assets, credited to the balance. A negative amount debits the balance instead: Nexo uses this same type for a credit-line interest charge, a reversal and an adjustment, and states the export carries no marker telling them apart.",
+    why: "Interest earned on held crypto or fiat assets, credited to the balance. A negative USD or xUSD amount not paid out in NEXO is interest charged on a credit line: it adds to the loan and leaves held balances unchanged. Other negative amounts debit the balance.",
     // Negative shapes are omitted so the diagnostic report samples them.
     expectedShapes: ["in+ out+ same", "in0 out0 same", "in0 out0 diff"],
     confidence: "observed",
@@ -259,10 +259,10 @@ export const TYPE_RULES: Record<TransactionTypeValue, TypeRule> = {
     confidence: "observed",
   },
   // Shape does not encode direction, so a reversed row (credit line -> asset)
-  // matches the same pattern. expectedCurrencies below is what catches it.
+  // matches the same pattern. expectedCurrencies below is what flags it.
   [TransactionType.EXCHANGELIQUIDATION]: {
-    effect: "debit-input",
-    why: "An asset sold to repay card debt. The sold asset is debited; the credit-line proceeds are not a holding. The older Liquidation type is left ignored so existing balances do not move.",
+    effect: "ignore",
+    why: "An asset converted to repay card debt. The paired Manual Sell Order already debits the sold asset, so this row does not change holdings.",
     expectedShapes: ["in+ out+ diff"],
     expectedCurrencies: {
       input: ["known"],
@@ -307,8 +307,8 @@ export const TYPE_RULES: Record<TransactionTypeValue, TypeRule> = {
     confidence: "inferred",
   },
   [TransactionType.LOANWITHDRAWAL]: {
-    effect: "generic",
-    why: "Credit-line borrow withdrawal. The received asset is credited to the balance; whether external payouts appear in this row type remains unconfirmed.",
+    effect: "credit-output",
+    why: "Credit-line borrow withdrawal. The received asset is credited to the balance; the input represents drawn loan credit rather than a held balance outflow.",
     expectedShapes: ["in- out+ diff"],
     confidence: "inferred",
   },
